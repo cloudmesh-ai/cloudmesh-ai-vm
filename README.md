@@ -1,4 +1,6 @@
-# Cloudmesh AI Example
+# Cloudmesh AI VM
+
+Cloudmesh AI VM provides a suite of tools for managing virtual machines within the Cloudmesh AI ecosystem, offering streamlined capabilities for VM lifecycle management and orchestration.
 
 **Quick Links:**
 - [API Reference](API.md) - Full technical documentation of all modules.
