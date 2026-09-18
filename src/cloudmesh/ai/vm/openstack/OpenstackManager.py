@@ -1,6 +1,6 @@
 import yaml
 from typing import List, Dict, Any, Optional
-from src.CloudBaseManager import CloudBaseManager
+from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 
 try:
     from libcloud.compute.types import Provider as LibcloudProvider

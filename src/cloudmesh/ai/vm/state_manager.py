@@ -1,8 +1,8 @@
 import yaml
 import os
 from typing import Optional
-from src.config_models import GlobalConfig
-from src.logger import logger
+from cloudmesh.ai.vm.config_models import GlobalConfig
+from cloudmesh.ai.vm.logger import logger
 
 class StateManager:
     """

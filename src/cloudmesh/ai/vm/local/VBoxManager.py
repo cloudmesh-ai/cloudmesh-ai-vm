@@ -1,7 +1,7 @@
 import subprocess
 import re
 from typing import List, Dict, Any, Optional
-from src.CloudBaseManager import CloudBaseManager
+from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 
 class Provider(CloudBaseManager):
     """

@@ -3,21 +3,21 @@ import yaml
 import os
 from typing import Any, Dict, Optional
 
-from cloudmesh.ai.command.state_manager import StateManager
-from cloudmesh.ai.command.factory import factory
-from cloudmesh.ai.command.config_models import GlobalConfig
-from cloudmesh.ai.command.exceptions import CloudMeshError
-from cloudmesh.ai.command.logger import logger
+from cloudmesh.ai.vm.state_manager import StateManager
+from cloudmesh.ai.vm.factory import factory
+from cloudmesh.ai.vm.config_models import GlobalConfig
+from cloudmesh.ai.vm.exceptions import CloudMeshError
+from cloudmesh.ai.vm.logger import logger
 
 # Import providers for registration
-from src.local.MultipassManager import Provider as MultipassProvider
-from src.local.Wsl2Manager import Provider as Wsl2Provider
-from src.local.VBoxManager import Provider as VBoxProvider
-from src.openstack.JetstreamManager import Provider as JetstreamProvider
-from src.openstack.ChameleonManager import Provider as ChameleonProvider
-from src.aws.AwsManager import Provider as AwsProvider
-from src.azure.AzureManager import Provider as AzureProvider
-from google.GoogleManager import Provider as GoogleProvider
+from cloudmesh.ai.vm.local.MultipassManager import Provider as MultipassProvider
+from cloudmesh.ai.vm.local.Wsl2Manager import Provider as Wsl2Provider
+from cloudmesh.ai.vm.local.VBoxManager import Provider as VBoxProvider
+from cloudmesh.ai.vm.openstack.JetstreamManager import Provider as JetstreamProvider
+from cloudmesh.ai.vm.openstack.ChameleonManager import Provider as ChameleonProvider
+from cloudmesh.ai.vm.aws.AwsManager import Provider as AwsProvider
+from cloudmesh.ai.vm.azure.AzureManager import Provider as AzureProvider
+from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
 
 # Register providers with the factory
 factory.register("multipass", MultipassProvider)
@@ -299,4 +299,4 @@ entry_point = vm_group
 
 def register(cli):
     """Registers the vm command group to the main CLI."""
-    cli.add_command(vm_group, name=\"vm\")
+    cli.add_command(vm_group, name="vm")

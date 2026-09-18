@@ -1,5 +1,5 @@
 import yaml
-from src.openstack.OpenstackManager import OpenstackManager
+from cloudmesh.ai.vm.openstack.OpenstackManager import OpenstackManager
 
 try:
     import chi

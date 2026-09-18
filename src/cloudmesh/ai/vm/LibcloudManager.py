@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
-from src.CloudBaseManager import CloudBaseManager
-from src.exceptions import ProviderError, ResourceNotFoundError, AuthenticationError
-from cloudmesh.ai.command.logger import logger
+from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
+from cloudmesh.ai.vm.exceptions import ProviderError, ResourceNotFoundError, AuthenticationError
+from cloudmesh.ai.vm.logger import logger
 
 try:
     from libcloud.compute.types import Provider as LibcloudProvider

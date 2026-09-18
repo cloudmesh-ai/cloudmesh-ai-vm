@@ -1,4 +1,4 @@
-from src.LibcloudManager import LibcloudManager
+from cloudmesh.ai.vm.LibcloudManager import LibcloudManager
 
 try:
     from libcloud.compute.providers.azure import AzureDriver

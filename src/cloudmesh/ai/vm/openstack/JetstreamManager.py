@@ -1,4 +1,4 @@
-from src.openstack.OpenstackManager import OpenstackManager
+from cloudmesh.ai.vm.openstack.OpenstackManager import OpenstackManager
 
 class Provider(OpenstackManager):
     """
