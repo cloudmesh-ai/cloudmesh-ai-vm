@@ -3,126 +3,137 @@ import yaml
 import os
 from typing import Any, Dict, Optional
 
-# Mapping of cloud names to their provider classes
-PROVIDERS = {
-    "multipass": "src.local.MultipassManager.Provider",
-    "wsl2": "src.local.Wsl2Manager.Provider",
-    "vbox": "src.local.VBoxManager.Provider",
-    "jetstream": "src.openstack.JetstreamManager.Provider",
-    "chameleon": "src.openstack.ChameleonManager.Provider",
-    "aws": "src.aws.AwsManager.Provider",
-    "azure": "src.azure.AzureManager.Provider",
-    "google": "src.google.GoogleManager.Provider",
-}
+from src.state_manager import StateManager
+from src.factory import factory
+from src.config_models import GlobalConfig
+from src.exceptions import CloudMeshError
+from src.logger import logger
+
+# Import providers for registration
+from src.local.MultipassManager import Provider as MultipassProvider
+from src.local.Wsl2Manager import Provider as Wsl2Provider
+from src.local.VBoxManager import Provider as VBoxProvider
+from src.openstack.JetstreamManager import Provider as JetstreamProvider
+from src.openstack.ChameleonManager import Provider as ChameleonProvider
+from src.aws.AwsManager import Provider as AwsProvider
+from src.azure.AzureManager import Provider as AzureProvider
+from src.google.GoogleManager import Provider as GoogleProvider
+
+# Register providers with the factory
+factory.register("multipass", MultipassProvider)
+factory.register("wsl2", Wsl2Provider)
+factory.register("vbox", VBoxProvider)
+factory.register("jetstream", JetstreamProvider)
+factory.register("chameleon", ChameleonProvider)
+factory.register("aws", AwsProvider)
+factory.register("azure", AzureProvider)
+factory.register("google", GoogleProvider)
 
 CONFIG_PATH = os.path.expanduser("~/.config/cloudmesh/clouds.yaml")
+state = StateManager(CONFIG_PATH)
 
-def load_config() -> Dict[str, Any]:
-    if not os.path.exists(CONFIG_PATH):
-        return {"username": "user", "counter": 0, "clouds": {}, "default_cloud": "multipass"}
-    with open(CONFIG_PATH, "r") as f:
-        return yaml.safe_load(f) or {}
+class VMContext:
+    """Context object to share state and config across CLI commands."""
+    def __init__(self):
+        self.cloud_override: Optional[str] = None
+        self.provider = None
 
-def save_config(config: Dict[str, Any]):
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w") as f:
-        yaml.dump(config, f)
+@click.group()
+@click.pass_context
+def cmc(ctx):
+    """Cloudmesh AI VM Management Tool"""
+    ctx.obj = VMContext()
 
-def get_provider(config: Dict[str, Any], cloud_name: Optional[str] = None):
+@cmc.group()
+@click.option("--cloud", help="Override the default cloud provider")
+@click.pass_context
+def vm(ctx, cloud):
+    """VM management commands"""
+    ctx.obj.cloud_override = cloud
+
+def get_active_provider(ctx):
+    """Helper to resolve the provider based on override or default."""
+    cloud_name = ctx.obj.cloud_override or state.config.default_cloud
     if not cloud_name:
-        cloud_name = config.get("default_cloud", "multipass")
+        raise click.ClickException("No default cloud set. Use 'cmc vm set <cloud>' or --cloud <cloud>.")
     
-    if cloud_name not in PROVIDERS:
-        raise click.ClickException(f"Unsupported cloud provider: {cloud_name}")
-    
-    # Dynamic import of the provider class
-    module_path, class_name = PROVIDERS[cloud_name].rsplit(".", 1)
-    module = __import__(module_path, fromlist=[class_name])
-    provider_class = getattr(module, class_name)
-    
-    return provider_class(config)
-
+    try:
+        return factory.create(cloud_name, state.config)
+    except Exception as e:
+        raise click.ClickException(str(e))
 
 @vm.command(name="set")
 @click.argument("cloud")
 def set_cloud(cloud):
     """Set the default cloud provider"""
-    config = load_config()
-    config["default_cloud"] = cloud
-    save_config(config)
+    state.config.default_cloud = cloud
+    state.save()
     click.echo(f"Default cloud set to: {cloud}")
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def start(name):
+@click.pass_context
+def start(ctx, name):
     """Starts a VM"""
-    config = load_config()
-    provider = get_provider(config)
+    provider = get_active_provider(ctx)
     
     vm_name = name
     if not vm_name:
-        username = config.get("username", "user")
-        counter = config.get("counter", 0) + 1
+        username = state.config.username
+        counter = state.increment_counter()
         vm_name = f"{username}{counter}"
-        config["counter"] = counter
-        save_config(config)
     
     try:
         result_name = provider.start(name=vm_name)
+        state.set_last_vm(result_name)
         click.echo(f"VM {result_name} started successfully.")
+    except CloudMeshError as e:
+        click.echo(f"Error: {e}", err=True)
     except Exception as e:
-        click.echo(f"Error starting VM: {e}", err=True)
+        logger.error(f"Unexpected error: {e}")
+        click.echo(f"An unexpected error occurred: {e}", err=True)
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def stop(name):
+@click.pass_context
+def stop(ctx, name):
     """Stops a VM"""
-    config = load_config()
-    provider = get_provider(config)
+    provider = get_active_provider(ctx)
     
-    if not name:
-        click.echo("Error: Please provide the --name of the VM to stop.", err=True)
-        return
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
 
-    if provider.stop(name=name):
-        click.echo(f"VM {name} stopped.")
+    if provider.stop(name=vm_name):
+        click.echo(f"VM {vm_name} stopped.")
     else:
-        click.echo(f"Failed to stop VM {name}.", err=True)
+        click.echo(f"Failed to stop VM {vm_name}.", err=True)
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def delete(name):
+@click.pass_context
+def delete(ctx, name):
     """Deletes a VM"""
-    config = load_config()
-    provider = get_provider(config)
-    if not name:
-        click.echo("Error: Please provide the --name of the VM to delete.", err=True)
-        return
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
 
-    if provider.delete(name=name):
-        click.echo(f"VM {name} deleted.")
+    if provider.delete(name=vm_name):
+        click.echo(f"VM {vm_name} deleted.")
     else:
-        click.echo(f"Failed to delete VM {name}.", err=True)
-
-@click.group()
-def cmc():
-    """Cloudmesh AI VM Management Tool"""
-    pass
-
-@cmc.group()
-def vm():
-    """VM management commands"""
-    pass
+        click.echo(f"Failed to delete VM {vm_name}.", err=True)
 
 @vm.command()
 @click.option("--json", "format_json", is_flag=True, help="Output in JSON")
 @click.option("--yaml", "format_yaml", is_flag=True, help="Output in YAML")
 @click.option("--csv", "format_csv", is_flag=True, help="Output in CSV")
 @click.option("--table", "format_table", is_flag=True, default=True, help="Output in Table")
-def list_vms(format_json, format_yaml, format_csv, format_table):
+@click.pass_context
+def list_vms(ctx, format_json, format_yaml, format_csv, format_table):
     """Lists VMs"""
-    config = load_config()
-    provider = get_provider(config)
+    provider = get_active_provider(ctx)
     vms = provider.list()
     
     if not vms:
@@ -135,11 +146,10 @@ def list_vms(format_json, format_yaml, format_csv, format_table):
     elif format_yaml:
         click.echo(yaml.dump(vms))
     elif format_csv:
-        if vms:
-            headers = vms[0].keys()
-            click.echo(",".join(headers))
-            for vm in vms:
-                click.echo(",".join(str(v) for v in vm.values()))
+        headers = vms[0].keys()
+        click.echo(",".join(headers))
+        for vm in vms:
+            click.echo(",".join(str(v) for v in vm.values()))
     else:
         headers = vms[0].keys()
         header_line = "  ".join(f"{h:<15}" for h in headers)
@@ -150,48 +160,51 @@ def list_vms(format_json, format_yaml, format_csv, format_table):
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def login(name):
+@click.pass_context
+def login(ctx, name):
     """Logs into a VM"""
-    config = load_config()
-    provider = get_provider(config)
-    if not name:
-        click.echo("Error: Please provide the --name of the VM to login.", err=True)
-        return
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
 
-    if provider.login(name=name):
-        click.echo(f"Logged into {name}.")
+    if provider.login(name=vm_name):
+        click.echo(f"Logged into {vm_name}.")
     else:
-        click.echo(f"Failed to login to {name}.", err=True)
+        click.echo(f"Failed to login to {vm_name}.", err=True)
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def suspend(name):
+@click.pass_context
+def suspend(ctx, name):
     """Suspends a VM"""
-    config = load_config()
-    provider = get_provider(config)
-    if not name:
-        click.echo("Error: Please provide the --name of the VM to suspend.", err=True)
-        return
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
 
-    if provider.suspend(name=name):
-        click.echo(f"VM {name} suspended.")
+    if provider.suspend(name=vm_name):
+        click.echo(f"VM {vm_name} suspended.")
     else:
-        click.echo(f"Failed to suspend VM {name}.", err=True)
+        click.echo(f"Failed to suspend VM {vm_name}.", err=True)
 
 @vm.command()
 @click.option("--name", help="Name of the VM")
-def restart(name):
+@click.pass_context
+def restart(ctx, name):
     """Restarts a VM"""
-    config = load_config()
-    provider = get_provider(config)
-    if not name:
-        click.echo("Error: Please provide the --name of the VM to restart.", err=True)
-        return
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
 
-    if provider.restart(name=name):
-        click.echo(f"VM {name} restarted.")
+    if provider.restart(name=vm_name):
+        click.echo(f"VM {vm_name} restarted.")
     else:
-        click.echo(f"Failed to restart VM {name}.", err=True)
+        click.echo(f"Failed to restart VM {vm_name}.", err=True)
 
 @vm.command()
 @click.option("--name", required=True, help="Name of the reservation")
@@ -200,16 +213,10 @@ def restart(name):
 @click.option("--start", help="Start date (YYYY-MM-DD HH:MM)")
 @click.option("--end", help="End date (YYYY-MM-DD HH:MM)")
 @click.option("--duration", type=int, help="Duration of the lease in days")
-def reservation(name, node_type, count, start, end, duration):
+@click.pass_context
+def reservation(ctx, name, node_type, count, start, end, duration):
     """Creates a reservation in Chameleon Cloud"""
-    config = load_config()
-    
-    cloud_name = config.get("default_cloud", "multipass")
-    if cloud_name != "chameleon":
-        click.echo(f"Error: 'reservation' is only supported for the 'chameleon' cloud. Current cloud is '{cloud_name}'.", err=True)
-        return
-
-    provider = get_provider(config)
+    provider = get_active_provider(ctx)
     
     if not hasattr(provider, "create_reservation"):
         click.echo("Error: Current provider does not support reservations.", err=True)
@@ -220,6 +227,81 @@ def reservation(name, node_type, count, start, end, duration):
     else:
         click.echo(f"Failed to create reservation {name}.", err=True)
 
+@vm.command()
+@click.pass_context
+def flavors(ctx):
+    """Lists available hardware profiles"""
+    provider = get_active_provider(ctx)
+    flavors = provider.get_flavors()
+    if not flavors:
+        click.echo("No flavors found or not supported by this provider.")
+        return
+    
+    headers = flavors[0].keys()
+    header_line = "  ".join(f"{h:<15}" for h in headers)
+    click.echo(header_line)
+    click.echo("-" * len(header_line))
+    for f in flavors:
+        click.echo("  ".join(f"{str(v):<15}" for v in f.values()))
+
+@vm.command()
+@click.pass_context
+def keys(ctx):
+    """Lists available SSH keys"""
+    provider = get_active_provider(ctx)
+    keys = provider.get_keys()
+    if not keys:
+        click.echo("No keys found or not supported by this provider.")
+        return
+    
+    headers = keys[0].keys()
+    header_line = "  ".join(f"{h:<15}" for h in headers)
+    click.echo(header_line)
+    click.echo("-" * len(header_line))
+    for k in keys:
+        click.echo("  ".join(f"{str(v):<15}" for v in k.values()))
+
+@vm.command()
+@click.pass_context
+def security_groups(ctx):
+    """Lists available security groups"""
+    provider = get_active_provider(ctx)
+    groups = provider.get_security_groups()
+    if not groups:
+        click.echo("No security groups found or not supported by this provider.")
+        return
+    
+    headers = groups[0].keys()
+    header_line = "  ".join(f"{h:<15}" for h in headers)
+    click.echo(header_line)
+    click.echo("-" * len(header_line))
+    for g in groups:
+        click.echo("  ".join(f"{str(v):<15}" for v in g.values()))
+
+@vm.command()
+@click.pass_context
+def ssh_config(ctx):
+    """Suggests SSH config entries for existing VMs"""
+    provider = get_active_provider(ctx)
+    vms = provider.list()
+    
+    if not vms:
+        click.echo("No existing VMs found to generate config for.")
+        return
+    
+    click.echo("\nAdd the following to your ~/.ssh/config:\n")
+    for vm in vms:
+        name = vm.get("Name")
+        # In a real scenario, we'd get the IP from the provider.list()
+        # Since our current list() only returns Name, ID, State, 
+        # we'll use a placeholder for the IP or try to get it.
+        ip = vm.get("IP", " <VM_IP>")
+        
+        click.echo(f"Host {name}")
+        click.echo(f"    HostName {ip}")
+        click.echo(f"    User {state.config.username}")
+        click.echo(f"    IdentityFile ~/.ssh/id_rsa")
+        click.echo("")
+
 if __name__ == "__main__":
     cmc()
-

@@ -11,6 +11,7 @@ Below is a comprehensive example of a \`clouds.yaml\` file covering all supporte
 username: gregor
 counter: 0
 default_cloud: multipass
+last_vm: gregor0
 
 clouds:
   # --- Local Providers ---
@@ -73,6 +74,7 @@ clouds:
 - \`username\`: Used as a prefix for automatically generated VM names (e.g., \`gregor0\`).
 - \`counter\`: Tracks the number of VMs started. Incremented automatically on every \`cmc vm start\` without a name.
 - \`default_cloud\`: The provider used when no specific cloud is mentioned.
+- \`last_vm\`: Tracks the name of the last VM successfully started. This allows lifecycle commands (stop, delete, etc.) to target the VM without specifying \`--name\`.
 
 ### Provider-Specific Fields
 

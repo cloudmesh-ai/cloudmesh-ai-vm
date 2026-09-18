@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0] - 2026-09-18
+
+### Added
+- **Architectural Refinement**:
+    - Implemented typed configuration models using Python dataclasses for improved type safety and IDE support.
+    - Introduced a `ProviderFactory` with a registry pattern to decouple the CLI from specific provider implementations.
+    - Created a `StateManager` to handle persistent state separately from static configuration.
+- **UX Enhancements**:
+    - **Contextual Memory**: Added `last_vm` tracking, allowing lifecycle commands (`stop`, `delete`, etc.) to target the most recent VM without specifying `--name`.
+    - **Global Cloud Override**: Added a `--cloud` flag to the `vm` command group for one-off provider overrides.
+- **Feature Expansion**:
+    - **Resource Discovery**: Added `cmc vm flavors`, `cmc vm keys`, and `cmc vm security-groups` to explore cloud resources.
+    - **SSH Configuration**: Added `cmc vm ssh-config` to suggest `~/.ssh/config` entries for existing VMs.
+- **Documentation**: Updated README and MkDocs with new feature guides and CLI examples.
+
 ## [1.1.0] - 2026-09-18
 
 ### Added

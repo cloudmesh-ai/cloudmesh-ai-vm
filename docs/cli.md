@@ -8,6 +8,12 @@ The \`cmc\` tool provides a consistent interface for managing VMs across all sup
 cmc vm <command> [options]
 \`\`\`
 
+## Global Options
+
+The \`vm\` group supports the following global option:
+
+- \`--cloud <cloud_name>\`: Overrides the default cloud provider for the duration of the command. For example, \`cmc vm start --cloud aws\` will start a VM on AWS even if Multipass is your default.
+
 ## Commands
 
 ### 1. Cloud Management
@@ -21,6 +27,8 @@ Sets the default cloud provider used for all subsequent commands.
 
 ### 2. VM Lifecycle
 
+Many lifecycle commands now support **Contextual Memory**. If the \`--name\` option is omitted, the tool will target the last VM that was successfully started.
+
 #### \`start\`
 
 Launches a new VM.
@@ -30,21 +38,22 @@ Launches a new VM.
 - **Examples**:
   - Default: \`cmc vm start\`
   - Custom Name: \`cmc vm start --name my-web-server\`
+  - Cloud Override: \`cmc vm start --cloud aws\`
 
 #### \`stop\`
 
 Stops a running VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to stop.
-- **Example**: \`cmc vm stop --name my-web-server\`
+  - \`--name <name>\`: Name of the VM to stop. If omitted, the last started VM is used.
+- **Example**: \`cmc vm stop\` (Stops last VM)
 
 #### \`delete\`
 
 Permanently removes a VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to delete.
+  - \`--name <name>\`: Name of the VM to delete. If omitted, the last started VM is used.
 - **Example**: \`cmc vm delete --name my-web-server\`
 
 #### \`suspend\`
@@ -52,24 +61,24 @@ Permanently removes a VM.
 Suspends a VM to disk (if supported by the provider).
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to suspend.
-- **Example**: \`cmc vm suspend --name my-web-server\`
+  - \`--name <name>\`: Name of the VM to suspend. If omitted, the last started VM is used.
+- **Example**: \`cmc vm suspend\`
 
 #### \`restart\`
 
 Reboots a VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to restart.
-- **Example**: \`cmc vm restart --name my-web-server\`
+  - \`--name <name>\`: Name of the VM to restart. If omitted, the last started VM is used.
+- **Example**: \`cmc vm restart\`
 
 #### \`login\`
 
 Provides connection details or logs into the VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM.
-- **Example**: \`cmc vm login --name my-web-server\`
+  - \`--name <name>\`: Name of the VM. If omitted, the last started VM is used.
+- **Example**: \`cmc vm login\`
 
 ### 3. Inspection & Discovery
 
@@ -102,7 +111,15 @@ Lists available security groups for the current cloud.
 
 - **Example**: \`cmc vm security-groups\`
 
-### 4. Specialized Commands
+### 4. Networking & SSH
+
+#### \`ssh-config\`
+
+Generates suggested SSH configuration entries for all existing VMs in the current cloud. This allows you to connect using \`ssh <vm-name>\` without modifying your config file automatically.
+
+- **Example**: \`cmc vm ssh-config\`
+
+### 5. Specialized Commands
 
 #### \`reservation\` (Chameleon Only)
 
