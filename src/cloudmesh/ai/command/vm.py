@@ -57,6 +57,45 @@ def get_active_provider(ctx):
     except Exception as e:
         raise click.ClickException(str(e))
 
+@vm_group.command(name="setup")
+def setup():
+    """Initialize a sample configuration file"""
+    sample_config = {
+        "username": "cloudmesh_user",
+        "counter": 0,
+        "default_cloud": "multipass",
+        "clouds": {
+            "multipass": {
+                "image": "ubuntu-22.04"
+            },
+            "aws": {
+                "region": "us-east-1",
+                "image": "ami-xxxxxxxxxxxxxxxxx"
+            }
+        }
+    }
+    
+    if os.path.exists(CONFIG_PATH):
+        click.echo(f"Configuration file already exists at {CONFIG_PATH}")
+        return
+
+    click.echo("Sample configuration file:")
+    click.echo("-" * 20)
+    click.echo(yaml.dump(sample_config, default_flow_style=False))
+    click.echo("-" * 20)
+
+    if click.confirm("Do you want to save this as your default configuration?"):
+        try:
+            os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+            with open(CONFIG_PATH, "w") as f:
+                yaml.dump(sample_config, f, default_flow_style=False)
+            click.echo(f"Configuration saved to {CONFIG_PATH}")
+        except Exception as e:
+            click.echo(f"Error saving configuration: {e}", err=True)
+    else:
+        click.echo("Setup cancelled.")
+
+
 @vm_group.command(name="set")
 @click.argument("cloud")
 def set_cloud(cloud):
