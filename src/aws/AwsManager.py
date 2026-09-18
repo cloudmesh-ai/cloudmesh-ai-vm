@@ -1,0 +1,22 @@
+from src.LibcloudManager import LibcloudManager
+
+try:
+    from libcloud.compute.providers.amazoneb import AmazonEC2Driver
+except ImportError:
+    class AmazonEC2Driver: pass
+
+class Provider(LibcloudManager):
+    """
+    AWS EC2 implementation of the LibcloudManager.
+    """
+
+    def __init__(self, config):
+        super().__init__(config, cloud_name="aws")
+
+    def _get_driver(self):
+        cloud_config = self.config.get("clouds", {}).get("aws", {})
+        return AmazonEC2Driver(
+            access_key=cloud_config.get("access_key"),
+            secret_key=cloud_config.get("secret_key"),
+            region=cloud_config.get("region", "us-east-1")
+        )
