@@ -11,6 +11,7 @@ from cloudmesh.ai.vm.logger import logger
 
 # Import providers for registration
 from cloudmesh.ai.vm.local.MultipassManager import Provider as MultipassProvider
+from cloudmesh.ai.vm.local.LimaManager import Provider as LimaProvider
 from cloudmesh.ai.vm.local.Wsl2Manager import Provider as Wsl2Provider
 from cloudmesh.ai.vm.local.VBoxManager import Provider as VBoxProvider
 from cloudmesh.ai.vm.openstack.JetstreamManager import Provider as JetstreamProvider
@@ -21,6 +22,7 @@ from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
 
 # Register providers with the factory
 factory.register("multipass", MultipassProvider)
+factory.register("lima", LimaProvider)
 factory.register("wsl2", Wsl2Provider)
 factory.register("vbox", VBoxProvider)
 factory.register("jetstream", JetstreamProvider)
