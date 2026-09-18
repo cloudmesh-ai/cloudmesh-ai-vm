@@ -1,22 +1,33 @@
-# cloudmesh-ai-vm
+# Welcome to cloudmesh-ai-vm
 
-**Quick Links:**
-- [API Reference](API.md) - Full technical documentation of all modules.
+\`cloudmesh-ai-vm\` is a unified Python CLI tool (\`cmc\`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers. Whether you are using local virtualization for development or scaling in the cloud for production, \`cmc\` provides a consistent interface for the entire VM lifecycle.
 
-This is a CMC extension for Cloudmesh AI.
+## Key Value Propositions
 
-## Installation
+- **One Interface, Many Clouds**: Stop learning different CLI tools for AWS, Azure, Multipass, and OpenStack. Use \`cmc\` for all of them.
+- **Automated Workflow**: Built-in automatic naming and counter management to avoid name collisions when launching multiple VMs.
+- **Developer Focused**: Designed for AI researchers and developers who need to spin up and tear down environments quickly across different infrastructures.
+- **Extensible**: Based on the **Provider Pattern**, making it trivial to add support for new cloud services.
 
-```bash
-pip install .
-```
+## Supported Providers
 
-## Usage
+| Category | Providers |
+| :--- | :--- |
+| **Local** | Multipass, WSL2, VirtualBox |
+| **OpenStack** | Jetstream, Chameleon Cloud |
+| **Hyperscalers** | AWS EC2, Azure VMs, Google Compute Engine |
 
-```bash
-cmc vm hello
-## Core Dependencies
-This project depends on the following core components of the Cloudmesh AI ecosystem:
-- [cloudmesh-ai-common](https://github.com/cloudmesh-ai/cloudmesh-ai-common)
-- [cloudmesh-ai-cmc](https://github.com/cloudmesh-ai/cloudmesh-ai-cmc)
+## Quick Start
 
+1. **Install** the tool and its dependencies.
+2. **Configure** your credentials in \`~/.config/cloudmesh/clouds.yaml\`.
+3. **Set** your default provider:
+   \`\`\`bash
+   cmc vm set multipass
+   \`\`\`
+4. **Launch** your first VM:
+   \`\`\`bash
+   cmc vm start
+   \`\`\`
+
+See the [Installation Guide](installation.md) to get started.

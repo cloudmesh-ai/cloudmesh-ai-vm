@@ -1,33 +1,65 @@
+site_name: cloudmesh-ai-vm
+site_url: https://cloudmesh-ai.github.io/cloudmesh-ai-vm
+site_description: A unified VM management tool across local and cloud providers.
+repo_url: https://github.com/cloudmesh-ai/cloudmesh-ai-vm
+repo_name: cloudmesh-ai-vm
+
 docs_dir: docs
+use_directory_urls: false
+
 extra_css:
-- css/custom.css
-nav:
-- Home: index.md
-- Documents:
-  - README: readme.md
-- API Reference: api.md
-plugins:
-- cloudmesh-ai-theme
-- search
-- mkdocstrings:
-    handlers:
-      python:
-        options:
-          docstring_section_style: table
-          docstring_style: google
-          group_by_category: true
-          members: true
-          separate_signature: true
-          show_category_heading: true
-          show_root_full_path: true
-          show_source: true
-          show_submodules: true
-        paths:
-        - src
-site_name: Cloudmesh AI VM
+  - css/custom.css
+
 theme:
   name: material
-use_directory_urls: false
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - CLI Reference: cli.md
+  - Providers:
+    - Overview: providers/index.md
+    - Local Providers:
+      - Multipass: providers/local/multipass.md
+      - WSL2: providers/local/wsl2.md
+      - VirtualBox: providers/local/vbox.md
+    - OpenStack Providers:
+      - Jetstream: providers/openstack/jetstream.md
+      - Chameleon: providers/openstack/chameleon.md
+    - Hyperscaler Providers:
+      - AWS EC2: providers/hyperscalers/aws.md
+      - Azure VMs: providers/hyperscalers/azure.md
+      - Google GCE: providers/hyperscalers/google.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md
+
+plugins:
+  - cloudmesh-ai-theme
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_section_style: table
+            docstring_style: google
+            group_by_category: true
+            members: true
+            separate_signature: true
+            show_category_heading: true
+            show_root_full_path: true
+            show_source: true
+            show_submodules: true
+          paths:
+            - src
 
 markdown_extensions:
   - pymdownx.highlight:

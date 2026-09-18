@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0] - 2026-09-18
+
+### Added
+- **Engineering Robustness**: Implemented a structured custom exception hierarchy (`CloudMeshError` $\rightarrow$ `ProviderError`) and a centralized logging framework to replace generic print statements.
+- **Comprehensive Documentation**: Established an extensible documentation system using MkDocs and the Material theme.
+    - Detailed guides for Local, OpenStack, and Hyperscaler providers.
+    - Full CLI reference with usage examples.
+    - Architecture overview explaining the Provider Pattern.
+- **CI/CD Automation**: Added GitHub Actions workflow for automatic publishing of documentation to GitHub Pages.
+- **Documentation Infrastructure**: Created `requirements-docs.txt` and `mkdocs.yml` aligned with Cloudmesh AI organizational standards.
+
+### Changed
+- **LibcloudManager**: Refactored to use the new logging system and custom exception hierarchy for better error reporting.
+
 ## [1.0.0] - 2026-09-18
 
 ### Added
