@@ -14,8 +14,8 @@ class Provider(LibcloudManager):
         super().__init__(config, cloud_name="google")
 
     def _get_driver(self):
-        cloud_config = self.config.get("clouds", {}).get("google", {})
+        cloud_config = self.config.clouds.get("google", {})
         return GCEDriver(
-            project_id=cloud_config.get("project_id"),
-            private_key=cloud_config.get("private_key")
+            project_id=getattr(cloud_config, "project_id", None),
+            private_key=getattr(cloud_config, "private_key", None)
         )

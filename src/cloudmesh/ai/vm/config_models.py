@@ -28,7 +28,9 @@ class ProviderConfig:
 
     @classmethod
     def from_dict(cls, name: str, data: Dict[str, Any]):
-        return cls(name=name, **{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        # Remove 'name' from data if it's present to avoid duplicate keyword argument
+        filtered_data = {k: v for k, v in data.items() if k != 'name' and k in cls.__dataclass_fields__}
+        return cls(name=name, **filtered_data)
 
 @dataclass
 class GlobalConfig:

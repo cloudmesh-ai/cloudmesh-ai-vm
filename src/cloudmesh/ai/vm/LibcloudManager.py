@@ -34,9 +34,9 @@ class LibcloudManager(CloudBaseManager):
         """
         Creates and starts a VM in the cloud.
         """
-        cloud_config = self.config.get("clouds", {}).get(self.cloud_name, {})
-        image_name = cloud_config.get("image")
-        size_name = cloud_config.get("size") or cloud_config.get("flavour")
+        cloud_config = self.config.clouds.get(self.cloud_name, {})
+        image_name = getattr(cloud_config, "image", None)
+        size_name = getattr(cloud_config, "size", None) or getattr(cloud_config, "flavour", None)
         
         if not image_name or not size_name:
             raise ProviderError(f"Image or Size/Flavour missing in config for {self.cloud_name}")

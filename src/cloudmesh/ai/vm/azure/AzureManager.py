@@ -14,10 +14,10 @@ class Provider(LibcloudManager):
         super().__init__(config, cloud_name="azure")
 
     def _get_driver(self):
-        cloud_config = self.config.get("clouds", {}).get("azure", {})
+        cloud_config = self.config.clouds.get("azure", {})
         return AzureDriver(
-            tenant_id=cloud_config.get("tenant_id"),
-            subscription_id=cloud_config.get("subscription_id"),
-            client_id=cloud_config.get("client_id"),
-            client_secret=cloud_config.get("client_secret")
+            tenant_id=getattr(cloud_config, "tenant_id", None),
+            subscription_id=getattr(cloud_config, "subscription_id", None),
+            client_id=getattr(cloud_config, "client_id", None),
+            client_secret=getattr(cloud_config, "client_secret", None)
         )

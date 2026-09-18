@@ -27,9 +27,9 @@ class Provider(OpenstackManager):
         """
         Creates a node reservation (lease) in Chameleon Cloud using python-chi.
         """
-        cloud_config = self.config.get("clouds", {}).get("chameleon", {})
-        site = cloud_config.get("site", "CHI@TACC")
-        project = cloud_config.get("project_name")
+        cloud_config = self.config.clouds.get("chameleon", {})
+        site = getattr(cloud_config, "site", "CHI@TACC")
+        project = getattr(cloud_config, "project_name", None)
 
         if not project:
             print("Error: 'project_name' must be configured in clouds.yaml for Chameleon reservations.")

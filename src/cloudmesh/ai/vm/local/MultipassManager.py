@@ -10,22 +10,55 @@ class Provider(CloudBaseManager):
     """
 
     def _run_command(self, command: List[str]) -> subprocess.CompletedProcess:
-        """Helper to run shell commands."""
+        """Helper to run shell commands and stream output in real-time."""
         try:
-            return subprocess.run(command, capture_output=True, text=True, check=True)
+            # Use Popen to stream output line by line
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            full_output = []
+            for line in process.stdout:
+                print(line, end="")
+                full_output.append(line)
+                
+            process.wait()
+            
+            if process.returncode != 0:
+                # Create a CalledProcessError to maintain compatibility with existing error handling
+                raise subprocess.CalledProcessError(
+                    process.returncode, 
+                    command, 
+                    output="".join(full_output),
+                    stderr="".join(full_output)
+                )
+                
+            return subprocess.CompletedProcess(
+                args=command, 
+                returncode=process.returncode, 
+                stdout="".join(full_output), 
+                stderr=None
+            )
         except subprocess.CalledProcessError as e:
-            print(f"Error executing command {' '.join(command)}: {e.stderr}")
+            # The error is already printed via the loop above, but we keep the exception for the caller
+            raise e
+        except Exception as e:
+            print(f"Unexpected error executing command {' '.join(command)}: {e}")
             raise e
 
     def start(self, name: Optional[str] = None) -> str:
         """
         Starts (launches) a Multipass VM with optional resource configurations.
         """
-        cloud_config = self.config.get("clouds", {}).get("multipass", {})
-        image = cloud_config.get("image", "22.04")
-        cpus = cloud_config.get("cpus")
-        memory = cloud_config.get("memory")
-        disk = cloud_config.get("disk")
+        cloud_config = self.config.clouds.get("multipass", {})
+        image = getattr(cloud_config, "image", "22.04")
+        cpus = getattr(cloud_config, "cpus", None)
+        memory = getattr(cloud_config, "memory", None)
+        disk = getattr(cloud_config, "disk", None)
         
         command = ["multipass", "launch"]
         
@@ -39,7 +72,7 @@ class Provider(CloudBaseManager):
         if name:
             command.extend(["-n", name])
             
-        command.append(image)
+        command.append(str(image))
         
         self._run_command(command)
         

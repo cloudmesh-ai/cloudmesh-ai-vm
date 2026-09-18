@@ -25,8 +25,8 @@ class OpenstackManager(CloudBaseManager):
         """
         Initializes and returns the libcloud OpenStack driver.
         """
-        cloud_config = self.config.get("clouds", {}).get(self.cloud_name, {})
-        auth_path = cloud_config.get("auth")
+        cloud_config = self.config.clouds.get(self.cloud_name, {})
+        auth_path = getattr(cloud_config, "auth", None)
         
         if not auth_path:
             raise ValueError(f"Auth path not found in config for cloud: {self.cloud_name}")
@@ -49,9 +49,9 @@ class OpenstackManager(CloudBaseManager):
         """
         Starts a VM in OpenStack.
         """
-        cloud_config = self.config.get("clouds", {}).get(self.cloud_name, {})
-        image_name = cloud_config.get("image")
-        flavor_name = cloud_config.get("flavour")
+        cloud_config = self.config.clouds.get(self.cloud_name, {})
+        image_name = getattr(cloud_config, "image", None)
+        flavor_name = getattr(cloud_config, "flavour", None)
         
         if not image_name or not flavor_name:
             raise ValueError(f"Image or Flavour missing in config for {self.cloud_name}")

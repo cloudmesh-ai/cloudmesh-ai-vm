@@ -115,7 +115,8 @@ def start(ctx, name):
     if not vm_name:
         username = state.config.username
         counter = state.increment_counter()
-        vm_name = f"{username}{counter}"
+        # Ensure a hyphen between username and counter, and replace underscores in username
+        vm_name = f"{username}-{counter}".replace("_", "-")
     
     try:
         result_name = provider.start(name=vm_name)
