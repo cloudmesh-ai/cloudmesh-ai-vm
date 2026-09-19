@@ -1,41 +1,48 @@
 # cloudmesh-ai-vm
 
-`cloudmesh-ai-vm` is a unified Python CLI tool (\`cmc\`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
+`cloudmesh-ai-vm` is a unified Python CLI tool (`cmc`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
 
 ## 🚀 Key Features
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
 - **Smart VM Lifecycle**:
     - **Automatic Naming**: VMs are named automatically using a `<username><counter>` pattern.
-    - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like \`cmc vm stop\` without specifying a name.
+    - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like `cmc vm stop` without specifying a name.
 - **Provider Flexibility**:
-    - **Default Cloud**: Set a global default provider via \`cmc vm set <cloud>\`.
-    - **Cloud Override**: Use the \`--cloud\` flag to temporarily use a different provider (e.g., \`cmc vm start --cloud aws\`).
+    - **Default Cloud**: Manage your active provider via `cmc vm cloud set <cloud>` (shorthand `cmc vm set <cloud>`).
+    - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmc vm start --cloud aws`).
+- **Remote Execution**: Execute commands directly on your VMs using `cmc vm run <command>`.
 - **Resource Discovery**: Easily list available flavors, SSH keys, and security groups directly from the CLI.
-- **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via \`ssh <hostname>\`.
+- **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
 
 ## 🛠️ Quick Start
 
 ### 1. Installation
 
-\`\`\`bash
+```bash
 git clone https://github.com/your-repo/cloudmesh-ai-vm.git
 cd cloudmesh-ai-vm
 pip install -e .
-\`\`\`
+```
 
 ### 2. Configuration
 
-Configure your credentials in \`~/.config/cloudmesh/clouds.yaml\`. See the [Configuration Guide](docs/configuration.md) for details.
+Configure your credentials in `~/.config/cloudmesh/clouds.yaml`. See the [Configuration Guide](docs/configuration.md) for details.
 
 ### 3. Basic Usage
 
-\`\`\`bash
+```bash
+# Check current default cloud
+cmc vm cloud get
+
 # Set your default cloud
-cmc vm set multipass
+cmc vm cloud set multipass
 
 # Start a VM (will be named user0, user1, etc.)
 cmc vm start
+
+# Run a command on the VM
+cmc vm run "hostname"
 
 # Stop the last started VM
 cmc vm stop
@@ -45,11 +52,11 @@ cmc vm start --cloud aws
 
 # List all VMs for current cloud
 cmc vm list
-\`\`\`
+```
 
 ## 📖 Documentation
 
-Full documentation is available in the \`/docs\` folder or hosted via GitHub Pages.
+Full documentation is available in the `/docs` folder or hosted via GitHub Pages.
 
 - [Installation Guide](docs/installation.md)
 - [Configuration Guide](docs/configuration.md)

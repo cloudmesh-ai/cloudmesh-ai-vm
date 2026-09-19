@@ -18,12 +18,22 @@ The \`vm\` group supports the following global option:
 
 ### 1. Cloud Management
 
-#### \`set\`
+The `cloud` group provides commands to manage the active cloud provider.
+
+#### `get`
+
+Displays the current default cloud provider.
+
+- **Usage**: `cmc vm cloud get`
+- **Example**: `cmc vm cloud get`
+
+#### `set`
 
 Sets the default cloud provider used for all subsequent commands.
 
-- **Usage**: \`cmc vm set <cloud_name>\`
-- **Example**: \`cmc vm set aws\`
+- **Usage**: `cmc vm cloud set <cloud_name>`
+- **Example**: `cmc vm cloud set aws`
+- **Shorthand**: `cmc vm set <cloud_name>`
 
 ### 2. VM Lifecycle
 
