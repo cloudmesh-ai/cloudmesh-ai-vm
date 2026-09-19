@@ -149,6 +149,20 @@ class Provider(CloudBaseManager):
         return [{"name": "NAT", "description": "Default VirtualBox NAT network"}]
 
 
+
+    @property
+    def version(self) -> List[str]:
+        """
+        Returns a list of version strings for the VBoxManage tool.
+        """
+        try:
+            import subprocess
+            result = subprocess.run(["VBoxManage", "--version"], capture_output=True, text=True, check=True)
+            return [result.stdout.strip()]
+        except Exception:
+            pass
+        return ["Unknown"]
+
     def check_requirements(self) -> bool:
         """
         Checks if the requirements for this provider are met on the current system.

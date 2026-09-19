@@ -4,6 +4,10 @@ import os
 from typing import Any, Dict, Optional
 import logging
 
+from rich.console import Console
+from rich.table import Table
+import rich.box as box
+
 from cloudmesh.ai.vm.state_manager import StateManager
 from cloudmesh.ai.vm.factory import factory
 from cloudmesh.ai.vm.config_models import GlobalConfig
@@ -79,10 +83,15 @@ def providers():
         click.echo("No providers registered.")
         return
 
-    # Table header
-    header = f"{'Provider':<15} {'Supported':<12} {'Enabled':<12} {'OS-YAML':<12} {'CM-YAML':<12} {'Reason'}"
-    click.echo(header)
-    click.echo("-" * 90)
+    # Initialize Rich table
+    table = Table(title="Supported VM Providers", box=box.SQUARE, show_lines=True)
+    table.add_column("Provider", style="cyan", no_wrap=True)
+    table.add_column("Supported", justify="center")
+    table.add_column("Enabled", justify="center")
+    table.add_column("OS-YAML", justify="center")
+    table.add_column("CM-YAML", justify="center")
+    table.add_column("Version", style="magenta")
+    table.add_column("Reason", style="green")
 
     import re
     import os
@@ -114,20 +123,25 @@ def providers():
             enabled_val = "⚪"
         else:
             val = getattr(cloud_cfg_obj, "enabled", None)
-            
             if isinstance(val, str):
                 is_enabled = val.lower() == "true"
             elif val is None:
                 is_enabled = True
             else:
                 is_enabled = bool(val)
-                
             enabled_val = "✅" if is_enabled else "❌"
         
         # OpenStack providers MUST have config in either YAML
         if p_name in ["jetstream", "chameleon", "openstack"]:
             if cm_has == "❌" and os_has == "❌":
-                click.echo(f"{p_name:<15} {status:<12} {enabled_val:<12} {os_has:<12} {cm_has:<12} Missing config in all YAMLs")
+                version_str = "N/A"
+                try:
+                    provider = factory.create(p_name, state.config)
+                    version_val = provider.version
+                    version_str = "\n".join(version_val) if isinstance(version_val, list) else str(version_val)
+                except Exception:
+                    pass
+                table.add_row(p_name, status, enabled_val, os_has, cm_has, version_str, "Missing config in all YAMLs")
                 continue
 
         try:
@@ -146,7 +160,6 @@ def providers():
                 methods_match = re.search(r"abstract methods? '([^']+)'", err_msg)
                 if not methods_match:
                     methods_match = re.search(r"implementing new methods: ([^.\n]+)", err_msg)
-                
                 methods = methods_match.group(1) if methods_match else "unknown"
                 reason = f"Not implemented: {methods}"
             else:
@@ -154,7 +167,25 @@ def providers():
         except Exception as e:
             reason = str(e)
 
-        click.echo(f"{p_name:<15} {status:<12} {enabled_val:<12} {os_has:<12} {cm_has:<12} {reason}")
+        # Get version from provider
+        version_str = "N/A"
+        try:
+            if 'provider' in locals():
+                version_val = provider.version
+                version_str = "\n".join(version_val) if isinstance(version_val, list) else str(version_val)
+        except Exception:
+            pass
+
+        # Format reason style
+        if "not met" in reason.lower():
+            reason = f"[red]{reason}[/red]"
+        elif "not implemented" in reason.lower():
+            reason = f"[yellow]{reason}[/yellow]"
+
+        table.add_row(p_name, status, enabled_val, os_has, cm_has, version_str, reason)
+
+    # Print the table to the console
+    Console().print(table)
 
 
 @vm_group.command(name="setup")

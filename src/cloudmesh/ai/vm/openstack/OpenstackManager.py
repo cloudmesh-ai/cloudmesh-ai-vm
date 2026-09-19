@@ -394,10 +394,40 @@ class OpenstackManager(CloudBaseManager):
             print(f"Error getting security groups: {e}")
             return []
 
+    @property
+    def version(self) -> List[str]:
+        """
+        Returns a list of version strings for the openstack CLI tool, libcloud, and CHI (for Chameleon).
+        """
+        versions = []
+        try:
+            import subprocess
+            result = subprocess.run(["openstack", "--version"], capture_output=True, text=True, check=True)
+            versions.append(f"CLI: {result.stdout.strip()}")
+        except Exception:
+            versions.append("CLI: Unknown")
+
+        try:
+            import libcloud
+            versions.append(f"libcloud: {libcloud.__version__}")
+        except Exception:
+            versions.append("libcloud: Unknown")
+
+        # Specifically for Chameleon, add the CHI library version
+        if self.cloud_name == "chameleon":
+            try:
+                import chi
+                versions.append(f"CHI: {chi.__version__}")
+            except Exception:
+                versions.append("CHI: Unknown")
+
+        return versions
+
 
     def run_command(self, name: str, cmd: str) -> str:
         """
         Executes a command on the VM.
+    
         Note: This is a stub for OpenStack-based providers.
         """
         return f"run_command is not yet implemented for this OpenStack provider ({self.cloud_name})"

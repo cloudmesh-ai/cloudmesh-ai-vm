@@ -114,6 +114,14 @@ class CloudBaseManager(ABC):
         """
         return True
 
+    @property
+    @abstractmethod
+    def version(self) -> List[str]:
+        """
+        Returns a list of version strings for the provider tool or API.
+        """
+        pass
+
     @abstractmethod
     def get_flavors(self) -> List[Dict[str, Any]]:
         """

@@ -213,6 +213,15 @@ class Provider(CloudBaseManager):
             {"name": "large", "cpu": 4, "ram": "4GiB", "disk": "20GiB"},
         ]
 
+    def get_flavor(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Gets details for a specific flavor by name.
+        """
+        flavors = self.get_flavors()
+        for flavor in flavors:
+            if flavor.get("name") == name:
+                return flavor
+        return None
 
     def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
         """Helper to run shell commands silently and return the result."""
@@ -256,6 +265,23 @@ class Provider(CloudBaseManager):
         Checks if the requirements for this provider are met on the current system.
         """
         import shutil
+    @property
+    def version(self) -> List[str]:
+        """
+        Returns the first line of the multipass version output.
+        """
+        try:
+            result = self._run_command_silent(["multipass", "version"])
+            # Multipass version output has multiple lines (cli and daemon) and a banner.
+            lines = result.stdout.strip().split("\n")
+            # We want the lines that look like "multipass 1.x"
+            versions = [line.strip() for line in lines if " " in line and not line.startswith("#")]
+            if versions:
+                return [versions[0]]
+        except Exception:
+            pass
+        return ["Unknown"]
+
         return shutil.which("multipass") is not None                
 
     def get_keys(self) -> List[Dict[str, Any]]:

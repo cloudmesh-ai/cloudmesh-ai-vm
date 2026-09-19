@@ -234,8 +234,36 @@ class Provider(CloudBaseManager):
             return []
 
     def get_flavors(self) -> List[Dict[str, Any]]:
-        """Lima uses templates rather than flavors."""
+        """
+        Lima uses templates rather than fixed flavors, but provides common resource profiles.
+        """
+        return [
+            {"name": "default", "cpu": 1, "ram": "1GiB", "disk": "5GiB"},
+            {"name": "medium", "cpu": 2, "ram": "2GiB", "disk": "10GiB"},
+            {"name": "large", "cpu": 4, "ram": "4GiB", "disk": "20GiB"},
+        ]
+
+    def get_flavor(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Gets details for a specific flavor by name.
+        """
+        flavors = self.get_flavors()
+        for flavor in flavors:
+            if flavor.get("name") == name:
+                return flavor
         return None
+
+    @property
+    def version(self) -> List[str]:
+        """
+        Returns a list of version strings for the limactl tool.
+        """
+        try:
+            result = self._run_command_silent(["limactl", "--version"])
+            return [result.stdout.strip()]
+        except Exception:
+            pass
+        return ["Unknown"]
 
     def get_keys(self) -> List[Dict[str, Any]]:
         """Lima manages SSH keys automatically."""

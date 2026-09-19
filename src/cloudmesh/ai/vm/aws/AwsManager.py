@@ -21,3 +21,13 @@ class Provider(LibcloudManager):
             secret_key=cloud_config.get("secret_key"),
             region=cloud_config.get("region", "us-east-1")
         )
+
+    @property
+    def version(self) -> List[str]:
+        """Returns the provider version."""
+        try:
+            import libcloud
+            return [f"libcloud: {libcloud.__version__}"]
+        except Exception:
+            return ["libcloud: Unknown"]
+

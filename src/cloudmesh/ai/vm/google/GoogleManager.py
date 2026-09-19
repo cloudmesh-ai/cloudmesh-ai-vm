@@ -20,3 +20,13 @@ class Provider(LibcloudManager):
             project_id=cloud_config.get("project_id"),
             private_key=cloud_config.get("private_key")
         )
+
+    @property
+    def version(self) -> List[str]:
+        """Returns the provider version."""
+        try:
+            import libcloud
+            return [f"libcloud: {libcloud.__version__}"]
+        except Exception:
+            return ["libcloud: Unknown"]
+

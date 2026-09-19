@@ -228,6 +228,23 @@ class Provider(CloudBaseManager):
         except Exception as e:
             return {"error": str(e)}
 
+
+    @property
+    def version(self) -> List[str]:
+        """
+        Returns a list of version strings for the WSL tool.
+        """
+        try:
+            import subprocess
+            # wsl --version returns multiple lines of version info
+            result = subprocess.run(["wsl", "--version"], capture_output=True, text=True, check=True)
+            lines = result.stdout.strip().split("\n")
+            # Keep lines that look like "Key: Value"
+            return [line.strip() for line in lines if ":" in line]
+        except Exception:
+            pass
+        return ["Unknown"]
+
     def check_requirements(self) -> bool:
         """
         Checks if the requirements for this provider are met on the current system.
