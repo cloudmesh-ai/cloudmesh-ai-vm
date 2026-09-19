@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /Users/grey/.pyenv/versions/3.14.4/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/grey/work/cloudmesh-ai-vm
+configfile: pyproject.toml
+plugins: anyio-4.15.0
+collecting ... collected 1 item
+
+tests/test_multipass_smoke.py::test_multipass_smoke PASSED               [100%]
+
+======================== 1 passed in 277.08s (0:04:37) =========================

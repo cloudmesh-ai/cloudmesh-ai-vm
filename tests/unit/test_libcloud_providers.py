@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from src.aws.AwsManager import Provider as AwsProvider
-from src.azure.AzureManager import Provider as AzureProvider
-from src.google.GoogleManager import Provider as GoogleProvider
+from cloudmesh.ai.vm.aws.AwsManager import Provider as AwsProvider
+from cloudmesh.ai.vm.azure.AzureManager import Provider as AzureProvider
+from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
+
+from cloudmesh.ai.vm.exceptions import ProviderError
 
 # Mock configuration
 MOCK_CONFIG = {
@@ -60,7 +62,7 @@ class TestLibcloudProviders:
         
         return driver
 
-    @patch("src.aws.AwsManager.AmazonEC2Driver")
+    @patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver")
     def test_aws_init(self, mock_driver_class):
         mock_driver_class.return_value = MagicMock()
         provider = AwsProvider(MOCK_CONFIG)
@@ -72,7 +74,7 @@ class TestLibcloudProviders:
         )
         assert provider.cloud_name == "aws"
 
-    @patch("src.azure.AzureManager.AzureDriver")
+    @patch("cloudmesh.ai.vm.azure.AzureManager.AzureDriver")
     def test_azure_init(self, mock_driver_class):
         mock_driver_class.return_value = MagicMock()
         provider = AzureProvider(MOCK_CONFIG)
@@ -85,7 +87,7 @@ class TestLibcloudProviders:
         )
         assert provider.cloud_name == "azure"
 
-    @patch("src.google.GoogleManager.GCEDriver")
+    @patch("cloudmesh.ai.vm.google.GoogleManager.GCEDriver")
     def test_google_init(self, mock_driver_class):
         mock_driver_class.return_value = MagicMock()
         provider = GoogleProvider(MOCK_CONFIG)
@@ -98,7 +100,7 @@ class TestLibcloudProviders:
 
     def test_lifecycle_methods(self, mock_driver):
         # Test using AWS Provider as the representative for LibcloudManager logic
-        with patch("src.aws.AwsManager.AmazonEC2Driver", return_value=mock_driver):
+        with patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver", return_value=mock_driver):
             provider = AwsProvider(MOCK_CONFIG)
             
             # Update config to match the mock images/sizes
@@ -138,14 +140,14 @@ class TestLibcloudProviders:
         del mock_driver.suspend_node
         del mock_driver.reboot_node
         
-        with patch("src.aws.AwsManager.AmazonEC2Driver", return_value=mock_driver):
+        with patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver", return_value=mock_driver):
             provider = AwsProvider(MOCK_CONFIG)
             assert provider.suspend(name="test-vm") is False
             assert provider.restart(name="test-vm") is False
 
     def test_missing_config(self):
         incomplete_config = {"clouds": {"aws": {}}}
-        with patch("src.aws.AwsManager.AmazonEC2Driver", return_value=MagicMock()):
+        with patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver", return_value=MagicMock()):
             provider = AwsProvider(incomplete_config)
-            with pytest.raises(ValueError, match="Image or Size/Flavour missing"):
+            with pytest.raises(ProviderError, match="Image or Size/Flavour missing"):
                 provider.start(name="test")

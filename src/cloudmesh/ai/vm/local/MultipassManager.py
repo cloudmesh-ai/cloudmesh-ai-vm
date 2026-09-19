@@ -54,11 +54,11 @@ class Provider(CloudBaseManager):
         """
         Starts (launches) a Multipass VM with optional resource configurations.
         """
-        cloud_config = self.config.clouds.get("multipass", {})
-        image = getattr(cloud_config, "image", "22.04")
-        cpus = getattr(cloud_config, "cpus", None)
-        memory = getattr(cloud_config, "memory", None)
-        disk = getattr(cloud_config, "disk", None)
+        cloud_config = self.get_cloud_config("multipass")
+        image = cloud_config.get("image", "22.04")
+        cpus = cloud_config.get("cpus")
+        memory = cloud_config.get("memory")
+        disk = cloud_config.get("disk")
         
         command = ["multipass", "launch"]
         

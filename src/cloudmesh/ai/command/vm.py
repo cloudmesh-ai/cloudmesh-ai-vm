@@ -59,6 +59,12 @@ def get_active_provider(ctx):
     except Exception as e:
         raise click.ClickException(str(e))
 
+@vm_group.command()
+def hello():
+    """Hello command"""
+    click.echo("Hello from vm!")
+
+
 @vm_group.command(name="setup")
 def setup():
     """Initialize a sample configuration file"""

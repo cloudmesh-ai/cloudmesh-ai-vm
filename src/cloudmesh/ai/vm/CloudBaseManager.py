@@ -7,8 +7,26 @@ class CloudBaseManager(ABC):
     All cloud providers (OpenStack, Multipass, etc.) must implement this interface.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Any):
         self.config = config
+
+    def get_cloud_config(self, cloud_name: str) -> Dict[str, Any]:
+        """
+        Helper to retrieve configuration for a specific cloud, 
+        handling both dictionary and GlobalConfig object inputs.
+        """
+        if isinstance(self.config, dict):
+            return self.config.get("clouds", {}).get(cloud_name, {})
+        
+        # Assume it's a GlobalConfig object (dataclass)
+        clouds = getattr(self.config, "clouds", {})
+        cloud_cfg = clouds.get(cloud_name, {})
+        
+        # If the cloud_cfg is a dataclass (ProviderConfig), convert to dict
+        if not isinstance(cloud_cfg, dict) and hasattr(cloud_cfg, "__dict__"):
+            return cloud_cfg.__dict__
+        
+        return cloud_cfg if isinstance(cloud_cfg, dict) else {}
 
     @abstractmethod
     def start(self, name: Optional[str] = None) -> str:

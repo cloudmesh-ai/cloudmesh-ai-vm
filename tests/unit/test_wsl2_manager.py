@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import subprocess
-from src.local.Wsl2Manager import Provider
+from cloudmesh.ai.vm.local.Wsl2Manager import Provider
 
 @pytest.fixture
 def mock_config():

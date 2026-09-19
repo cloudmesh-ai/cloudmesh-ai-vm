@@ -37,9 +37,9 @@ class Provider(CloudBaseManager):
             pass
 
         # Attempt to import if not exists
-        cloud_config = self.config.clouds.get("wsl2", {})
-        rootfs = getattr(cloud_config, "rootfs", None)
-        install_dir = getattr(cloud_config, "install_dir", "C:\\WSL")
+        cloud_config = self.get_cloud_config("wsl2")
+        rootfs = cloud_config.get("rootfs")
+        install_dir = cloud_config.get("install_dir", "C:\\WSL")
 
         if not rootfs:
             print(f"Error: Rootfs image path not configured in YAML for wsl2. Cannot import {name}.")
@@ -175,9 +175,9 @@ class Provider(CloudBaseManager):
             print("Error: Distro name is required to link SSH directory.")
             return False
 
-        cloud_config = self.config.clouds.get("wsl2", {})
-        wsl_user = getattr(cloud_config, "wsl_username", None)
-        host_user = getattr(cloud_config, "host_username", None)
+        cloud_config = self.get_cloud_config("wsl2")
+        wsl_user = cloud_config.get("wsl_username")
+        host_user = cloud_config.get("host_username")
 
         if not wsl_user or not host_user:
             print("Error: 'wsl_username' and 'host_username' must be configured in clouds.yaml to link SSH directory.")

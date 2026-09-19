@@ -63,8 +63,8 @@ class Provider(CloudBaseManager):
         """
         Starts (launches) a Lima VM. Supports built-in templates or custom YAML paths.
         """
-        cloud_config = self.config.clouds.get("lima", {})
-        template = getattr(cloud_config, "template", "ubuntu")
+        cloud_config = self.get_cloud_config("lima")
+        template = cloud_config.get("template", "ubuntu")
         
         # Name sanitization (underscores to hyphens)
         vm_name = name

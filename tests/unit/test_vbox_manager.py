@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import subprocess
-from src.local.VBoxManager import Provider
+from cloudmesh.ai.vm.local.VBoxManager import Provider
 
 @pytest.fixture
 def mock_config():
