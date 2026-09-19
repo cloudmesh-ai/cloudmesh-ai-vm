@@ -249,13 +249,39 @@ def config():
         click.echo("Setup cancelled.")
 
 
-@vm_group.command(name="set")
-@click.argument("cloud")
-def set_cloud(cloud):
-    """Set the default cloud provider"""
+@click.group(name="cloud")
+def cloud_group():
+    """Manage the active cloud provider"""
+    pass
+
+@cloud_group.command(name="get")
+def get_cloud():
+    """Get the current default cloud provider"""
+    cloud = state.config.default_cloud
+    if not cloud:
+        click.echo("No default cloud provider set. Use 'cmc vm cloud set <provider>' to set one.")
+    else:
+        click.echo(cloud)
+
+def do_set_cloud(cloud):
+    """Logic to set the default cloud provider"""
     state.config.default_cloud = cloud
     state.save()
     click.echo(f"Default cloud set to: {cloud}")
+
+@cloud_group.command(name="set")
+@click.argument("cloud")
+def set_cloud_cmd(cloud):
+    """Set the default cloud provider"""
+    do_set_cloud(cloud)
+
+vm_group.add_command(cloud_group)
+
+@vm_group.command(name="set")
+@click.argument("cloud")
+def set_cloud_shorthand(cloud):
+    """Set the default cloud provider (shorthand for 'vm cloud set')"""
+    do_set_cloud(cloud)
 
 @vm_group.command()
 @click.argument("name", required=False)
