@@ -1,19 +1,33 @@
 # Changelog
 
-## [1.2.0] - 2026-09-18
+## [1.3.0] - 2026-09-18
 
 ### Added
-- **Architectural Refinement**:
-    - Implemented typed configuration models using Python dataclasses for improved type safety and IDE support.
-    - Introduced a `ProviderFactory` with a registry pattern to decouple the CLI from specific provider implementations.
-    - Created a `StateManager` to handle persistent state separately from static configuration.
-- **UX Enhancements**:
-    - **Contextual Memory**: Added `last_vm` tracking, allowing lifecycle commands (`stop`, `delete`, etc.) to target the most recent VM without specifying `--name`.
-    - **Global Cloud Override**: Added a `--cloud` flag to the `vm` command group for one-off provider overrides.
-- **Feature Expansion**:
-    - **Resource Discovery**: Added `cmc vm flavors`, `cmc vm keys`, and `cmc vm security-groups` to explore cloud resources.
-    - **SSH Configuration**: Added `cmc vm ssh-config` to suggest `~/.ssh/config` entries for existing VMs.
-- **Documentation**: Updated README and MkDocs with new feature guides and CLI examples.
+- **New CLI Command**: Implemented `cmc vm images` to list available images for the active cloud provider.
+- **Cloud Defaults**: Added recommended default images, flavors, and regions for Jetstream and Chameleon Cloud in sample and local configurations.
+
+### Fixed
+- **OpenStack Resource Visibility**: Resolved an issue where `apache-libcloud` returned empty lists for non-public images and flavors; implemented a robust fallback to the `openstack` CLI for these resources.
+
+### Changed
+- **OpenStack Driver**: Enhanced `OpenstackManager` to dynamically retrieve and apply the `region` from `~/.config/openstack/clouds.yaml`.
+
+# Changelog
+
+## [1.2.1] - 2026-09-18
+
+### Fixed
+- **Configuration Access**: Resolved a systemic bug where VM managers failed to handle both `dict` and `GlobalConfig` objects; implemented `get_cloud_config` helper in `CloudBaseManager` to unify access.
+- **Test Robustness**:
+    - Fixed `MagicMock` leakage in `LimaManager` tests that caused incorrect command string assertions.
+    - Resolved `test_hello` failure by implementing the missing `hello` CLI command.
+    - Corrected exception type expectations in `LibcloudManager` tests.
+    - Added pre-start cleanup to Multipass smoke tests to prevent failures when VMs already exist.
+
+### Changed
+- **Test Architecture**: Reorganized tests into `tests/unit` and `tests/smoke` directories to separate fast unit tests from slow, environment-dependent smoke tests.
+
+## [1.2.0] - 2026-09-18
 
 ## [1.1.0] - 2026-09-18
 

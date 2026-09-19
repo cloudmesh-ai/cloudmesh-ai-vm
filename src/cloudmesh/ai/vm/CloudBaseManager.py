@@ -90,6 +90,13 @@ class CloudBaseManager(ABC):
         """
         pass
 
+    def get_images(self) -> List[Dict[str, Any]]:
+        """
+        Lists available images for the current cloud.
+        :return: A list of image details.
+        """
+        return []
+
     @abstractmethod
     def get_flavors(self) -> List[Dict[str, Any]]:
         """

@@ -2,6 +2,7 @@ import click
 import yaml
 import os
 from typing import Any, Dict, Optional
+import logging
 
 from cloudmesh.ai.vm.state_manager import StateManager
 from cloudmesh.ai.vm.factory import factory
@@ -42,11 +43,15 @@ class VMContext:
 
 @click.group(name="vm")
 @click.option("--cloud", help="Override the default cloud provider")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
-def vm_group(ctx, cloud):
+def vm_group(ctx, cloud, debug):
     """VM management commands"""
     ctx.obj = VMContext()
     ctx.obj.cloud_override = cloud
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug(f"Debug mode enabled. Using cloud: {cloud or state.config.default_cloud}")
 
 def get_active_provider(ctx):
     """Helper to resolve the provider based on override or default."""
@@ -79,6 +84,15 @@ def setup():
             "aws": {
                 "region": "us-east-1",
                 "image": "ami-xxxxxxxxxxxxxxxxx"
+            },
+            "jetstream": {
+                "image": "Featured-Minimal-Ubuntu24",
+                "flavor": "m3.tiny"
+            },
+            "chameleon": {
+                "image": "CC-Ubuntu24.04",
+                "flavor": "m1.small",
+                "region": "CHI@TACC"
             }
         }
     }
@@ -269,6 +283,23 @@ def reservation(ctx, name, node_type, count, start, end, duration):
         click.echo(f"Reservation {name} created successfully.")
     else:
         click.echo(f"Failed to create reservation {name}.", err=True)
+
+@vm_group.command()
+@click.pass_context
+def images(ctx):
+    """Lists available images"""
+    provider = get_active_provider(ctx)
+    images = provider.get_images()
+    if not images:
+        click.echo("No images found or not supported by this provider.")
+        return
+    
+    headers = images[0].keys()
+    header_line = "  ".join(f"{h:<15}" for h in headers)
+    click.echo(header_line)
+    click.echo("-" * len(header_line))
+    for i in images:
+        click.echo("  ".join(f"{str(v):<15}" for v in i.values()))
 
 @vm_group.command()
 @click.pass_context
