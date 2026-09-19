@@ -10,6 +10,8 @@
 - **OpenStack Resource Visibility**: Resolved an issue where `apache-libcloud` returned empty lists for non-public images and flavors; implemented a robust fallback to the `openstack` CLI for these resources.
 
 ### Changed
+- **Provider Table**: Changed the "Enabled" status indicator from a yellow dot to a white dot for providers with missing configuration.
+- **CLI Output**: Removed debug messages from `cmc vm providers`.
 - **OpenStack Driver**: Enhanced `OpenstackManager` to dynamically retrieve and apply the `region` from `~/.config/openstack/clouds.yaml`.
 
 # Changelog

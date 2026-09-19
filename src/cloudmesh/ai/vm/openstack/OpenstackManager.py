@@ -82,6 +82,25 @@ class OpenstackManager(CloudBaseManager):
             password = auth.get('password')
 
         logger.debug(f"Connecting to auth_url: {auth.get('auth_url')} with tenant_id: {auth.get('tenant_id') or auth.get('project_id')}")
+
+    def _run_cli_command(self, cmd: List[str]) -> str:
+        """Runs an OpenStack CLI command with OS_CLOUD environment variable set."""
+        import subprocess
+        import os
+        from cloudmesh.ai.vm.logger import logger
+        
+        env = os.environ.copy()
+        env["OS_CLOUD"] = self.cloud_name
+        
+        logger.debug(f"Running CLI command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        
+        if result.returncode != 0:
+            logger.error(f"CLI command failed: {result.stderr}")
+            raise RuntimeError(f"CLI command failed: {result.stderr}")
+        
+        return result.stdout
+
         
         region = cloud_data.get("region")
         if region:
@@ -99,63 +118,102 @@ class OpenstackManager(CloudBaseManager):
         )
 
     def start(self, name: Optional[str] = None) -> str:
-        """
-        Starts a VM in OpenStack.
-        """
+        """Starts a VM in OpenStack."""
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = cloud_config.get("image")
-        flavor_name = cloud_config.get("flavour")
+        flavor_name = cloud_config.get("flavor")
         
         if not image_name or not flavor_name:
-            raise ValueError(f"Image or Flavour missing in config for {self.cloud_name}")
+            raise ValueError(f"Image or flavor missing in config for {self.cloud_name}")
 
-        images = self.driver.list_images()
-        image = next((img for img in images if img.name == image_name), None)
-        
-        sizes = self.driver.list_sizes()
-        size = next((s for s in sizes if s.id == flavor_name or s.name == flavor_name), None)
+        # Try libcloud first
+        try:
+            images = self.driver.list_images()
+            image = next((img for img in images if img.name == image_name), None)
+            
+            sizes = self.driver.list_sizes()
+            size = next((s for s in sizes if s.id == flavor_name or s.name == flavor_name), None)
+            
+            if image and size:
+                node = self.driver.create_node(name=name, image=image, size=size)
+                return node.name
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.warning(f"Libcloud start failed: {e}. Trying CLI fallback...")
 
-        if not image or not size:
+        # CLI Fallback
+        # Resolve IDs
+        resolved_images = self.get_images()
+        resolved_flavor = next((f for f in self.get_flavors() if f['name'] == flavor_name or f['id'] == flavor_name), None)
+        resolved_image = next((i for i in resolved_images if i['name'] == image_name), None)
+
+        if not resolved_image or not resolved_flavor:
             raise RuntimeError(f"Could not find image {image_name} or flavor {flavor_name} in {self.cloud_name}")
 
-        node = self.driver.create_node(name=name, image=image, size=size)
-        return node.name
+        image_id = resolved_image['id']
+        flavor_id = resolved_flavor['id']
+
+        # Use CLI to create node
+        cmd = ["openstack", "server", "create", "--flavor", flavor_id, "--image", image_id, "--format", "value", "-c", "name"]
+        if name:
+            cmd.extend(["--name", name])
+        
+        return self._run_cli_command(cmd).strip()
 
     def stop(self, name: Optional[str] = None) -> bool:
-        """
-        Stops an OpenStack VM.
-        """
+        """Stops an OpenStack VM."""
         if not name: return False
         try:
             node = self.driver.get_node(name)
             self.driver.stop_node(node)
             return True
         except Exception as e:
-            print(f"Error stopping node {name}: {e}")
-            return False
+            from cloudmesh.ai.vm.logger import logger
+            logger.warning(f"Libcloud stop failed: {e}. Trying CLI fallback...")
+            try:
+                self._run_cli_command(["openstack", "server", "stop", name])
+                return True
+            except Exception as cli_e:
+                logger.error(f"CLI stop failed: {cli_e}")
+                return False
 
     def delete(self, name: Optional[str] = None) -> bool:
-        """
-        Deletes an OpenStack VM.
-        """
+        """Deletes an OpenStack VM."""
         if not name: return False
         try:
             node = self.driver.get_node(name)
             self.driver.destroy_node(node)
             return True
         except Exception as e:
-            print(f"Error deleting node {name}: {e}")
-            return False
+            from cloudmesh.ai.vm.logger import logger
+            logger.warning(f"Libcloud delete failed: {e}. Trying CLI fallback...")
+            try:
+                self._run_cli_command(["openstack", "server", "delete", name])
+                return True
+            except Exception as cli_e:
+                logger.error(f"CLI delete failed: {cli_e}")
+                return False
 
     def list(self) -> List[Dict[str, Any]]:
-        """
-        Lists all OpenStack VMs.
-        """
+        """Lists all OpenStack VMs."""
         try:
             nodes = self.driver.list_nodes()
-            return [{"Name": n.name, "ID": n.id, "State": n.state} for n in nodes]
+            if nodes:
+                return [{"Name": n.name, "ID": n.id, "State": n.state} for n in nodes]
         except Exception as e:
-            print(f"Error listing nodes: {e}")
+            from cloudmesh.ai.vm.logger import logger
+            logger.warning(f"Libcloud list failed: {e}. Trying CLI fallback...")
+
+        # CLI Fallback
+        try:
+            # openstack server list --format json
+            output = self._run_cli_command(["openstack", "server", "list", "--format", "json"])
+            import json
+            servers = json.loads(output)
+            return [{"Name": s['name'], "ID": s['id'], "State": s['status']} for s in servers]
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"CLI list failed: {e}")
             return []
 
     def login(self, name: Optional[str] = None) -> bool:

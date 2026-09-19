@@ -126,6 +126,15 @@ class Provider(CloudBaseManager):
                 parts = line.split()
                 if len(parts) >= 2:
                     vm_info = {headers[i]: parts[i] for i in range(min(len(headers), len(parts)))}
+                    
+                    # Normalize keys for ssh_config and other tools
+                    # Lima uses NAME and SSH
+                    name = vm_info.get("NAME") or vm_info.get("Name")
+                    ip = vm_info.get("SSH") or vm_info.get("IP")
+                    
+                    vm_info["Name"] = name
+                    vm_info["IP"] = ip
+                    
                     vms.append(vm_info)
             
             return vms

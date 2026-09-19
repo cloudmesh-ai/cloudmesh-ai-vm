@@ -60,7 +60,9 @@ def get_active_provider(ctx):
         raise click.ClickException("No default cloud set. Use 'cmc vm set <cloud>' or --cloud <cloud>.")
     
     try:
-        return factory.create(cloud_name, state.config)
+        provider = factory.create(cloud_name, state.config)
+        provider.cloud_name = cloud_name
+        return provider
     except Exception as e:
         raise click.ClickException(str(e))
 
@@ -68,6 +70,91 @@ def get_active_provider(ctx):
 def hello():
     """Hello command"""
     click.echo("Hello from vm!")
+
+@vm_group.command()
+def providers():
+    """Lists all supported VM providers and their status on this system"""
+    providers_list = sorted(factory._registry.keys())
+    if not providers_list:
+        click.echo("No providers registered.")
+        return
+
+    # Table header
+    header = f"{'Provider':<15} {'Supported':<12} {'Enabled':<12} {'OS-YAML':<12} {'CM-YAML':<12} {'Reason'}"
+    click.echo(header)
+    click.echo("-" * 90)
+
+    import re
+    import os
+    import yaml
+
+    os_yaml_path = os.path.expanduser("~/.config/openstack/clouds.yaml")
+    os_clouds = {}
+    if os.path.exists(os_yaml_path):
+        try:
+            with open(os_yaml_path, 'r') as f:
+                data = yaml.safe_load(f) or {}
+                os_clouds = data.get("clouds", data)
+        except Exception:
+            pass
+
+    for p_name in providers_list:
+        status = "❌"
+        reason = ""
+        
+        # Check config presence in CloudMesh
+        cloud_cfg_obj = state.config.clouds.get(p_name)
+        cm_has = "✅" if cloud_cfg_obj is not None else "❌"
+        
+        # Check presence in OpenStack clouds.yaml
+        os_has = "✅" if p_name in os_clouds else "❌"
+        
+        # Determine Enabled value
+        if cloud_cfg_obj is None:
+            enabled_val = "⚪"
+        else:
+            val = getattr(cloud_cfg_obj, "enabled", None)
+            
+            if isinstance(val, str):
+                is_enabled = val.lower() == "true"
+            elif val is None:
+                is_enabled = True
+            else:
+                is_enabled = bool(val)
+                
+            enabled_val = "✅" if is_enabled else "❌"
+        
+        # OpenStack providers MUST have config in either YAML
+        if p_name in ["jetstream", "chameleon", "openstack"]:
+            if cm_has == "❌" and os_has == "❌":
+                click.echo(f"{p_name:<15} {status:<12} {enabled_val:<12} {os_has:<12} {cm_has:<12} Missing config in all YAMLs")
+                continue
+
+        try:
+            # Try to create the provider to check its requirements
+            provider = factory.create(p_name, state.config)
+            if provider.check_requirements():
+                status = "✅"
+                reason = "Supported"
+                if cm_has == "❌":
+                    reason += " (using defaults)"
+            else:
+                reason = "Requirements not met"
+        except TypeError as e:
+            err_msg = str(e)
+            if "Can't instantiate abstract class" in err_msg:
+                methods_match = re.search(r"abstract methods? '([^']+)'", err_msg)
+                if not methods_match:
+                    methods_match = re.search(r"implementing new methods: ([^.\n]+)", err_msg)
+                
+                methods = methods_match.group(1) if methods_match else "unknown"
+                reason = f"Not implemented: {methods}"
+            else:
+                reason = err_msg
+        except Exception as e:
+            reason = str(e)
+
+        click.echo(f"{p_name:<15} {status:<12} {enabled_val:<12} {os_has:<12} {cm_has:<12} {reason}")
 
 
 @vm_group.command(name="setup")
@@ -97,6 +184,19 @@ def setup():
         }
     }
     
+
+@vm_group.command(name="config")
+def config():
+    """Display the current cloud configuration file."""
+    click.echo(f"Configuration file location: {CONFIG_PATH}\n")
+    try:
+        with open(CONFIG_PATH, 'r') as f:
+            click.echo(f.read())
+    except FileNotFoundError:
+        click.echo(f"Configuration file not found at {CONFIG_PATH}", err=True)
+    except Exception as e:
+        click.echo(f"Error reading configuration file: {e}", err=True)
+
     if os.path.exists(CONFIG_PATH):
         click.echo(f"Configuration file already exists at {CONFIG_PATH}")
         return
@@ -150,6 +250,21 @@ def start(ctx, name):
         logger.error(f"Unexpected error: {e}")
         click.echo(f"An unexpected error occurred: {e}", err=True)
 
+@vm_group.command(name="run")
+@click.option("--name", help="Name of the VM")
+@click.argument("command")
+@click.pass_context
+def run(ctx, name, command):
+    """Executes a command on a VM"""
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm()
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
+        
+    output = provider.run_command(vm_name, command)
+    click.echo(output)
+
 @vm_group.command()
 @click.option("--name", help="Name of the VM")
 @click.pass_context
@@ -167,6 +282,24 @@ def stop(ctx, name):
         click.echo(f"Failed to stop VM {vm_name}.", err=True)
 
 @vm_group.command()
+@click.argument("name")
+@click.pass_context
+def info(ctx, name):
+    """Gets detailed information about a VM"""
+    provider = get_active_provider(ctx)
+    vm_info = provider.info(name)
+    
+    if "error" in vm_info:
+        click.echo(f"Error: {vm_info['error']}", err=True)
+        return
+    
+    click.echo(f"\nInformation for VM: {name}")
+    click.echo("-" * 30)
+    for key, value in vm_info.items():
+        click.echo(f"{key:<15}: {value}")
+    click.echo("-" * 30)
+
+@vm_group.command()
 @click.option("--name", help="Name of the VM")
 @click.pass_context
 def delete(ctx, name):
@@ -182,7 +315,7 @@ def delete(ctx, name):
     else:
         click.echo(f"Failed to delete VM {vm_name}.", err=True)
 
-@vm_group.command()
+@vm_group.command(name="list")
 @click.option("--json", "format_json", is_flag=True, help="Output in JSON")
 @click.option("--yaml", "format_yaml", is_flag=True, help="Output in YAML")
 @click.option("--csv", "format_csv", is_flag=True, help="Output in CSV")
@@ -291,7 +424,7 @@ def images(ctx):
     provider = get_active_provider(ctx)
     images = provider.get_images()
     if not images:
-        click.echo("No images found or not supported by this provider.")
+        click.echo(f"No images found or not supported by provider '{provider.cloud_name}'.")
         return
     
     headers = images[0].keys()
@@ -308,7 +441,7 @@ def flavors(ctx):
     provider = get_active_provider(ctx)
     flavors = provider.get_flavors()
     if not flavors:
-        click.echo("No flavors found or not supported by this provider.")
+        click.echo(f"No flavors found or not supported by provider '{provider.cloud_name}'.")
         return
     
     headers = flavors[0].keys()
@@ -325,7 +458,7 @@ def keys(ctx):
     provider = get_active_provider(ctx)
     keys = provider.get_keys()
     if not keys:
-        click.echo("No keys found or not supported by this provider.")
+        click.echo(f"No keys found or not supported by provider '{provider.cloud_name}'.")
         return
     
     headers = keys[0].keys()
@@ -342,7 +475,7 @@ def security_groups(ctx):
     provider = get_active_provider(ctx)
     groups = provider.get_security_groups()
     if not groups:
-        click.echo("No security groups found or not supported by this provider.")
+        click.echo(f"No security groups found or not supported by provider '{provider.cloud_name}'.")
         return
     
     headers = groups[0].keys()

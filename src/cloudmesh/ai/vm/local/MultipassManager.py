@@ -181,6 +181,32 @@ class Provider(CloudBaseManager):
             {"name": "large", "cpu": 4, "ram": "4GiB", "disk": "20GiB"},
         ]
 
+
+    def get_images(self) -> List[Dict[str, Any]]:
+        """
+        Lists available images in Multipass using 'multipass find'.
+        """
+        try:
+            result = self._run_command(["multipass", "find"])
+            lines = result.stdout.strip().split("\n")
+            if not lines:
+                return []
+            
+            images = []
+            # Skip the header line "Available images:"
+            for line in lines:
+                line = line.strip()
+                if line.startswith("- "):
+                    # Example line: "- 22.04 (Ubuntu Jammy Jellyfish)"
+                    parts = line[2:].split()
+                    if parts:
+                        image_name = parts[0]
+                        images.append({"name": image_name})
+            
+            return images
+        except subprocess.CalledProcessError:
+            return []
+
     def get_keys(self) -> List[Dict[str, Any]]:
         """
         Multipass manages its own keys internally.

@@ -6,7 +6,7 @@ class ProviderConfig:
     name: str
     image: Optional[str] = None
     size: Optional[str] = None
-    flavour: Optional[str] = None
+    flavor: Optional[str] = None
     cpus: Optional[int] = None
     memory: Optional[str] = None
     disk: Optional[str] = None

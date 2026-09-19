@@ -36,7 +36,7 @@ class LibcloudManager(CloudBaseManager):
         """
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = cloud_config.get("image")
-        size_name = cloud_config.get("size") or cloud_config.get("flavour")
+        size_name = cloud_config.get("size") or cloud_config.get("flavor")
         
         if not image_name or not size_name:
             raise ProviderError(f"Image or Size/Flavour missing in config for {self.cloud_name}")
