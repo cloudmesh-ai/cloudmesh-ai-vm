@@ -170,6 +170,38 @@ class Provider(CloudBaseManager):
         except subprocess.CalledProcessError:
             return False
 
+        
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on a Multipass VM.
+        """
+        try:
+            # multipass exec <name> <cmd>
+            result = self._run_command(["multipass", "exec", name, "sh", "-c", cmd])
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"Error executing command: {e.stderr or e.output}"
+        except Exception as e:
+            return f"Unexpected error: {e}"
+
+
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about a Multipass VM.
+        """
+        try:
+            result = self._run_command(["multipass", "info", name])
+            lines = result.stdout.strip().split("\n")
+            info = {}
+            for line in lines:
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    info[key.strip()] = value.strip()
+            return info
+        except subprocess.CalledProcessError:
+            return {"error": f"Could not get info for VM {name}"}
+
     def get_flavors(self) -> List[Dict[str, Any]]:
         """
         Multipass uses CPU/RAM/Disk options rather than fixed flavors.
@@ -182,30 +214,49 @@ class Provider(CloudBaseManager):
         ]
 
 
+    def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
+        """Helper to run shell commands silently and return the result."""
+        return subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
     def get_images(self) -> List[Dict[str, Any]]:
         """
         Lists available images in Multipass using 'multipass find'.
         """
         try:
-            result = self._run_command(["multipass", "find"])
-            lines = result.stdout.strip().split("\n")
+            # Use silent command to avoid leaking raw output to console
+            result = self._run_command_silent(["multipass", "find"])
+            lines = result.stdout.strip().split("\\n")
             if not lines:
                 return []
             
             images = []
-            # Skip the header line "Available images:"
+            # Skip the header line "Available images:" and parse lines starting with "- "
             for line in lines:
                 line = line.strip()
                 if line.startswith("- "):
                     # Example line: "- 22.04 (Ubuntu Jammy Jellyfish)"
-                    parts = line[2:].split()
-                    if parts:
-                        image_name = parts[0]
+                    # Extract the version string (e.g., 22.04)
+                    content = line[2:].strip()
+                    if content:
+                        image_name = content.split()[0]
                         images.append({"name": image_name})
             
             return images
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, Exception) as e:
+            print(f"Error listing Multipass images: {e}")
             return []
+        
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        """
+        import shutil
+        return shutil.which("multipass") is not None                
 
     def get_keys(self) -> List[Dict[str, Any]]:
         """

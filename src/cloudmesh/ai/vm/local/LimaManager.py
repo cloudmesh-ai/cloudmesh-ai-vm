@@ -59,6 +59,16 @@ class Provider(CloudBaseManager):
             print(f"Unexpected error executing command {' '.join(command)}: {e}")
             raise e
 
+
+    def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
+        """Helper to run shell commands silently and return the result."""
+        return subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
     def start(self, name: Optional[str] = None) -> str:
         """
         Starts (launches) a Lima VM. Supports built-in templates or custom YAML paths.
@@ -138,8 +148,33 @@ class Provider(CloudBaseManager):
                     vms.append(vm_info)
             
             return vms
+
         except subprocess.CalledProcessError:
             return []
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about a Lima VM.
+        """
+        vms = self.list()
+        for vm in vms:
+            if vm.get("Name") == name:
+                return vm
+        return {"error": f"VM {name} not found"}
+    
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on a Lima VM.
+        """
+        try:
+            # limactl shell <name> <cmd>
+            # We use sh -c to ensure the command is executed correctly
+            result = self._run_command(["limactl", "shell", name, "sh", "-c", cmd])
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"Error executing command: {e.stderr or e.output}"
+        except Exception as e:
+            return f"Unexpected error: {e}"
 
     def login(self, name: Optional[str] = None) -> bool:
         """Logs into a Lima VM using 'limactl shell'."""
@@ -170,15 +205,37 @@ class Provider(CloudBaseManager):
             return True
         except subprocess.CalledProcessError:
             return False
+        
+    def get_images(self) -> List[Dict[str, Any]]:
+        """
+        Lists available images in Lima using 'limactl start --list-templates'.
+        """
+        try:
+            # Use silent command to avoid leaking raw output to console
+            result = self._run_command_silent(["limactl", "start", "--list-templates"])
+            lines = result.stdout.strip().split("\n")
+            if not lines:
+                return []
+            
+            images = []
+            # Look for lines starting with '- ' which typically indicate templates
+            for line in lines:
+                line = line.strip()
+                if line.startswith("- "):
+                    # Example line: "- ubuntu (Ubuntu 22.04 LTS)"
+                    content = line[2:].strip()
+                    if content:
+                        template_name = content.split()[0]
+                        images.append({"name": template_name})
+            
+            return images
+        except (subprocess.CalledProcessError, Exception) as e:
+            print(f"Error listing Lima images: {e}")
+            return []
 
     def get_flavors(self) -> List[Dict[str, Any]]:
         """Lima uses templates rather than flavors."""
-        return [
-            {"name": "ubuntu", "description": "Ubuntu Linux"},
-            {"name": "fedora", "description": "Fedora Linux"},
-            {"name": "alpine", "description": "Alpine Linux"},
-            {"name": "debian", "description": "Debian Linux"},
-        ]
+        return None
 
     def get_keys(self) -> List[Dict[str, Any]]:
         """Lima manages SSH keys automatically."""
@@ -187,3 +244,14 @@ class Provider(CloudBaseManager):
     def get_security_groups(self) -> List[Dict[str, Any]]:
         """Lima uses port forwarding instead of security groups."""
         return [{"name": "default", "description": "Local port forwarding"}]
+
+
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        """
+        import shutil
+        import platform
+        if platform.system() not in ["Darwin", "Linux"]:
+            return False
+        return shutil.which("limactl") is not None

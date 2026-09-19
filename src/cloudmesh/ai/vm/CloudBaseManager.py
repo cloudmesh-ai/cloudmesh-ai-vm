@@ -90,12 +90,29 @@ class CloudBaseManager(ABC):
         """
         pass
 
+    @abstractmethod
+    def info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about a specific VM.
+        :param name: Name of the VM.
+        :return: A dictionary containing VM details.
+        """
+        pass
+
+
     def get_images(self) -> List[Dict[str, Any]]:
         """
         Lists available images for the current cloud.
         :return: A list of image details.
         """
         return []
+
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        :return: True if requirements are met, False otherwise.
+        """
+        return True
 
     @abstractmethod
     def get_flavors(self) -> List[Dict[str, Any]]:
@@ -110,6 +127,16 @@ class CloudBaseManager(ABC):
         """
         Lists available SSH keys for the current cloud.
         :return: A list of key details.
+        """
+        pass
+
+    @abstractmethod
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on the VM.
+        :param name: Name of the VM.
+        :param cmd: The command to execute.
+        :return: The output of the command.
         """
         pass
 

@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 @dataclass
 class ProviderConfig:
     name: str
+    enabled: bool = True
     image: Optional[str] = None
     size: Optional[str] = None
     flavor: Optional[str] = None

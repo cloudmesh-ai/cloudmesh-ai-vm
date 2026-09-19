@@ -82,7 +82,21 @@ class OpenstackManager(CloudBaseManager):
             password = auth.get('password')
 
         logger.debug(f"Connecting to auth_url: {auth.get('auth_url')} with tenant_id: {auth.get('tenant_id') or auth.get('project_id')}")
-
+        
+        region = cloud_data.get("region")
+        if region:
+            logger.debug(f"Using region: {region}")
+        else:
+            logger.debug("No region specified, using default")
+        
+        return OpenStackDriver(
+            username=username,
+            password=password,
+            auth_url=auth.get('auth_url'),
+            tenant_id=auth.get('tenant_id') or auth.get('project_id'),
+            region=region,
+            version='3'
+        )
     def _run_cli_command(self, cmd: List[str]) -> str:
         """Runs an OpenStack CLI command with OS_CLOUD environment variable set."""
         import subprocess
@@ -100,22 +114,6 @@ class OpenstackManager(CloudBaseManager):
             raise RuntimeError(f"CLI command failed: {result.stderr}")
         
         return result.stdout
-
-        
-        region = cloud_data.get("region")
-        if region:
-            logger.debug(f"Using region: {region}")
-        else:
-            logger.debug("No region specified, using default")
-        
-        return OpenStackDriver(
-            username=username,
-            password=password,
-            auth_url=auth.get('auth_url'),
-            tenant_id=auth.get('tenant_id') or auth.get('project_id'),
-            region=region,
-            version='3'
-        )
 
     def start(self, name: Optional[str] = None) -> str:
         """Starts a VM in OpenStack."""
@@ -216,6 +214,30 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"CLI list failed: {e}")
             return []
 
+    def info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about an OpenStack VM.
+        """
+        try:
+            node = self.driver.get_node(name)
+            if not node:
+                return {"error": f"VM {name} not found"}
+            
+            return {
+                "Name": getattr(node, 'name', name),
+                "ID": getattr(node, 'id', 'N/A'),
+                "State": getattr(node, 'state', 'Unknown'),
+                "PublicIPs": getattr(node, 'public_ips', []),
+                "PrivateIPs": getattr(node, 'private_ips', []),
+                "RAM": getattr(node, 'ram', 'N/A'),
+                "CPUs": getattr(node, 'cpus', 'N/A'),
+            }
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error getting info for VM {name} in {self.cloud_name}: {e}")
+            return {"error": str(e)}
+
+ 
     def login(self, name: Optional[str] = None) -> bool:
         """
         Logging into OpenStack VMs usually happens via SSH.
@@ -371,4 +393,12 @@ class OpenstackManager(CloudBaseManager):
         except Exception as e:
             print(f"Error getting security groups: {e}")
             return []
+
+
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on the VM.
+        Note: This is a stub for OpenStack-based providers.
+        """
+        return f"run_command is not yet implemented for this OpenStack provider ({self.cloud_name})"
 

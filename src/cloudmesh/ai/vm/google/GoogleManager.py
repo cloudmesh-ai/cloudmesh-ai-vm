@@ -3,7 +3,8 @@ from cloudmesh.ai.vm.LibcloudManager import LibcloudManager
 try:
     from libcloud.compute.providers.gce import GCEDriver
 except ImportError:
-    class GCEDriver: pass
+    class GCEDriver:
+        def __init__(self, *args, **kwargs): pass
 
 class Provider(LibcloudManager):
     """

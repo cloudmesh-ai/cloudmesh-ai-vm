@@ -3,7 +3,8 @@ from cloudmesh.ai.vm.LibcloudManager import LibcloudManager
 try:
     from libcloud.compute.providers.azure import AzureDriver
 except ImportError:
-    class AzureDriver: pass
+    class AzureDriver:
+        def __init__(self, *args, **kwargs): pass
 
 class Provider(LibcloudManager):
     """

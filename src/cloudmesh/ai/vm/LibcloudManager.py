@@ -20,8 +20,26 @@ class LibcloudManager(CloudBaseManager):
         try:
             self.driver = self._get_driver()
         except Exception as e:
-            logger.error(f"Failed to initialize driver for {cloud_name}: {e}")
-            raise AuthenticationError(f"Could not authenticate with {cloud_name}: {e}")
+            # If we are just checking requirements, don't fail hard on driver init
+            # if it's an authentication/configuration error.
+            logger.debug(f"Driver initialization skipped or failed for {cloud_name}: {e}")
+            self.driver = None
+
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met.
+        For Libcloud providers, this means the driver must be successfully initialized
+        and not be a dummy class.
+        """
+        if self.driver is None:
+            return False
+        
+        # Check if the driver is a dummy by checking for a known libcloud method.
+        # All libcloud compute drivers should have list_nodes.
+        if not hasattr(self.driver, 'list_nodes'):
+            return False
+            
+        return True
 
     def _get_driver(self):
         """
@@ -127,6 +145,30 @@ class LibcloudManager(CloudBaseManager):
             logger.error(f"Error restarting node {name} in {self.cloud_name}: {e}")
             return False
 
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about a VM.
+        """
+        try:
+            node = self.driver.get_node(name)
+            if not node:
+                return {"error": f"VM {name} not found"}
+            
+            # Extract common attributes from libcloud node object
+            return {
+                "Name": getattr(node, 'name', name),
+                "ID": getattr(node, 'id', 'N/A'),
+                "State": getattr(node, 'state', 'Unknown'),
+                "PublicIPs": getattr(node, 'public_ips', []),
+                "PrivateIPs": getattr(node, 'private_ips', []),
+                "RAM": getattr(node, 'ram', 'N/A'),
+                "CPUs": getattr(node, 'cpus', 'N/A'),
+            }
+        except Exception as e:
+            logger.error(f"Error getting info for VM {name} in {self.cloud_name}: {e}")
+            return {"error": str(e)}
+
     def get_flavors(self) -> List[Dict[str, Any]]:
         try:
             sizes = self.driver.list_sizes()
@@ -156,3 +198,11 @@ class LibcloudManager(CloudBaseManager):
         except Exception as e:
             logger.error(f"Error getting security groups for {self.cloud_name}: {e}")
             return []
+
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on the VM.
+        Note: This is a stub for libcloud-based providers as libcloud does not provide a unified run_command API.
+        """
+        return f"run_command is not yet implemented for this cloud provider ({self.cloud_name})"
+

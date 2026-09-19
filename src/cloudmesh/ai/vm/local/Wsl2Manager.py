@@ -2,6 +2,7 @@ import subprocess
 import re
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
+from cloudmesh.ai.vm.exceptions import ProviderError
 
 class Provider(CloudBaseManager):
     """
@@ -197,3 +198,42 @@ class Provider(CloudBaseManager):
             return True
         except subprocess.CalledProcessError:
             return False
+
+
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on the WSL2 distribution.
+        """
+        if not name:
+            raise ProviderError("VM name is required to run command.")
+        
+        cloud_config = self.get_cloud_config("wsl2")
+        wsl_user = cloud_config.get("wsl_username", "root")
+        
+        try:
+            # Use wsl -d <name> -u <user> sh -c <command>
+            result = self._run_command(["wsl", "-d", name, "-u", wsl_user, "sh", "-c", cmd])
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            return f"Error executing command: {e.stderr}"
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """Gets detailed information about a WSL2 distribution."""
+        try:
+            result = self._run_command(["wsl", "--list", "--verbose"])
+            for line in result.stdout.splitlines():
+                if name in line:
+                    return {"RawInfo": line.strip()}
+            return {"error": f"Distribution {name} not found"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        """
+        import shutil
+        import platform
+        if platform.system() != "Windows":
+            return False
+        return shutil.which("wsl") is not None

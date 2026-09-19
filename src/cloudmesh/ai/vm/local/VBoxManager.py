@@ -2,6 +2,7 @@ import subprocess
 import re
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
+from cloudmesh.ai.vm.exceptions import ProviderError
 
 class Provider(CloudBaseManager):
     """
@@ -146,3 +147,45 @@ class Provider(CloudBaseManager):
         VirtualBox uses Networking Modes (NAT, Bridged, etc.)
         """
         return [{"name": "NAT", "description": "Default VirtualBox NAT network"}]
+
+
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        """
+        import shutil
+        return shutil.which("VBoxManage") is not None
+
+    def run_command(self, name: str, cmd: str) -> str:
+        """
+        Executes a command on the VirtualBox VM using guestcontrol.
+        Requires Guest Additions.
+        """
+        if not name:
+            raise ProviderError("VM name is required to run command.")
+        
+        cloud_config = self.get_cloud_config("vbox")
+        username = cloud_config.get("username", "user")
+        password = cloud_config.get("password", "")
+        
+        try:
+            # VBoxManage guestcontrol <vmname> run --username=<user> --password=<pass> --exe <exe> --args <args>
+            result = self._run_command([
+                "VBoxManage", "guestcontrol", name, "run",
+                f"--username={username}",
+                f"--password={password}",
+                "--exe", "/bin/sh",
+                "--args", "-c", cmd
+            ])
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            return f"Error executing command (requires Guest Additions): {e.stderr}"
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """Gets detailed information about a VirtualBox VM."""
+        try:
+            result = self._run_command(["VBoxManage", "showvminfo", name])
+            return {"Name": name, "RawInfo": result.stdout}
+        except Exception as e:
+            return {"error": str(e)}
+

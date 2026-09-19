@@ -1,9 +1,10 @@
 from cloudmesh.ai.vm.LibcloudManager import LibcloudManager
 
 try:
-    from libcloud.compute.providers.amazoneb import AmazonEC2Driver
+    from libcloud.compute.providers.amazon import AmazonEC2Driver
 except ImportError:
-    class AmazonEC2Driver: pass
+    class AmazonEC2Driver:
+        def __init__(self, *args, **kwargs): pass
 
 class Provider(LibcloudManager):
     """
