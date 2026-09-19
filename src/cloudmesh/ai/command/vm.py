@@ -258,7 +258,7 @@ def set_cloud(cloud):
     click.echo(f"Default cloud set to: {cloud}")
 
 @vm_group.command()
-@click.option("--name", help="Name of the VM")
+@click.argument("name", required=False)
 @click.pass_context
 def start(ctx, name):
     """Starts a VM"""
@@ -297,7 +297,7 @@ def run(ctx, name, command):
     click.echo(output)
 
 @vm_group.command()
-@click.option("--name", help="Name of the VM")
+@click.argument("name", required=False)
 @click.pass_context
 def stop(ctx, name):
     """Stops a VM"""
@@ -331,7 +331,7 @@ def info(ctx, name):
     click.echo("-" * 30)
 
 @vm_group.command()
-@click.option("--name", help="Name of the VM")
+@click.argument("name", required=False)
 @click.pass_context
 def delete(ctx, name):
     """Deletes a VM"""

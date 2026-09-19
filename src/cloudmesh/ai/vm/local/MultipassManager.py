@@ -176,8 +176,10 @@ class Provider(CloudBaseManager):
         Executes a command on a Multipass VM.
         """
         try:
-            # multipass exec <name> <cmd>
-            result = self._run_command(["multipass", "exec", name, "sh", "-c", cmd])
+            # Use '--' to separate multipass arguments from the command to be executed
+            # multipass exec <name> -- sh -c <cmd>
+            # Use _run_command_silent to avoid double printing when called from CLI
+            result = self._run_command_silent(["multipass", "exec", name, "--", "sh", "-c", cmd])
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             return f"Error executing command: {e.stderr or e.output}"
