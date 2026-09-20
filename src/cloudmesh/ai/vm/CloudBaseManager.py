@@ -8,7 +8,7 @@ class CloudBaseManager(ABC):
     All cloud providers (OpenStack, Multipass, etc.) must implement this interface.
     """
 
-    def __init__(self, config: Any, console=None):
+    def __init__(self, config: Any, console=None, **kwargs):
         self.config = config
         self.console = console
 

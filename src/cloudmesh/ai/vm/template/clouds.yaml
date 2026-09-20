@@ -18,13 +18,11 @@ clouds:
   lima:
     enabled: true
     name: lima
+    template: ubuntu
   multipass:
     enabled: true
     image: 22.04
     name: multipass
-counter: 32
+counter: 0
 default_cloud: multipass
-last_vm:
-  default: {{username}}-1
-  multipass: {{username}}-2
 username: {{username}}

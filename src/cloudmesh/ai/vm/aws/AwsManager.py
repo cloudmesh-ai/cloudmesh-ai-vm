@@ -11,8 +11,8 @@ class Provider(LibcloudManager):
     AWS EC2 implementation of the LibcloudManager.
     """
 
-    def __init__(self, config):
-        super().__init__(config, cloud_name="aws")
+    def __init__(self, config, **kwargs):
+        super().__init__(config, cloud_name="aws", **kwargs)
 
     def _get_driver(self):
         cloud_config = self.get_cloud_config("aws")

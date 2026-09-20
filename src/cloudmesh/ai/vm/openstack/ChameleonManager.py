@@ -20,8 +20,20 @@ class Provider(OpenstackManager):
     Chameleon Cloud implementation of the OpenstackManager.
     """
 
-    def __init__(self, config):
-        super().__init__(config, cloud_name="chameleon")
+    def __init__(self, config, **kwargs):
+        super().__init__(config, cloud_name="chameleon", **kwargs)
+
+    def list_regions(self) -> List[Dict[str, Any]]:
+        """Lists available sites/regions in Chameleon Cloud."""
+        try:
+            sites_dict = chi.context.list_sites(show=None)
+            regions = []
+            for site_name, properties in sites_dict.items():
+                regions.append({"name": site_name, **properties})
+            return regions
+        except Exception as e:
+            self.print(f"Error listing Chameleon regions: {e}")
+            return []
 
     def create_reservation(self, name: str, node_type: str, count: int, start_date: str = None, end_date: str = None, duration: int = None) -> bool:
         """

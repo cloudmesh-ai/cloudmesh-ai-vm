@@ -11,6 +11,7 @@ class ProviderConfig:
     cpus: Optional[int] = None
     memory: Optional[str] = None
     disk: Optional[str] = None
+    template: Optional[str] = None
     auth: Optional[str] = None
     project_name: Optional[str] = None
     site: Optional[str] = None

@@ -11,8 +11,8 @@ class Provider(LibcloudManager):
     Google Compute Engine implementation of the LibcloudManager.
     """
 
-    def __init__(self, config):
-        super().__init__(config, cloud_name="google")
+    def __init__(self, config, **kwargs):
+        super().__init__(config, cloud_name="google", **kwargs)
 
     def _get_driver(self):
         cloud_config = self.get_cloud_config("google")

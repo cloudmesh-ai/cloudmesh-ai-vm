@@ -5,5 +5,5 @@ class Provider(OpenstackManager):
     Jetstream implementation of the OpenstackManager.
     """
 
-    def __init__(self, config):
-        super().__init__(config, cloud_name="jetstream")
+    def __init__(self, config, **kwargs):
+        super().__init__(config, cloud_name="jetstream", **kwargs)

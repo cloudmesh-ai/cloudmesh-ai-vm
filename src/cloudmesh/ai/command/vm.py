@@ -225,9 +225,9 @@ def config():
         with open(CONFIG_PATH, 'r') as f:
             console.print(f.read())
     except FileNotFoundError:
-        console.print(f"[bold red]Configuration file not found at {CONFIG_PATH}[/bold red]", stderr=True)
+        console.print(f"[bold red]Configuration file not found at {CONFIG_PATH}[/bold red]")
     except Exception as e:
-        console.print(f"[bold red]Error reading configuration file: {e}[/bold red]", stderr=True)
+        console.print(f"[bold red]Error reading configuration file: {e}[/bold red]")
 
     if os.path.exists(CONFIG_PATH):
         console.print(f"Configuration file already exists at {CONFIG_PATH}")
@@ -245,7 +245,7 @@ def config():
                 yaml.dump(sample_config, f, default_flow_style=False)
             console.print(f"Configuration saved to {CONFIG_PATH}")
         except Exception as e:
-            console.print(f"[bold red]Error saving configuration: {e}[/bold red]", stderr=True)
+            console.print(f"[bold red]Error saving configuration: {e}[/bold red]")
     else:
         console.print("Setup cancelled.")
 
@@ -271,9 +271,9 @@ def do_set_cloud(cloud):
         provider = factory.create(cloud, state.config)
         errors = provider.validate_config()
         if errors:
-            console.print(f"[bold red]Configuration errors for cloud '{cloud}':[/bold red]", stderr=True)
+            console.print(f"[bold red]Configuration errors for cloud '{cloud}':[/bold red]")
             for err in errors:
-                console.print(f"[bold red]  - {err}[/bold red]", stderr=True)
+                console.print(f"[bold red]  - {err}[/bold red]")
             raise click.ClickException("Cloud configuration is invalid.")
             
         state.config.default_cloud = cloud
@@ -357,7 +357,7 @@ def stop(ctx, name):
     if stopped:
         console.print(f"VM {vm_name} stopped.")
     else:
-        console.print(f"[bold red]Failed to stop VM {vm_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to stop VM {vm_name}.[/bold red]")
 
 @vm_group.command()
 @click.argument("name")
@@ -368,7 +368,7 @@ def info(ctx, name):
     vm_info = provider.info(name)
     
     if "error" in vm_info:
-        console.print(f"[bold red]Error: {vm_info['error']}[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: {vm_info['error']}[/bold red]")
         return
     
     console.print(f"\nInformation for VM: {name}")
@@ -394,7 +394,7 @@ def delete(ctx, name):
     if deleted:
         console.print(f"VM {vm_name} deleted.")
     else:
-        console.print(f"[bold red]Failed to delete VM {vm_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to delete VM {vm_name}.[/bold red]")
 
 @vm_group.group(name="security-group")
 def security_group():
@@ -416,7 +416,7 @@ def sg_add(ctx, group, port, protocol, cidr):
     if success:
         console.print(f"Rule added successfully to {group}: {protocol} port {port} from {cidr}")
     else:
-        console.print(f"[bold red]Failed to add rule to {group}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to add rule to {group}.[/bold red]")
 
 @security_group.command(name="list")
 @click.pass_context
@@ -446,7 +446,7 @@ def list_vms(ctx, format_json, format_yaml, format_csv, format_table):
     vms = provider.list()
     
     if not vms:
-        console.print("No VMs found.")
+        console.print(f"No VMs found on {provider.cloud_name}")
         return
 
     if format_json:
@@ -472,11 +472,8 @@ def list_vms(ctx, format_json, format_yaml, format_csv, format_table):
         
         console.print(table)
 
-@vm_group.command()
-@click.option("--name", help="Name of the VM")
-@click.pass_context
-def login(ctx, name):
-    """Logs into a VM"""
+def do_login(ctx, name):
+    """Logic to log into a VM"""
     provider = get_active_provider(ctx)
     
     vm_name = name or state.get_last_vm(provider.cloud_name)
@@ -486,7 +483,22 @@ def login(ctx, name):
     if provider.login(name=vm_name):
         console.print(f"Logged into {vm_name}.")
     else:
-        console.print(f"[bold red]Failed to login to {vm_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to login to {vm_name}.[/bold red]")
+
+@vm_group.command()
+@click.option("--name", help="Name of the VM")
+@click.pass_context
+def login(ctx, name):
+    """Logs into a VM"""
+    do_login(ctx, name)
+
+@vm_group.command()
+@click.option("--name", help="Name of the VM")
+@click.pass_context
+def shell(ctx, name):
+    """Opens a shell in the VM (alias for login)"""
+    do_login(ctx, name)
+
 
 @vm_group.command()
 @click.option("--name", help="Name of the VM")
@@ -502,7 +514,7 @@ def suspend(ctx, name):
     if provider.suspend(name=vm_name):
         console.print(f"VM {vm_name} suspended.")
     else:
-        console.print(f"[bold red]Failed to suspend VM {vm_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to suspend VM {vm_name}.[/bold red]")
 
 @vm_group.command()
 @click.option("--name", help="Name of the VM")
@@ -518,7 +530,7 @@ def restart(ctx, name):
     if provider.restart(name=vm_name):
         console.print(f"VM {vm_name} restarted.")
     else:
-        console.print(f"[bold red]Failed to restart VM {vm_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to restart VM {vm_name}.[/bold red]")
 
 @vm_group.command()
 @click.option("--name", required=True, help="Name of the reservation")
@@ -533,13 +545,13 @@ def reservation(ctx, name, node_type, count, start, end, duration):
     provider = get_active_provider(ctx)
     
     if not hasattr(provider, "create_reservation"):
-        console.print(f"[bold red]Error: Current provider does not support reservations.[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: Current provider does not support reservations.[/bold red]")
         return
 
     if provider.create_reservation(name=name, node_type=node_type, count=count, start_date=start, end_date=end, duration=duration):
         console.print(f"Reservation {name} created successfully.")
     else:
-        console.print(f"[bold red]Failed to create reservation {name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to create reservation {name}.[/bold red]")
 
 @vm_group.command()
 @click.pass_context
@@ -654,14 +666,14 @@ def assign_floating_ip(ctx, name):
     """Assign an available floating IP to the VM"""
     provider = get_active_provider(ctx)
     if not hasattr(provider, "assign_floating_ip"):
-        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support floating IP assignment.[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support floating IP assignment.[/bold red]")
         return
 
     ip = provider.assign_floating_ip(name)
     if ip:
         console.print(f"Successfully assigned floating IP {ip} to VM {name}.")
     else:
-        console.print(f"[bold red]Failed to assign floating IP to VM {name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to assign floating IP to VM {name}.[/bold red]")
 
 @vm_group.command()
 @click.argument("name")
@@ -670,13 +682,49 @@ def release_floating_ip(ctx, name):
     """Release the floating IP of the VM"""
     provider = get_active_provider(ctx)
     if not hasattr(provider, "release_floating_ip"):
-        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support floating IP release.[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support floating IP release.[/bold red]")
         return
 
     if provider.release_floating_ip(name):
         console.print(f"Successfully released floating IP for VM {name}.")
     else:
-        console.print(f"[bold red]Failed to release floating IP for VM {name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to release floating IP for VM {name}.[/bold red]")
+
+@vm_group.group(name="regions")
+def regions_group():
+    """Manage cloud regions"""
+    pass
+
+@regions_group.command(name="list")
+@click.pass_context
+def list_regions_cmd(ctx):
+    """Lists available regions for the active cloud provider"""
+    provider = get_active_provider(ctx)
+    if not hasattr(provider, "list_regions"):
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support listing regions.[/bold red]")
+        return
+
+    regions = provider.list_regions()
+    if not regions:
+        console.print("No regions found.")
+        return
+
+    # Use a table for better presentation
+    table = Table(title=f"Regions for {provider.cloud_name}", box=box.SQUARE, show_lines=True)
+    
+    # Determine columns from the first region's keys
+    headers = list(regions[0].keys())
+    for header in headers:
+        table.add_column(header)
+    
+    for region in regions:
+        row = [str(region.get(h, "")) for h in headers]
+        table.add_row(*row)
+    
+    console.print(table)
+
+vm_group.add_command(regions_group)
+
 
 @vm_group.group(name="key")
 def key_group():
@@ -691,13 +739,13 @@ def upload(ctx, key_path, key_name):
     """Upload a public key to the cloud"""
     provider = get_active_provider(ctx)
     if not hasattr(provider, "upload_key"):
-        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support key upload.[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support key upload.[/bold red]")
         return
 
     if provider.upload_key(key_path, key_name):
         console.print(f"Successfully uploaded key {key_name} from {key_path}.")
     else:
-        console.print(f"[bold red]Failed to upload key {key_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to upload key {key_name}.[/bold red]")
 
 @key_group.command()
 @click.argument("key_name")
@@ -706,13 +754,13 @@ def delete(ctx, key_name):
     """Delete a public key from the cloud"""
     provider = get_active_provider(ctx)
     if not hasattr(provider, "delete_key"):
-        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support key deletion.[/bold red]", stderr=True)
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support key deletion.[/bold red]")
         return
 
     if provider.delete_key(key_name):
         console.print(f"Successfully deleted key {key_name}.")
     else:
-        console.print(f"[bold red]Failed to delete key {key_name}.[/bold red]", stderr=True)
+        console.print(f"[bold red]Failed to delete key {key_name}.[/bold red]")
 
 entry_point = vm_group
 

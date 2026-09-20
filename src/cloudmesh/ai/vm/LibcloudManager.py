@@ -14,8 +14,8 @@ class LibcloudManager(CloudBaseManager):
     Implements common VM operations using the libcloud unified API.
     """
 
-    def __init__(self, config: Dict[str, Any], cloud_name: str):
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], cloud_name: str, **kwargs):
+        super().__init__(config, **kwargs)
         self.cloud_name = cloud_name
         try:
             self.driver = self._get_driver()

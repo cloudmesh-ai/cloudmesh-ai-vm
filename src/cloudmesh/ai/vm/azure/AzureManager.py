@@ -11,8 +11,8 @@ class Provider(LibcloudManager):
     Azure implementation of the LibcloudManager.
     """
 
-    def __init__(self, config):
-        super().__init__(config, cloud_name="azure")
+    def __init__(self, config, **kwargs):
+        super().__init__(config, cloud_name="azure", **kwargs)
 
     def _get_driver(self):
         cloud_config = self.get_cloud_config("azure")

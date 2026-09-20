@@ -10,8 +10,8 @@ class Provider(CloudBaseManager):
     Uses the 'limactl' CLI tool to manage local VMs on macOS.
     """
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
         self._verify_installation()
 
     def _verify_installation(self):
