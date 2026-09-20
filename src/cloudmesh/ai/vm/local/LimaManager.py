@@ -286,15 +286,22 @@ class Provider(CloudBaseManager):
             return False
         return shutil.which("limactl") is not None
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> Dict[str, List[str]]:
         """
         Validates Lima configuration.
         """
-        errors = []
+        errors_map = {}
         config = self.get_cloud_config("lima")
+        
+        config_name = "Cloudmesh config (~/.config/cloudmesh/clouds.yaml)"
+        errors = []
         if not config.get("template"):
             errors.append("Missing required field: 'template'")
-        return errors
+        
+        if errors:
+            errors_map[config_name] = errors
+            
+        return errors_map
 
     def shelve(self, name: Optional[str] = None) -> bool:
         """

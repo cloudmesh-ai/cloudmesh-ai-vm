@@ -692,12 +692,15 @@ class OpenstackManager(CloudBaseManager):
         except Exception as e:
             return f"Unexpected error executing command: {e}"
         
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> Dict[str, List[str]]:
         """
         Validates OpenStack specific configuration.
         """
-        errors = []
+        errors_map = {}
         config = self.get_cloud_config(self.cloud_name)
+        
+        config_name = "Cloudmesh config (~/.config/cloudmesh/clouds.yaml)"
+        errors = []
         
         if not config.get("image"):
             errors.append("Missing required field: 'image'")
@@ -706,5 +709,8 @@ class OpenstackManager(CloudBaseManager):
         if not config.get("key_path"):
             errors.append("Missing required field: 'key_path' for SSH access")
         
-        return errors
+        if errors:
+            errors_map[config_name] = errors
+            
+        return errors_map
 

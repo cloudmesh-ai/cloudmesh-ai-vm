@@ -204,9 +204,9 @@ class Provider(CloudBaseManager):
             return {"error": str(e)}
 
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> Dict[str, List[str]]:
         """
         Validates VirtualBox configuration.
         """
-        return []
+        return {}
 

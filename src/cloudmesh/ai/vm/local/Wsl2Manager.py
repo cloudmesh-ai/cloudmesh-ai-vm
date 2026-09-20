@@ -256,12 +256,19 @@ class Provider(CloudBaseManager):
             return False
         return shutil.which("wsl") is not None
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> Dict[str, List[str]]:
         """
         Validates WSL2 configuration.
         """
-        errors = []
+        errors_map = {}
         config = self.get_cloud_config("wsl2")
+        
+        config_name = "Cloudmesh config (~/.config/cloudmesh/clouds.yaml)"
+        errors = []
         if not config.get("rootfs"):
             errors.append("Missing required field: 'rootfs' (rootfs image path)")
-        return errors
+        
+        if errors:
+            errors_map[config_name] = errors
+            
+        return errors_map

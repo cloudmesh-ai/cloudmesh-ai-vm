@@ -9,6 +9,10 @@ class Provider(CloudBaseManager):
     Uses the 'multipass' CLI tool to manage local VMs.
     """
 
+    def __init__(self, config: Any, console=None, **kwargs):
+        super().__init__(config, console=console, **kwargs)
+        self.cloud_name = "multipass"
+
     def _run_command(self, command: List[str]) -> subprocess.CompletedProcess:
         """Helper to run shell commands and stream output in real-time."""
         try:
@@ -60,7 +64,6 @@ class Provider(CloudBaseManager):
         vm_image = image or cloud_config.get("image", "22.04")
         
         # 2. Resolve resources (CPU, Memory, Disk)
-        # Priority: flavor override -> config defaults
         cpus = cloud_config.get("cpus")
         memory = cloud_config.get("memory")
         disk = cloud_config.get("disk")
@@ -90,169 +93,76 @@ class Provider(CloudBaseManager):
         
         return name if name else "multipass-generated"
 
-
     def stop(self, name: Optional[str] = None) -> bool:
-        """
-        Stops a Multipass VM.
-        """
+        """Stops a Multipass VM."""
         if not name:
-            self.print("Error: VM name is required to stop.")
-            return False
+            raise ValueError("VM name is required to stop the VM.")
         
         try:
             self._run_command(["multipass", "stop", name])
             return True
-        except subprocess.CalledProcessError:
+        except Exception as e:
+            self.print(f"Error stopping VM {name}: {e}")
             return False
 
     def delete(self, name: Optional[str] = None) -> bool:
-        """
-        Deletes a Multipass VM.
-        """
+        """Deletes a Multipass VM."""
         if not name:
-            self.print("Error: VM name is required to delete.")
-            return False
+            raise ValueError("VM name is required to delete the VM.")
         
         try:
-            # Multipass requires a delete then a purge
-            self._run_interactive(["multipass", "delete", name])
-            self._run_interactive(["multipass", "purge"])
+            self._run_command(["multipass", "delete", name])
+            self._run_command(["multipass", "purge"])
             return True
-        except subprocess.CalledProcessError:
+        except Exception as e:
+            self.print(f"Error deleting VM {name}: {e}")
             return False
 
     def list(self) -> List[Dict[str, Any]]:
-        """
-        Lists Multipass VMs.
-        """
+        """Lists all Multipass VMs."""
         try:
             result = self._run_command_silent(["multipass", "list"])
             lines = result.stdout.strip().split("\n")
-            if len(lines) < 2:
+            if not lines or len(lines) < 2:
                 return []
             
-            # Parse headers
-            headers = lines[0].split()
             vms = []
-            
+            # Skip the header line
             for line in lines[1:]:
-                parts = line.split()
-                if len(parts) >= 2:
-                    vm_info = {headers[i]: parts[i] for i in range(min(len(headers), len(parts)))}
-                    vms.append(vm_info)
-            
+                # Multipass output is usually columns. We split by whitespace.
+                parts = re.split(r'\s+', line.strip(), maxsplit=3)
+                if len(parts) >= 3:
+                    vms.append({
+                        "name": parts[0],
+                        "status": parts[1],
+                        "ip": parts[2] if parts[2] != "-" else "None"
+                    })
             return vms
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, Exception) as e:
+            self.print(f"Error listing Multipass VMs: {e}")
             return []
 
-    def login(self, name: Optional[str] = None) -> bool:
-        """
-        Logs into a Multipass VM using 'multipass shell'.
-        """
-        if not name:
-            self.print("Error: VM name is required to login.")
-            return False
-        
-        try:
-            # 'shell' is interactive, so we use subprocess.run without capture_output
-            # to let the user interact with the VM.
-            subprocess.run(["multipass", "shell", name], check=True)
-            return True
-        except subprocess.CalledProcessError:
-            return False
-
-    def suspend(self, name: Optional[str] = None) -> bool:
-        """
-        Multipass does not have a native 'suspend'. Implementing as 'stop'.
-        """
-        return self.stop(name)
-
-    def restart(self, name: Optional[str] = None) -> bool:
-        """
-        Restarts a Multipass VM.
-        """
-        if not name:
-            self.print("Error: VM name is required to restart.")
-            return False
-        
-        try:
-            self.stop(name)
-            self._run_command(["multipass", "start", name])
-            return True
-        except subprocess.CalledProcessError:
-            return False
-
-        
-    def run_command(self, name: str, cmd: str) -> str:
-        """
-        Executes a command on a Multipass VM.
-        """
-        try:
-            # Use '--' to separate multipass arguments from the command to be executed
-            # multipass exec <name> -- sh -c <cmd>
-            # Use _run_command_silent to avoid double printing when called from CLI
-            result = self._run_command_silent(["multipass", "exec", name, "--", "sh", "-c", cmd])
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            return f"Error executing command: {e.stderr or e.output}"
-        except Exception as e:
-            return f"Unexpected error: {e}"
-
-
-
     def info(self, name: str) -> Dict[str, Any]:
-        """
-        Gets detailed information about a Multipass VM.
-        """
+        """Gets detailed information about a Multipass VM."""
         try:
-            result = self._run_command(["multipass", "info", name])
-            lines = result.stdout.strip().split("\n")
-            info = {}
-            for line in lines:
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    info[key.strip()] = value.strip()
-            return info
-        except subprocess.CalledProcessError:
-            return {"error": f"Could not get info for VM {name}"}
-
-    def get_flavors(self) -> List[Dict[str, Any]]:
-        """
-        Multipass uses CPU/RAM/Disk options rather than fixed flavors.
-        Returning a list of common custom options.
-        """
-        return [
-            {"name": "default", "cpu": 1, "ram": "1GiB", "disk": "5GiB"},
-            {"name": "medium", "cpu": 2, "ram": "2GiB", "disk": "10GiB"},
-            {"name": "large", "cpu": 4, "ram": "4GiB", "disk": "20GiB"},
-        ]
-
-    def get_flavor(self, name: str) -> Optional[Dict[str, Any]]:
-        """
-        Gets details for a specific flavor by name.
-        """
-        flavors = self.get_flavors()
-        for flavor in flavors:
-            if flavor.get("name") == name:
-                return flavor
-        return None
+            result = self._run_command_silent(["multipass", "info", name])
+            return {"name": name, "details": result.stdout}
+        except Exception as e:
+            self.print(f"Error getting info for VM {name}: {e}")
+            return {}
 
     def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
-        """Helper to run shell commands silently and return the result."""
-        return subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        """Helper to run shell commands without printing output to the console."""
+        try:
+            return subprocess.run(command, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            # Log the error but return the process object to allow the caller to handle it
+            return e
 
     def get_images(self) -> List[Dict[str, Any]]:
-        """
-        Lists available images in Multipass using 'multipass find'.
-        """
+        """Lists available Multipass images."""
         try:
-            # Use silent command to avoid leaking raw output to console
-            result = self._run_command_silent(["multipass", "find"])
+            result = self._run_command_silent(["multipass", "images"])
             lines = result.stdout.strip().split("\n")
             if not lines:
                 return []
@@ -263,32 +173,26 @@ class Provider(CloudBaseManager):
                 line = line.strip()
                 if line.startswith("- "):
                     # Example line: "- 22.04 (Ubuntu Jammy Jellyfish)"
-                    # Extract the version string (e.g., 22.04)
                     content = line[2:].strip()
                     if content:
                         image_name = content.split()[0]
                         images.append({"name": image_name})
-            
             return images
         except (subprocess.CalledProcessError, Exception) as e:
             self.print(f"Error listing Multipass images: {e}")
             return []
-        
+
     def check_requirements(self) -> bool:
-        """
-        Checks if the requirements for this provider are met on the current system.
-        """
+        """Checks if the requirements for this provider are met on the current system."""
         import shutil
+        return shutil.which("multipass") is not None
+
     @property
     def version(self) -> List[str]:
-        """
-        Returns the first line of the multipass version output.
-        """
+        """Returns the first line of the multipass version output."""
         try:
             result = self._run_command_silent(["multipass", "version"])
-            # Multipass version output has multiple lines (cli and daemon) and a banner.
             lines = result.stdout.strip().split("\n")
-            # We want the lines that look like "multipass 1.x"
             versions = [line.strip() for line in lines if " " in line and not line.startswith("#")]
             if versions:
                 return [versions[0]]
@@ -296,56 +200,14 @@ class Provider(CloudBaseManager):
             pass
         return ["Unknown"]
 
-        return shutil.which("multipass") is not None                
-
     def get_keys(self) -> List[Dict[str, Any]]:
-        """
-        Multipass manages its own keys internally.
-        """
+        """Multipass manages its own keys internally."""
         return [{"name": "multipass-default-key", "path": "~/.ssh/multipass_rsa"}]
 
     def get_security_groups(self) -> List[Dict[str, Any]]:
-        """
-        Multipass does not use security groups.
-        """
+        """Multipass does not use security groups."""
         return [{"name": "default", "description": "Local network access"}]
 
     def get_cost(self, **kwargs) -> Optional[Any]:
-        """
-        Returns the cost information for Multipass.
-        """
-        return {"value": 0, "unit": None}
-
-    def shelve(self, name: Optional[str] = None) -> bool:
-        """
-        Shelves a VM. Not supported for Multipass.
-        """
-        self.print(f"Shelve is not supported for the provider Multipass")
-        return False
-
-    def unshelve(self, name: Optional[str] = None) -> bool:
-        """
-        Unshelves a VM. Not supported for Multipass.
-        """
-        self.print(f"Unshelve is not supported for the provider Multipass")
-        return False
-
-    def shelve(self, name: Optional[str] = None) -> bool:
-        """
-        Shelves a VM. Not supported for Multipass.
-        """
-        self.print(f"Shelve is not supported for the provider Multipass")
-        return False
-
-    def unshelve(self, name: Optional[str] = None) -> bool:
-        """
-        Unshelves a VM. Not supported for Multipass.
-        """
-        self.print(f"Unshelve is not supported for the provider Multipass")
-        return False
-
-    def get_cost(self, **kwargs) -> Optional[Any]:
-        """
-        Returns the cost information for Multipass.
-        """
+        """Returns the cost information for Multipass."""
         return {"value": 0, "unit": None}

@@ -27,3 +27,14 @@ cmx = "cloudmesh.ai.command.vm:cmx"
 
 [project.entry-points."cloudmesh.ai.cmc"]
 vm = "cloudmesh.ai.command.vm.vm_group"
+
+[project.entry-points."cloudmesh.ai.vm"]
+multipass = "cloudmesh.ai.vm.local.MultipassManager:Provider"
+lima = "cloudmesh.ai.vm.local.LimaManager:Provider"
+wsl2 = "cloudmesh.ai.vm.local.Wsl2Manager:Provider"
+vbox = "cloudmesh.ai.vm.local.VBoxManager:Provider"
+jetstream = "cloudmesh.ai.vm.openstack.JetstreamManager:Provider"
+chameleon = "cloudmesh.ai.vm.openstack.ChameleonManager:Provider"
+aws = "cloudmesh.ai.vm.aws.AwsManager:Provider"
+azure = "cloudmesh.ai.vm.azure.AzureManager:Provider"
+google = "cloudmesh.ai.vm.google.GoogleManager:Provider"
