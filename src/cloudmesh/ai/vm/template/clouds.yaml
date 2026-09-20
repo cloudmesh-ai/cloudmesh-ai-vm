@@ -1,0 +1,30 @@
+clouds:
+  aws:
+    enabled: false
+    image: ami-xxxxxxxxxxxxxxxxx
+    name: aws
+    region: us-east-1
+  chameleon:
+    enabled: true
+    image: CC-Ubuntu24.04
+    name: chameleon
+    region: KVM@TACC
+    credentials: chameleon:~/.config/openstack/clouds.yaml
+  jetstream:
+    enabled: true
+    image: Featured-Minimal-Ubuntu24
+    name: jetstream
+    credentials: jetstream:~/.config/openstack/clouds.yaml
+  lima:
+    enabled: true
+    name: lima
+  multipass:
+    enabled: true
+    image: 22.04
+    name: multipass
+counter: 32
+default_cloud: multipass
+last_vm:
+  default: {{username}}-1
+  multipass: {{username}}-2
+username: {{username}}
