@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
-from cloudmesh.ai.vm.exceptions import ProviderError, ResourceNotFoundError, AuthenticationError
+from cloudmesh.ai.vm.exceptions import VMProviderError, VMResourceError, VMAuthError
 from cloudmesh.ai.vm.logger import logger
 
 try:
@@ -48,16 +48,16 @@ class LibcloudManager(CloudBaseManager):
         """
         raise NotImplementedError("Subclasses must implement _get_driver()")
 
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
         Creates and starts a VM in the cloud.
         """
         cloud_config = self.get_cloud_config(self.cloud_name)
-        image_name = cloud_config.get("image")
-        size_name = cloud_config.get("size") or cloud_config.get("flavor")
+        image_name = image or cloud_config.get("image")
+        size_name = flavor or cloud_config.get("size") or cloud_config.get("flavor")
         
         if not image_name or not size_name:
-            raise ProviderError(f"Image or Size/Flavour missing in config for {self.cloud_name}")
+            raise VMProviderError(f"Image or Size/Flavour missing in config for {self.cloud_name}")
 
         try:
             images = self.driver.list_images()
@@ -67,7 +67,7 @@ class LibcloudManager(CloudBaseManager):
             size = next((s for s in sizes if s.id == size_name or s.name == size_name), None)
 
             if not image or not size:
-                raise ResourceNotFoundError(f"Could not find image {image_name} or size {size_name} in {self.cloud_name}")
+                raise VMResourceError(f"Could not find image {image_name} or size {size_name} in {self.cloud_name}")
 
             try:
                 node = self.driver.create_node(name=name, image=image, size=size)
@@ -76,11 +76,11 @@ class LibcloudManager(CloudBaseManager):
 
             logger.info(f"Successfully started VM {node.name} in {self.cloud_name}")
             return node.name
-        except (ProviderError, ResourceNotFoundError):
+        except (VMProviderError, VMResourceError):
             raise
         except Exception as e:
             logger.error(f"Unexpected error starting VM in {self.cloud_name}: {e}")
-            raise ProviderError(f"Failed to start VM in {self.cloud_name}: {e}")
+            raise VMProviderError(f"Failed to start VM in {self.cloud_name}: {e}")
 
     def stop(self, name: Optional[str] = None) -> bool:
         if not name: return False
@@ -201,8 +201,63 @@ class LibcloudManager(CloudBaseManager):
 
     def run_command(self, name: str, cmd: str) -> str:
         """
-        Executes a command on the VM.
-        Note: This is a stub for libcloud-based providers as libcloud does not provide a unified run_command API.
+        Executes a command on the VM via SSH.
+        Since libcloud does not provide a unified run_command API, we use system SSH.
         """
-        return f"run_command is not yet implemented for this cloud provider ({self.cloud_name})"
+        try:
+            # 1. Resolve the node and its public IP
+            node = self.driver.get_node(name)
+            if not node:
+                return f"Error: VM {name} not found in {self.cloud_name}."
+            
+            public_ips = getattr(node, 'public_ips', [])
+            if not public_ips:
+                return f"Error: No public IP found for VM {name}. Remote execution requires a public IP."
+            
+            floating_ip = public_ips[0]
+            
+            # 2. Get credentials from config
+            cloud_config = self.get_cloud_config(self.cloud_name)
+            key_path = cloud_config.get("key_path", "~/.ssh/id_rsa")
+            user = cloud_config.get("user", "ubuntu")
+            
+            import subprocess
+            import os
+            key_path = os.path.expanduser(key_path)
+            
+            # 3. Execute via system SSH
+            ssh_cmd = [
+                "ssh", 
+                "-i", key_path, 
+                "-o", "StrictHostKeyChecking=no", 
+                "-o", "UserKnownHostsFile=/dev/null",
+                f"{user}@{floating_ip}", 
+                cmd
+            ]
+            
+            result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                return f"SSH Error (code {result.returncode}): {result.stderr}"
+            
+            return result.stdout.strip()
+            
+        except subprocess.TimeoutExpired:
+            return "Error: Command timed out after 30 seconds."
+        except Exception as e:
+            return f"Unexpected error executing command on {self.cloud_name}: {e}"
+
+    def validate_config(self) -> List[str]:
+        """
+        Validates libcloud provider configuration.
+        """
+        errors = []
+        cloud_config = self.get_cloud_config(self.cloud_name)
+        
+        if not cloud_config.get("image"):
+            errors.append(f"Missing required field: 'image' for {self.cloud_name}")
+        if not (cloud_config.get("size") or cloud_config.get("flavor")):
+            errors.append(f"Missing required field: 'size' or 'flavor' for {self.cloud_name}")
+        
+        return errors
 

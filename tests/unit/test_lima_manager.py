@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock, PropertyMock
 import subprocess
 from cloudmesh.ai.vm.local.LimaManager import Provider
-from cloudmesh.ai.vm.exceptions import ProviderError
+from cloudmesh.ai.vm.exceptions import VMProviderError
 
 @pytest.fixture
 def mock_config():
@@ -31,7 +31,7 @@ def test_init_failure():
     with patch("subprocess.run") as mock_run:
         mock_run.side_effect = FileNotFoundError
         config = {"clouds": {}}
-        with pytest.raises(ProviderError, match="limactl not found"):
+        with pytest.raises(VMProviderError, match="limactl not found"):
             Provider(config)
 
 def test_start_with_name(provider):
@@ -154,7 +154,7 @@ def test_restart(provider):
 def test_getters(provider):
     flavors = provider.get_flavors()
     assert len(flavors) > 0
-    assert flavors[0]["name"] == "ubuntu"
+    assert flavors[0]["name"] == "default"
     
     keys = provider.get_keys()
     assert len(keys) == 1

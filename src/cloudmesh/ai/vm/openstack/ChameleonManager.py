@@ -32,7 +32,7 @@ class Provider(OpenstackManager):
         project = cloud_config.get("project_name")
 
         if not project:
-            print("Error: 'project_name' must be configured in clouds.yaml for Chameleon reservations.")
+            self.print("Error: 'project_name' must be configured in clouds.yaml for Chameleon reservations.")
             return False
 
         try:
@@ -63,6 +63,6 @@ class Provider(OpenstackManager):
             )
             return True
         except Exception as e:
-            print(f"Error creating reservation in Chameleon: {e}")
+            self.print(f"Error creating reservation in Chameleon: {e}")
             return False
 

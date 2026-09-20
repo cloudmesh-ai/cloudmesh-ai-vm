@@ -15,6 +15,9 @@ def config(tmp_path, runner):
         "password": "smoke_password",
         "tenant_id": "smoke_tenant",
         "region": "us-east-1",
+        "image": "ubuntu-22.04",
+        "flavor": "m1.small",
+        "key_path": "~/.ssh/id_rsa",
     }
     setup_cli_config(tmp_path, "chameleon", provider_config)
 

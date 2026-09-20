@@ -23,7 +23,7 @@ class Provider(CloudBaseManager):
             
             full_output = []
             for line in process.stdout:
-                print(line, end="")
+                self.print_ansi(line, end="")
                 full_output.append(line)
                 
             process.wait()
@@ -47,18 +47,30 @@ class Provider(CloudBaseManager):
             # The error is already printed via the loop above, but we keep the exception for the caller
             raise e
         except Exception as e:
-            print(f"Unexpected error executing command {' '.join(command)}: {e}")
+            self.print(f"Unexpected error executing command {' '.join(command)}: {e}")
             raise e
 
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
         Starts (launches) a Multipass VM with optional resource configurations.
         """
         cloud_config = self.get_cloud_config("multipass")
-        image = cloud_config.get("image", "22.04")
+        
+        # 1. Resolve image
+        vm_image = image or cloud_config.get("image", "22.04")
+        
+        # 2. Resolve resources (CPU, Memory, Disk)
+        # Priority: flavor override -> config defaults
         cpus = cloud_config.get("cpus")
         memory = cloud_config.get("memory")
         disk = cloud_config.get("disk")
+        
+        if flavor:
+            flavor_details = self.get_flavor(flavor)
+            if flavor_details:
+                cpus = flavor_details.get("cpu", cpus)
+                memory = flavor_details.get("ram", memory)
+                disk = flavor_details.get("disk", disk)
         
         command = ["multipass", "launch"]
         
@@ -72,9 +84,9 @@ class Provider(CloudBaseManager):
         if name:
             command.extend(["-n", name])
             
-        command.append(str(image))
+        command.append(str(vm_image))
         
-        self._run_command(command)
+        self._run_interactive(command)
         
         return name if name else "multipass-generated"
 
@@ -84,7 +96,7 @@ class Provider(CloudBaseManager):
         Stops a Multipass VM.
         """
         if not name:
-            print("Error: VM name is required to stop.")
+            self.print("Error: VM name is required to stop.")
             return False
         
         try:
@@ -98,13 +110,13 @@ class Provider(CloudBaseManager):
         Deletes a Multipass VM.
         """
         if not name:
-            print("Error: VM name is required to delete.")
+            self.print("Error: VM name is required to delete.")
             return False
         
         try:
             # Multipass requires a delete then a purge
-            self._run_command(["multipass", "delete", name])
-            self._run_command(["multipass", "purge"])
+            self._run_interactive(["multipass", "delete", name])
+            self._run_interactive(["multipass", "purge"])
             return True
         except subprocess.CalledProcessError:
             return False
@@ -114,7 +126,7 @@ class Provider(CloudBaseManager):
         Lists Multipass VMs.
         """
         try:
-            result = self._run_command(["multipass", "list"])
+            result = self._run_command_silent(["multipass", "list"])
             lines = result.stdout.strip().split("\n")
             if len(lines) < 2:
                 return []
@@ -138,7 +150,7 @@ class Provider(CloudBaseManager):
         Logs into a Multipass VM using 'multipass shell'.
         """
         if not name:
-            print("Error: VM name is required to login.")
+            self.print("Error: VM name is required to login.")
             return False
         
         try:
@@ -160,7 +172,7 @@ class Provider(CloudBaseManager):
         Restarts a Multipass VM.
         """
         if not name:
-            print("Error: VM name is required to restart.")
+            self.print("Error: VM name is required to restart.")
             return False
         
         try:
@@ -241,7 +253,7 @@ class Provider(CloudBaseManager):
         try:
             # Use silent command to avoid leaking raw output to console
             result = self._run_command_silent(["multipass", "find"])
-            lines = result.stdout.strip().split("\\n")
+            lines = result.stdout.strip().split("\n")
             if not lines:
                 return []
             
@@ -259,7 +271,7 @@ class Provider(CloudBaseManager):
             
             return images
         except (subprocess.CalledProcessError, Exception) as e:
-            print(f"Error listing Multipass images: {e}")
+            self.print(f"Error listing Multipass images: {e}")
             return []
         
     def check_requirements(self) -> bool:

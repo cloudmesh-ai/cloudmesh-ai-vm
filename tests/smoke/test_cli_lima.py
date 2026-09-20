@@ -10,7 +10,7 @@ def runner():
 @pytest.fixture
 def config(tmp_path, runner):
     provider_config = {
-        "image": "ubuntu-22.04",
+        "template": "ubuntu",
     }
     setup_cli_config(tmp_path, "lima", provider_config)
 

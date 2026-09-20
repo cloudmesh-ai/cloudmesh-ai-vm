@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
+from rich.text import Text
 
 class CloudBaseManager(ABC):
     """
@@ -7,8 +8,9 @@ class CloudBaseManager(ABC):
     All cloud providers (OpenStack, Multipass, etc.) must implement this interface.
     """
 
-    def __init__(self, config: Any):
+    def __init__(self, config: Any, console=None):
         self.config = config
+        self.console = console
 
     def get_cloud_config(self, cloud_name: str) -> Dict[str, Any]:
         """
@@ -29,10 +31,12 @@ class CloudBaseManager(ABC):
         return cloud_cfg if isinstance(cloud_cfg, dict) else {}
 
     @abstractmethod
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
         Starts a VM.
         :param name: Optional name for the VM. If not provided, the manager should handle naming.
+        :param flavor: Optional flavor/size override.
+        :param image: Optional image override.
         :return: The name of the started VM.
         """
         pass
@@ -148,10 +152,80 @@ class CloudBaseManager(ABC):
         """
         pass
 
-    @abstractmethod
     def get_security_groups(self) -> List[Dict[str, Any]]:
         """
         Lists available security groups for the current cloud.
         :return: A list of security group details.
         """
-        pass
+        return []
+
+    def upload_key(self, key_path: str, key_name: str) -> bool:
+        """
+        Uploads a public key to the cloud provider.
+        :param key_path: Path to the public key file.
+        :param key_name: Name to assign to the key.
+        :return: True if successful, False otherwise.
+        """
+        return False
+
+    def delete_key(self, key_name: str) -> bool:
+        """
+        Deletes a public key from the cloud provider.
+        :param key_name: Name of the key to delete.
+        :return: True if successful, False otherwise.
+        """
+        return False
+
+
+    def validate_config(self) -> List[str]:
+        """
+        Validates that the cloud configuration has all required fields.
+        :return: A list of missing or invalid configuration fields. If empty, config is valid.
+        """
+        return []
+
+    def add_security_group_rule(self, group_name: str, port: int, protocol: str = "tcp", cidr: str = "0.0.0.0/0") -> bool:
+        """
+        Adds a security group rule to allow traffic on a specific port.
+        :param group_name: Name of the security group to modify.
+        :param port: Port number to open.
+        :param protocol: Protocol to use (e.g., 'tcp', 'udp', 'icmp'). Default is 'tcp'.
+        :param cidr: CIDR block to allow. Default is '0.0.0.0/0'.
+        :return: True if successful, False otherwise.
+        """
+        return False
+
+    def print(self, *args, **kwargs):
+        """Helper to print output using the associated rich console if available."""
+        if self.console:
+            self.console.print(*args, **kwargs)
+        else:
+            print(*args, **kwargs)
+
+    def print_ansi(self, text: str, **kwargs):
+        """Prints text and cleans up ANSI sequences and CLI spinner artifacts."""
+        import re
+        
+        # 1. Remove repetitive spinner sequences (e.g., /-\|/-\|).
+        # If we see 4 or more characters from the spinner set in a row, it's definitely a spinner.
+        sanitized_text = re.sub(r'[/\-\\|]{4,}', '', text)
+        
+        # 2. Remove any remaining carriage returns or cursor moves to prevent line fragmentation.
+        sanitized_text = re.sub(r'\r|\x1b\[[0-9]*G|\x1b\[H', '', sanitized_text)
+        
+        if self.console:
+            self.console.print(Text.from_ansi(sanitized_text), **kwargs)
+        else:
+            print(sanitized_text, **kwargs)
+
+
+
+
+    def _run_interactive(self, command: List[str]):
+        """Runs a command directly connected to the terminal for smooth animations."""
+        import subprocess
+        try:
+            return subprocess.run(command, capture_output=False, check=True)
+        except subprocess.CalledProcessError as e:
+            # The error is already printed by the process to stderr
+            raise e

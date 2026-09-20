@@ -52,9 +52,9 @@ class StateManager:
         self.save()
         return self.config.counter
 
-    def set_last_vm(self, vm_name: str):
-        self.config.last_vm = vm_name
+    def set_last_vm(self, cloud_name: str, vm_name: str):
+        self.config.last_vm[cloud_name] = vm_name
         self.save()
 
-    def get_last_vm(self) -> Optional[str]:
-        return self.config.last_vm
+    def get_last_vm(self, cloud_name: str) -> Optional[str]:
+        return self.config.last_vm.get(cloud_name)

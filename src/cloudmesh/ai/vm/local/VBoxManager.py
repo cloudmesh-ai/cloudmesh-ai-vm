@@ -2,7 +2,7 @@ import subprocess
 import re
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
-from cloudmesh.ai.vm.exceptions import ProviderError
+from cloudmesh.ai.vm.exceptions import VMProviderError
 
 class Provider(CloudBaseManager):
     """
@@ -15,17 +15,17 @@ class Provider(CloudBaseManager):
         try:
             return subprocess.run(command, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"Error executing command {' '.join(command)}: {e.stderr}")
+            self.print(f"Error executing command {' '.join(command)}: {e.stderr}")
             raise e
 
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
         Starts a VirtualBox VM.
         Note: VBoxManage does not have a simple 'launch' like Multipass.
         This implementation assumes the VM already exists.
         """
         if not name:
-            print("Error: VirtualBox requires a specific VM name to start.")
+            self.print("Error: VirtualBox requires a specific VM name to start.")
             return "error"
         
         try:
@@ -40,7 +40,7 @@ class Provider(CloudBaseManager):
         Stops a VirtualBox VM.
         """
         if not name:
-            print("Error: VM name is required to stop.")
+            self.print("Error: VM name is required to stop.")
             return False
         
         try:
@@ -55,7 +55,7 @@ class Provider(CloudBaseManager):
         Deletes a VirtualBox VM and its registered files.
         """
         if not name:
-            print("Error: VM name is required to delete.")
+            self.print("Error: VM name is required to delete.")
             return False
         
         try:
@@ -94,11 +94,11 @@ class Provider(CloudBaseManager):
         This method informs the user to use SSH or the GUI.
         """
         if not name:
-            print("Error: VM name is required to login.")
+            self.print("Error: VM name is required to login.")
             return False
         
-        print(f"Note: VirtualBox does not have a native shell. Please use SSH to log into {name}.")
-        print(f"Example: ssh username@{ip_address}")
+        self.print(f"Note: VirtualBox does not have a native shell. Please use SSH to log into {name}.")
+        self.print(f"Example: ssh username@{ip_address}")
         return False
 
     def suspend(self, name: Optional[str] = None) -> bool:
@@ -106,7 +106,7 @@ class Provider(CloudBaseManager):
         Suspends a VirtualBox VM (Saves state).
         """
         if not name:
-            print("Error: VM name is required to suspend.")
+            self.print("Error: VM name is required to suspend.")
             return False
         
         try:
@@ -120,7 +120,7 @@ class Provider(CloudBaseManager):
         Restarts a VirtualBox VM.
         """
         if not name:
-            print("Error: VM name is required to restart.")
+            self.print("Error: VM name is required to restart.")
             return False
         
         try:
@@ -176,7 +176,7 @@ class Provider(CloudBaseManager):
         Requires Guest Additions.
         """
         if not name:
-            raise ProviderError("VM name is required to run command.")
+            raise VMProviderError("VM name is required to run command.")
         
         cloud_config = self.get_cloud_config("vbox")
         username = cloud_config.get("username", "user")
@@ -202,4 +202,11 @@ class Provider(CloudBaseManager):
             return {"Name": name, "RawInfo": result.stdout}
         except Exception as e:
             return {"error": str(e)}
+
+
+    def validate_config(self) -> List[str]:
+        """
+        Validates VirtualBox configuration.
+        """
+        return []
 

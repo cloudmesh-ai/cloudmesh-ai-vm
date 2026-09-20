@@ -4,7 +4,7 @@ from cloudmesh.ai.vm.aws.AwsManager import Provider as AwsProvider
 from cloudmesh.ai.vm.azure.AzureManager import Provider as AzureProvider
 from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
 
-from cloudmesh.ai.vm.exceptions import ProviderError
+from cloudmesh.ai.vm.exceptions import VMProviderError
 
 # Mock configuration
 MOCK_CONFIG = {
@@ -149,5 +149,5 @@ class TestLibcloudProviders:
         incomplete_config = {"clouds": {"aws": {}}}
         with patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver", return_value=MagicMock()):
             provider = AwsProvider(incomplete_config)
-            with pytest.raises(ProviderError, match="Image or Size/Flavour missing"):
+            with pytest.raises(VMProviderError, match="Image or Size/Flavour missing"):
                 provider.start(name="test")

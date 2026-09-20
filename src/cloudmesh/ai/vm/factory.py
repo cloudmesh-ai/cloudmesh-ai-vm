@@ -15,7 +15,7 @@ class ProviderFactory:
         logger.debug(f"Registered provider: {name} -> {manager_cls.__name__}")
 
     @classmethod
-    def create(cls, cloud_name: str, config: GlobalConfig) -> CloudBaseManager:
+    def create(cls, cloud_name: str, config: GlobalConfig, console=None) -> CloudBaseManager:
         manager_cls = cls._registry.get(cloud_name)
         if not manager_cls:
             # Fallback to checking if it's a generic libcloud provider
@@ -23,8 +23,8 @@ class ProviderFactory:
             # that handles many providers via config.
             raise ValueError(f"Provider '{cloud_name}' is not registered in the factory.")
         
-        # Pass the GlobalConfig object itself, not its __dict__
-        return manager_cls(config)
+        # Pass the GlobalConfig object itself, and the console, not its __dict__
+        return manager_cls(config, console=console)
 
 # The factory is used as a singleton across the app
 factory = ProviderFactory()

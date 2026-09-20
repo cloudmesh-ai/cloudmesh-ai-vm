@@ -115,11 +115,12 @@ class OpenstackManager(CloudBaseManager):
         
         return result.stdout
 
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """Starts a VM in OpenStack."""
         cloud_config = self.get_cloud_config(self.cloud_name)
-        image_name = cloud_config.get("image")
-        flavor_name = cloud_config.get("flavor")
+        image_name = image or cloud_config.get("image")
+        flavor_name = flavor or cloud_config.get("flavor")
+        security_group = cloud_config.get("security_group", "default")
         
         if not image_name or not flavor_name:
             raise ValueError(f"Image or flavor missing in config for {self.cloud_name}")
@@ -133,7 +134,12 @@ class OpenstackManager(CloudBaseManager):
             size = next((s for s in sizes if s.id == flavor_name or s.name == flavor_name), None)
             
             if image and size:
-                node = self.driver.create_node(name=name, image=image, size=size)
+                node = self.driver.create_node(
+                    name=name, 
+                    image=image, 
+                    size=size, 
+                    ex_properties={'security_groups': [security_group]}
+                )
                 return node.name
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
@@ -155,6 +161,8 @@ class OpenstackManager(CloudBaseManager):
         cmd = ["openstack", "server", "create", "--flavor", flavor_id, "--image", image_id, "--format", "value", "-c", "name"]
         if name:
             cmd.extend(["--name", name])
+        
+        cmd.extend(["--security-group", security_group])
         
         return self._run_cli_command(cmd).strip()
 
@@ -193,11 +201,16 @@ class OpenstackManager(CloudBaseManager):
                 return False
 
     def list(self) -> List[Dict[str, Any]]:
-        """Lists all OpenStack VMs."""
+        """Lists all OpenStack VMs with their reachable IP addresses."""
         try:
             nodes = self.driver.list_nodes()
             if nodes:
-                return [{"Name": n.name, "ID": n.id, "State": n.state} for n in nodes]
+                results = []
+                for n in nodes:
+                    # Prioritize public IP if available in libcloud node object
+                    ip = n.public_ips[0] if getattr(n, 'public_ips', None) else self._get_floating_ip(n.name)
+                    results.append({"Name": n.name, "ID": n.id, "State": n.state, "IP": ip or "No IP"})
+                return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.warning(f"Libcloud list failed: {e}. Trying CLI fallback...")
@@ -208,7 +221,29 @@ class OpenstackManager(CloudBaseManager):
             output = self._run_cli_command(["openstack", "server", "list", "--format", "json"])
             import json
             servers = json.loads(output)
-            return [{"Name": s['name'], "ID": s['id'], "State": s['status']} for s in servers]
+            
+            results = []
+            for s in servers:
+                # Extract Floating IP from addresses dictionary
+                # Addresses format: {"network_name": [{"addr": "1.2.3.4", "version": "ipv4"}]}
+                ip = "No IP"
+                addresses = s.get('addresses', {})
+                for net_name, addrs in addresses.items():
+                    # Floating IPs are usually in networks not containing 'private' or 'internal'
+                    if 'private' not in net_name.lower() and 'internal' not in net_name.lower():
+                        if addrs:
+                            ip = addrs[0].get('addr')
+                            break
+                
+                # Final fallback if no obvious public net was found
+                if ip == "No IP" and addresses:
+                    # Just take the first available IP if we can't distinguish
+                    first_net = list(addresses.values())[0]
+                    if first_net:
+                        ip = first_net[0].get('addr')
+
+                results.append({"Name": s['name'], "ID": s['id'], "State": s['status'], "IP": ip})
+            return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"CLI list failed: {e}")
@@ -223,10 +258,13 @@ class OpenstackManager(CloudBaseManager):
             if not node:
                 return {"error": f"VM {name} not found"}
             
+            floating_ip = self._get_floating_ip(name)
+            
             return {
                 "Name": getattr(node, 'name', name),
                 "ID": getattr(node, 'id', 'N/A'),
                 "State": getattr(node, 'state', 'Unknown'),
+                "FloatingIP": floating_ip or "Not Assigned",
                 "PublicIPs": getattr(node, 'public_ips', []),
                 "PrivateIPs": getattr(node, 'private_ips', []),
                 "RAM": getattr(node, 'ram', 'N/A'),
@@ -237,14 +275,25 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"Error getting info for VM {name} in {self.cloud_name}: {e}")
             return {"error": str(e)}
 
- 
     def login(self, name: Optional[str] = None) -> bool:
         """
-        Logging into OpenStack VMs usually happens via SSH.
+        Provides the SSH connection string for the OpenStack VM.
         """
-        if not name: return False
-        print(f"Please use SSH to log into the OpenStack VM: {name}")
-        return False
+        if not name:
+            self.print("Error: VM name is required to login.")
+            return False
+        
+        floating_ip = self._get_floating_ip(name)
+        if not floating_ip:
+            self.print(f"No floating IP found for VM {name}. Use 'cmc vm assign-floating-ip' first.")
+            return False
+        
+        cloud_config = self.get_cloud_config(self.cloud_name)
+        key_path = cloud_config.get("key_path", "~/.ssh/id_rsa")
+        user = cloud_config.get("user", "ubuntu")
+        
+        self.print(f"Connect to your VM using:\nssh -i {key_path} {user}@{floating_ip}")
+        return True
 
 
     def suspend(self, name: Optional[str] = None) -> bool:
@@ -257,7 +306,7 @@ class OpenstackManager(CloudBaseManager):
             self.driver.suspend_node(node)
             return True
         except Exception as e:
-            print(f"Error suspending node {name}: {e}")
+            self.print(f"Error suspending node {name}: {e}")
             return False
 
     def restart(self, name: Optional[str] = None) -> bool:
@@ -270,7 +319,7 @@ class OpenstackManager(CloudBaseManager):
             self.driver.reboot_node(node)
             return True
         except Exception as e:
-            print(f"Error restarting node {name}: {e}")
+            self.print(f"Error restarting node {name}: {e}")
             return False
 
     def get_images(self) -> List[Dict[str, Any]]:
@@ -380,19 +429,54 @@ class OpenstackManager(CloudBaseManager):
 
     def get_keys(self) -> List[Dict[str, Any]]:
         """
-        Lists available keys in OpenStack.
+        Lists available keys in OpenStack using the CLI.
         """
-        return [{"name": "generic-openstack-key", "status": "active"}]
+        try:
+            result = self._run_cli_command(["openstack", "key", "list", "--format", "value", "-c", "name"])
+            names = result.strip().split("\n")
+            return [{"name": name} for name in names if name]
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error listing OpenStack keys: {e}")
+            return []
 
     def get_security_groups(self) -> List[Dict[str, Any]]:
         """
-        Lists available security groups in OpenStack.
+        Lists available security groups in OpenStack using the CLI.
         """
         try:
-            return [{"name": "default", "description": "Default security group"}]
+            result = self._run_cli_command(["openstack", "security", "group", "list", "--format", "value", "-c", "name", "-c", "description"])
+            groups = []
+            for line in result.strip().split("\n"):
+                if not line: continue
+                parts = line.split(maxsplit=1)
+                name = parts[0]
+                description = parts[1] if len(parts) > 1 else ""
+                groups.append({"name": name, "description": description})
+            return groups
         except Exception as e:
-            print(f"Error getting security groups: {e}")
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error listing security groups: {e}")
             return []
+
+    def add_security_group_rule(self, group_name: str, port: int, protocol: str = "tcp", cidr: str = "0.0.0.0/0") -> bool:
+        """
+        Adds a security group rule to allow traffic on a specific port using OpenStack CLI.
+        """
+        try:
+            cmd = [
+                "openstack", "security", "group", "rule", "create",
+                "--protocol", protocol,
+                "--dst-port", str(port),
+                "--remote-ip", cidr,
+                group_name
+            ]
+            self._run_cli_command(cmd)
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error adding security group rule to {group_name}: {e}")
+            return False
 
     @property
     def version(self) -> List[str]:
@@ -424,11 +508,181 @@ class OpenstackManager(CloudBaseManager):
         return versions
 
 
+    def check_requirements(self) -> bool:
+        """
+        Checks if the requirements for this provider are met on the current system.
+        """
+        import shutil
+        return shutil.which("openstack") is not None
+
+    def upload_key(self, key_path: str, key_name: str) -> bool:
+        """
+        Uploads a public key to OpenStack.
+        """
+        try:
+            import subprocess
+            import os
+            key_path = os.path.expanduser(key_path)
+            if not os.path.exists(key_path):
+                return False
+            
+            env = self._get_env()
+            cmd = ["openstack", "key", "create", "--public-key", key_path, key_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            return result.returncode == 0
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error uploading key {key_name}: {e}")
+            return False
+
+    def delete_key(self, key_name: str) -> bool:
+        """
+        Deletes a public key from OpenStack.
+        """
+        try:
+            import subprocess
+            env = self._get_env()
+            cmd = ["openstack", "key", "delete", key_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            return result.returncode == 0
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error deleting key {key_name}: {e}")
+            return False
+
+    def _get_floating_ip(self, name: str) -> Optional[str]:
+        """
+        Internal helper to retrieve the floating IP address of a VM.
+        """
+        try:
+            result = self._run_cli_command(["openstack", "server", "show", name, "--format", "value", "-c", "addresses"])
+            # Output is like: 'network: a=10.0.0.1,net-id=...; floating: a=1.2.3.4,net-id=...'
+            parts = result.split(';')
+            for part in parts:
+                if 'floating' in part:
+                    # Extract a=1.2.3.4
+                    addr_part = part.split(',')
+                    for attr in addr_part:
+                        if attr.startswith('a='):
+                            return attr.split('=')[1]
+            return None
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.debug(f"Could not find floating IP for {name}: {e}")
+            return None
+
+    def assign_floating_ip(self, name: str) -> Optional[str]:
+        """
+        Assigns an available floating IP to the VM.
+        """
+        try:
+            # 1. Find a free floating IP
+            result = self._run_cli_command(["openstack", "floating", "ip", "list", "--status", "FREE", "--format", "value", "-c", "ID"])
+            free_ips = result.strip().split("\n")
+            if not free_ips or not free_ips[0]:
+                from cloudmesh.ai.vm.logger import logger
+                logger.warning("No free floating IPs available in the pool.")
+                return None
+            
+            floating_ip_id = free_ips[0]
+            
+            # 2. Associate it with the server
+            self._run_cli_command(["openstack", "server", "add", "floating", "ip", name, floating_ip_id])
+            
+            return self._get_floating_ip(name)
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error assigning floating IP to {name}: {e}")
+            return None
+
+    def release_floating_ip(self, name: str) -> bool:
+        """
+        Releases the floating IP associated with the VM.
+        """
+        try:
+            # 1. Find the floating IP
+            result = self._run_cli_command(["openstack", "server", "show", name, "--format", "value", "-c", "addresses"])
+            floating_ip_id = None
+            parts = result.split(';')
+            for part in parts:
+                if 'floating' in part:
+                    addr_part = part.split(',')
+                    for attr in addr_part:
+                        if 'net-id=' in attr:
+                            floating_ip_id = attr.split('=')[1]
+            
+            if not floating_ip_id:
+                return False
+            
+            # 2. Remove from server
+            self._run_cli_command(["openstack", "server", "remove", "floating", "ip", name, floating_ip_id])
+            
+            # 3. Delete the IP
+            self._run_cli_command(["openstack", "floating", "ip", "delete", floating_ip_id])
+            
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error releasing floating IP for {name}: {e}")
+            return False
+
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            return result.returncode == 0
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error deleting key {key_name}: {e}")
+            return False
+
+
     def run_command(self, name: str, cmd: str) -> str:
         """
-        Executes a command on the VM.
-    
-        Note: This is a stub for OpenStack-based providers.
+        Executes a command on the VM via SSH.
         """
-        return f"run_command is not yet implemented for this OpenStack provider ({self.cloud_name})"
+        try:
+            floating_ip = self._get_floating_ip(name)
+            if not floating_ip:
+                return f"Error: No floating IP found for VM {name}. Please assign one first."
+            
+            cloud_config = self.get_cloud_config(self.cloud_name)
+            key_path = cloud_config.get("key_path", "~/.ssh/id_rsa")
+            user = cloud_config.get("user", "ubuntu")
+            
+            import subprocess
+            import os
+            key_path = os.path.expanduser(key_path)
+            
+            ssh_cmd = [
+                "ssh", 
+                "-i", key_path, 
+                "-o", "StrictHostKeyChecking=no", 
+                "-o", "UserKnownHostsFile=/dev/null",
+                f"{user}@{floating_ip}", 
+                cmd
+            ]
+            
+            result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                return f"SSH Error (code {result.returncode}): {result.stderr}"
+            
+            return result.stdout.strip()
+            
+        except Exception as e:
+            return f"Unexpected error executing command: {e}"
+        
+    def validate_config(self) -> List[str]:
+        """
+        Validates OpenStack specific configuration.
+        """
+        errors = []
+        config = self.get_cloud_config(self.cloud_name)
+        
+        if not config.get("image"):
+            errors.append("Missing required field: 'image'")
+        if not (config.get("flavor") or config.get("size")):
+            errors.append("Missing required field: 'flavor' or 'size'")
+        if not config.get("key_path"):
+            errors.append("Missing required field: 'key_path' for SSH access")
+        
+        return errors
 

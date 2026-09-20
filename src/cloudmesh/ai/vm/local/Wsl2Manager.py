@@ -2,7 +2,7 @@ import subprocess
 import re
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
-from cloudmesh.ai.vm.exceptions import ProviderError
+from cloudmesh.ai.vm.exceptions import VMProviderError
 
 class Provider(CloudBaseManager):
     """
@@ -15,16 +15,16 @@ class Provider(CloudBaseManager):
         try:
             return subprocess.run(command, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"Error executing command {' '.join(command)}: {e.stderr}")
+            self.print(f"Error executing command {' '.join(command)}: {e.stderr}")
             raise e
 
-    def start(self, name: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
         Starts a WSL2 distribution. 
         If the distribution doesn't exist, it attempts to import it from a rootfs image.
         """
         if not name:
-            print("Error: WSL2 requires a specific distribution name to start.")
+            self.print("Error: WSL2 requires a specific distribution name to start.")
             return "error"
 
         # Check if distro already exists
@@ -39,11 +39,12 @@ class Provider(CloudBaseManager):
 
         # Attempt to import if not exists
         cloud_config = self.get_cloud_config("wsl2")
-        rootfs = cloud_config.get("rootfs")
+        # Use image override if provided, otherwise fallback to config 'rootfs'
+        rootfs = image or cloud_config.get("rootfs")
         install_dir = cloud_config.get("install_dir", "C:\\WSL")
 
         if not rootfs:
-            print(f"Error: Rootfs image path not configured in YAML for wsl2. Cannot import {name}.")
+            self.print(f"Error: Rootfs image path not configured in YAML for wsl2. Cannot import {name}.")
             return "error"
 
         try:
@@ -59,7 +60,7 @@ class Provider(CloudBaseManager):
         Stops (terminates) a WSL2 distribution.
         """
         if not name:
-            print("Error: Distro name is required to stop.")
+            self.print("Error: Distro name is required to stop.")
             return False
         
         try:
@@ -73,7 +74,7 @@ class Provider(CloudBaseManager):
         Deletes (unregisters) a WSL2 distribution.
         """
         if not name:
-            print("Error: Distro name is required to delete.")
+            self.print("Error: Distro name is required to delete.")
             return False
         
         try:
@@ -114,7 +115,7 @@ class Provider(CloudBaseManager):
         Logs into a WSL2 distribution.
         """
         if not name:
-            print("Error: Distro name is required to login.")
+            self.print("Error: Distro name is required to login.")
             return False
         
         try:
@@ -135,7 +136,7 @@ class Provider(CloudBaseManager):
         Restarts a WSL2 distribution.
         """
         if not name:
-            print("Error: Distro name is required to restart.")
+            self.print("Error: Distro name is required to restart.")
             return False
         
         try:
@@ -173,7 +174,7 @@ class Provider(CloudBaseManager):
         - host_username: username on the Windows host
         """
         if not name:
-            print("Error: Distro name is required to link SSH directory.")
+            self.print("Error: Distro name is required to link SSH directory.")
             return False
 
         cloud_config = self.get_cloud_config("wsl2")
@@ -181,7 +182,7 @@ class Provider(CloudBaseManager):
         host_user = cloud_config.get("host_username")
 
         if not wsl_user or not host_user:
-            print("Error: 'wsl_username' and 'host_username' must be configured in clouds.yaml to link SSH directory.")
+            self.print("Error: 'wsl_username' and 'host_username' must be configured in clouds.yaml to link SSH directory.")
             return False
 
         # Path on host: C:\Users\<host_user>\.ssh -> /mnt/c/Users/<host_user>/.ssh
@@ -205,7 +206,7 @@ class Provider(CloudBaseManager):
         Executes a command on the WSL2 distribution.
         """
         if not name:
-            raise ProviderError("VM name is required to run command.")
+            raise VMProviderError("VM name is required to run command.")
         
         cloud_config = self.get_cloud_config("wsl2")
         wsl_user = cloud_config.get("wsl_username", "root")
@@ -254,3 +255,13 @@ class Provider(CloudBaseManager):
         if platform.system() != "Windows":
             return False
         return shutil.which("wsl") is not None
+
+    def validate_config(self) -> List[str]:
+        """
+        Validates WSL2 configuration.
+        """
+        errors = []
+        config = self.get_cloud_config("wsl2")
+        if not config.get("rootfs"):
+            errors.append("Missing required field: 'rootfs' (rootfs image path)")
+        return errors
