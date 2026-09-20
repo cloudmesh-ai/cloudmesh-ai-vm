@@ -48,19 +48,36 @@ class VMContext:
         self.verbose: bool = False
         self.provider = None
 
+def cloud_callback(ctx, param, value):
+    if value:
+        ctx.obj.cloud_override = value
+    return value
+
+def debug_callback(ctx, param, value):
+    if value:
+        logger.setLevel(logging.DEBUG)
+        logger.debug(f"Debug mode enabled. Using cloud: {ctx.obj.cloud_override or state.config.default_cloud}")
+    return value
+
+def verbose_callback(ctx, param, value):
+    if value:
+        ctx.obj.verbose = True
+    return value
+
+
+# Custom decorator to add common VM options to commands
+def vm_options(f):
+    f = click.option("--cloud", callback=cloud_callback, expose_value=False, help="Override the default cloud provider")(f)
+    f = click.option("--debug", is_flag=True, callback=debug_callback, expose_value=False, help="Enable debug logging")(f)
+    f = click.option("--verbose", is_flag=True, callback=verbose_callback, expose_value=False, help="Print raw subprocess/SSH commands")(f)
+    f = click.pass_context(f)
+    return f
+
 @click.group(name="vm")
-@click.option("--cloud", help="Override the default cloud provider")
-@click.option("--debug", is_flag=True, help="Enable debug logging")
-@click.option("--verbose", is_flag=True, help="Print raw subprocess/SSH commands")
 @click.pass_context
-def vm_group(ctx, cloud, debug, verbose):
+def vm_group(ctx):
     """VM management commands"""
     ctx.obj = VMContext()
-    ctx.obj.cloud_override = cloud
-    ctx.obj.verbose = verbose
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        logger.debug(f"Debug mode enabled. Using cloud: {cloud or state.config.default_cloud}")
 
 def get_active_provider(ctx):
     """Helper to resolve the provider based on override or default."""
@@ -76,6 +93,106 @@ def get_active_provider(ctx):
     except Exception as e:
         raise click.ClickException(str(e))
 
+@vm_group.command()
+@click.argument("action", required=False)
+@click.option("--cloud", callback=cloud_callback, expose_value=False, help="Override the default cloud provider")
+@click.option("--debug", is_flag=True, callback=debug_callback, expose_value=False, help="Enable debug logging")
+@click.option("--verbose", is_flag=True, callback=verbose_callback, expose_value=False, help="Print raw subprocess/SSH commands")
+@click.option("--flavor", help="Override VM flavor/size for cost estimation")
+@click.option("--num_instances", type=int, help="Number of instances for cost estimation")
+@click.option("--hours_per_day", type=int, help="Hours per day for cost estimation")
+@click.option("--days_per_week", type=int, help="Days per week for cost estimation")
+@click.option("--weeks", type=int, help="Number of weeks for cost estimation")
+@click.pass_context
+def cost(ctx, action, **kwargs):
+    """Returns the cost for the active cloud provider"""
+    provider = get_active_provider(ctx)
+    cloud_name = provider.cloud_name
+
+    # 1. If 'help' action is specified, show the markdown template
+    if action == "help":
+        show_markdown_cost(cloud_name)
+        return
+
+    # Collect overrides from kwargs for the provider
+    overrides = {
+        "flavor": kwargs.get("flavor"),
+        "num_instances": kwargs.get("num_instances"),
+        "hours_per_day": kwargs.get("hours_per_day"),
+        "days_per_week": kwargs.get("days_per_week"),
+        "weeks": kwargs.get("weeks"),
+    }
+    # Filter out None values
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+
+    # 2. Try the provider's dynamic get_cost method first
+    try:
+        dynamic_cost = provider.get_cost(**overrides)
+    except Exception as e:
+        console.print(f"[bold red]Error during cost calculation: {e}[/bold red]")
+        return
+
+    if dynamic_cost:
+        from rich.panel import Panel
+        
+        # Handle dictionary format {value, unit, details}
+        if isinstance(dynamic_cost, dict):
+            value = dynamic_cost.get("value", "Unknown")
+            unit = dynamic_cost.get("unit")
+            details = dynamic_cost.get("details")
+            
+            display_text = f"Cost: {value} {unit if unit else ''}".strip()
+            if details:
+                display_text += f"\n\n{details}"
+        else:
+            display_text = str(dynamic_cost)
+
+        console.print("\n")
+        console.print(Panel(
+            display_text,
+            title=f"[bold cyan]{cloud_name.upper()} Cost Estimation[/bold cyan]",
+            border_style="cyan",
+            expand=False,
+            padding=(1, 2)
+        ))
+        console.print("\n")
+        return
+
+    # 3. Fallback to the static markdown template
+    show_markdown_cost(cloud_name)
+
+def show_markdown_cost(cloud_name):
+    """Helper to render the markdown cost template for a given cloud."""
+    template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "vm", "template"))
+    cost_file = os.path.join(template_dir, f"cost-{cloud_name}.md")
+
+    if not os.path.exists(cost_file):
+        console.print(f"[bold red]Error: Cost information not found for cloud '{cloud_name}'.[/bold red]")
+        console.print(f"Template file missing at: {cost_file}")
+        return
+
+    try:
+        with open(cost_file, 'r') as f:
+            content = f.read()
+        
+        from rich.markdown import Markdown
+        from rich.panel import Panel
+        
+        md = Markdown(content)
+        
+        console.print("\n")
+        console.print(Panel(
+            md, 
+            title=f"[bold cyan]{cloud_name.upper()} Cost Details[/bold cyan]", 
+            border_style="cyan", 
+            expand=False,
+            padding=(1, 2)
+        ))
+        console.print("\n")
+    except Exception as e:
+        console.print(f"[bold red]Error reading cost template: {e}[/bold red]")
+
+@vm_options
 @vm_group.command()
 def providers():
     """Lists all supported VM providers and their status on this system"""
@@ -340,9 +457,9 @@ def run(ctx, name, command):
     output = provider.run_command(vm_name, command)
     console.print(output)
 
+@vm_options
 @vm_group.command()
 @click.argument("name", required=False)
-@click.pass_context
 def stop(ctx, name):
     """Stops a VM"""
     provider = get_active_provider(ctx)
@@ -358,6 +475,52 @@ def stop(ctx, name):
         console.print(f"VM {vm_name} stopped.")
     else:
         console.print(f"[bold red]Failed to stop VM {vm_name}.[/bold red]")
+
+@vm_options
+@vm_group.command()
+@click.argument("name", required=False)
+def shelve(ctx, name):
+    """Shelve the VM (OpenStack only)"""
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm(provider.cloud_name)
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
+
+    if not hasattr(provider, "shelve"):
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support shelving.[/bold red]")
+        return
+
+    with console.status("[bold yellow]Shelving VM...[/bold yellow]"):
+        shelved = provider.shelve(name=vm_name)
+
+    if shelved:
+        console.print(f"VM {vm_name} shelved.")
+    else:
+        console.print(f"[bold red]Failed to shelve VM {vm_name}.[/bold red]")
+
+@vm_options
+@vm_group.command()
+@click.argument("name", required=False)
+def unshelve(ctx, name):
+    """Unshelve the VM (OpenStack only)"""
+    provider = get_active_provider(ctx)
+    
+    vm_name = name or state.get_last_vm(provider.cloud_name)
+    if not vm_name:
+        raise click.ClickException("No VM name provided and no last-used VM found.")
+
+    if not hasattr(provider, "unshelve"):
+        console.print(f"[bold red]Error: Provider '{provider.cloud_name}' does not support unshelving.[/bold red]")
+        return
+
+    with console.status("[bold yellow]Unshelving VM...[/bold yellow]"):
+        unshelved = provider.unshelve(name=vm_name)
+
+    if unshelved:
+        console.print(f"VM {vm_name} unshelved.")
+    else:
+        console.print(f"[bold red]Failed to unshelve VM {vm_name}.[/bold red]")
 
 @vm_group.command()
 @click.argument("name")

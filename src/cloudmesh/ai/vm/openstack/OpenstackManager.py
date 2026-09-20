@@ -28,8 +28,8 @@ class OpenstackManager(CloudBaseManager):
     Implements common OpenStack VM operations using libcloud.
     """
 
-    def __init__(self, config: Dict[str, Any], cloud_name: str):
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], cloud_name: str, **kwargs):
+        super().__init__(config, **kwargs)
         self.cloud_name = cloud_name
         self.driver = self._get_driver()
 
@@ -182,6 +182,28 @@ class OpenstackManager(CloudBaseManager):
             except Exception as cli_e:
                 logger.error(f"CLI stop failed: {cli_e}")
                 return False
+
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """Shelves an OpenStack VM (preserves disk, releases compute resources)."""
+        if not name: return False
+        try:
+            self._run_cli_command(["openstack", "server", "shelve", name])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error shelving VM {name}: {e}")
+            return False
+
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """Unshelves an OpenStack VM."""
+        if not name: return False
+        try:
+            self._run_cli_command(["openstack", "server", "unshelve", name])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error unshelving VM {name}: {e}")
+            return False
 
     def delete(self, name: Optional[str] = None) -> bool:
         """Deletes an OpenStack VM."""

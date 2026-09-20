@@ -309,3 +309,43 @@ class Provider(CloudBaseManager):
         Multipass does not use security groups.
         """
         return [{"name": "default", "description": "Local network access"}]
+
+    def get_cost(self, **kwargs) -> Optional[Any]:
+        """
+        Returns the cost information for Multipass.
+        """
+        return {"value": 0, "unit": None}
+
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """
+        Shelves a VM. Not supported for Multipass.
+        """
+        self.print(f"Shelve is not supported for the provider Multipass")
+        return False
+
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """
+        Unshelves a VM. Not supported for Multipass.
+        """
+        self.print(f"Unshelve is not supported for the provider Multipass")
+        return False
+
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """
+        Shelves a VM. Not supported for Multipass.
+        """
+        self.print(f"Shelve is not supported for the provider Multipass")
+        return False
+
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """
+        Unshelves a VM. Not supported for Multipass.
+        """
+        self.print(f"Unshelve is not supported for the provider Multipass")
+        return False
+
+    def get_cost(self, **kwargs) -> Optional[Any]:
+        """
+        Returns the cost information for Multipass.
+        """
+        return {"value": 0, "unit": None}

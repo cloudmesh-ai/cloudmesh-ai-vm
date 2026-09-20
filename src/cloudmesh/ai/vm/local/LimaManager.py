@@ -296,3 +296,23 @@ class Provider(CloudBaseManager):
             errors.append("Missing required field: 'template'")
         return errors
 
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """
+        Shelves a VM. Not supported for Lima.
+        """
+        self.print(f"Shelve is not supported for the provider Lima")
+        return False
+
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """
+        Unshelves a VM. Not supported for Lima.
+        """
+        self.print(f"Unshelve is not supported for the provider Lima")
+        return False
+
+    def get_cost(self, **kwargs) -> Optional[Any]:
+        """
+        Returns the cost information for Lima.
+        """
+        return {"value": 0, "unit": None}
+

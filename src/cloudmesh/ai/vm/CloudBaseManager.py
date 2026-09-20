@@ -86,6 +86,24 @@ class CloudBaseManager(ABC):
         pass
 
     @abstractmethod
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """
+        Shelves a VM (preserves disk, releases compute resources).
+        :param name: Name of the VM to shelve.
+        :return: True if successful, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """
+        Unshelves a VM.
+        :param name: Name of the VM to unshelve.
+        :return: True if successful, False otherwise.
+        """
+        pass
+
+    @abstractmethod
     def restart(self, name: Optional[str] = None) -> bool:
         """
         Restarts a VM.
@@ -176,6 +194,15 @@ class CloudBaseManager(ABC):
         """
         return False
 
+
+    def get_cost(self, **kwargs) -> Optional[Any]:
+        """
+        Returns the cost information for the provider.
+        Can be a static string, a dictionary with value/unit, or a dynamic calculation.
+        :param kwargs: Parameters for cost calculation.
+        :return: Cost information as a string, dict, or None if not implemented.
+        """
+        return None
 
     def validate_config(self) -> List[str]:
         """
