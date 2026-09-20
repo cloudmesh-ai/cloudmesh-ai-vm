@@ -1,17 +1,17 @@
 # cloudmesh-ai-vm
 
-`cloudmesh-ai-vm` is a unified Python CLI tool (`cmc`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
+`cloudmesh-ai-vm` is a unified Python CLI tool (`cmx`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
 
 ## 🚀 Key Features
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
 - **Smart VM Lifecycle**:
     - **Automatic Naming**: VMs are named automatically using a `<username><counter>` pattern.
-    - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like `cmc vm stop` without specifying a name.
+    - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like `cmx vm stop` without specifying a name.
 - **Provider Flexibility**:
-    - **Default Cloud**: Manage your active provider via `cmc vm cloud set <cloud>` (shorthand `cmc vm set <cloud>`).
-    - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmc vm start --cloud aws`).
-- **Remote Execution**: Execute commands directly on your VMs using `cmc vm run <command>`.
+    - **Default Cloud**: Manage your active provider via `cmx vm set <cloud>`.
+    - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmx vm start --cloud aws`).
+- **Remote Execution**: Execute commands directly on your VMs using `cmx vm run <command>`.
 - **Resource Discovery**: Easily list available flavors, SSH keys, and security groups directly from the CLI.
 - **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
 
@@ -33,25 +33,25 @@ Configure your credentials in `~/.config/cloudmesh/clouds.yaml`. See the [Config
 
 ```bash
 # Check current default cloud
-cmc vm cloud get
+cmx vm get
 
 # Set your default cloud
-cmc vm cloud set multipass
+cmx vm set multipass
 
 # Start a VM (will be named user0, user1, etc.)
-cmc vm start
+cmx vm start
 
 # Run a command on the VM
-cmc vm run "hostname"
+cmx vm run "hostname"
 
 # Stop the last started VM
-cmc vm stop
+cmx vm stop
 
 # Start a VM on a specific cloud (override default)
-cmc vm start --cloud aws
+cmx vm start --cloud aws
 
 # List all VMs for current cloud
-cmc vm list
+cmx vm list
 ```
 
 ## 📊 Provider Support Matrix

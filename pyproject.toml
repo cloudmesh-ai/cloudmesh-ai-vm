@@ -22,5 +22,8 @@ dependencies = [
     "cloudmesh-ai-common",
 ]
 
+[project.scripts]
+cmx = "cloudmesh.ai.command.vm:cmx"
+
 [project.entry-points."cloudmesh.ai.cmc"]
 vm = "cloudmesh.ai.command.vm.vm_group"
