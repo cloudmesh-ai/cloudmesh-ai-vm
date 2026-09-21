@@ -22,9 +22,9 @@ def start(ctx: click.Context, name: Optional[str] = None) -> None:
     # 1. Resolve VM Name
     if not name:
         # Generate name using username and incremented counter from state
-        # Multipass and other providers often forbid underscores in names.
-        # We replace underscores with hyphens to ensure compatibility.
-        raw_username = state.config.username or "user"
+        # Try to get provider-specific username first, then fallback to global username
+        provider_config = provider.get_cloud_config(provider.cloud_name)
+        raw_username = provider_config.get("username") or state.config.username or "user"
         username = raw_username.replace("_", "-")
         
         counter = state.increment_counter()

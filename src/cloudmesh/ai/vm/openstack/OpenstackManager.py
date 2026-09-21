@@ -84,6 +84,14 @@ class OpenstackManager(CloudBaseManager):
         logger.debug(f"Connecting to auth_url: {auth.get('auth_url')} with tenant_id: {auth.get('tenant_id') or auth.get('project_id')}")
         
         region = cloud_data.get("region")
+        
+        # Overwrite region if region_name is specified in cloudmesh config
+        cloud_config = self.get_cloud_config(self.cloud_name)
+        region_override = cloud_config.get("region_name")
+        if region_override:
+            logger.debug(f"Overriding region {region} with region_name from cloudmesh config: {region_override}")
+            region = region_override
+
         if region:
             logger.debug(f"Using region: {region}")
         else:
@@ -98,7 +106,7 @@ class OpenstackManager(CloudBaseManager):
             version='3'
         )
     def _run_cli_command(self, cmd: List[str]) -> str:
-        """Runs an OpenStack CLI command with OS_CLOUD environment variable set."""
+        """Runs an OpenStack CLI command with OS_CLOUD and OS_REGION_NAME environment variables set."""
         import subprocess
         import os
         from cloudmesh.ai.vm.logger import logger
@@ -106,7 +114,14 @@ class OpenstackManager(CloudBaseManager):
         env = os.environ.copy()
         env["OS_CLOUD"] = self.cloud_name
         
-        logger.debug(f"Running CLI command: {' '.join(cmd)}")
+        # Overwrite region if region_name is specified in cloudmesh config
+        cloud_config = self.get_cloud_config(self.cloud_name)
+        region_override = cloud_config.get("region_name")
+        if region_override:
+            env["OS_REGION_NAME"] = region_override
+            logger.debug(f"Setting OS_REGION_NAME to {region_override} from cloudmesh config")
+        
+        logger.debug(f"Running CLI command: {' '.join(map(str, cmd))}")
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         
         if result.returncode != 0:
@@ -158,11 +173,13 @@ class OpenstackManager(CloudBaseManager):
         flavor_id = resolved_flavor['id']
 
         # Use CLI to create node
-        cmd = ["openstack", "server", "create", "--flavor", flavor_id, "--image", image_id, "--format", "value", "-c", "name"]
-        if name:
-            cmd.extend(["--name", name])
+        cmd = ["openstack", "server", "create", "--flavor", str(flavor_id), "--image", str(image_id), "--format", "value", "-c", "name"]
         
-        cmd.extend(["--security-group", security_group])
+        if security_group:
+            cmd.extend(["--security-group", str(security_group)])
+        
+        # The server name is a positional argument at the end of the command
+        cmd.append(str(name))
         
         return self._run_cli_command(cmd).strip()
 
@@ -408,22 +425,11 @@ class OpenstackManager(CloudBaseManager):
                 return [{"id": s.id, "name": s.name, "ram": s.ram, "vcpus": s.vcpus} for s in sizes]
             
             logger.debug("Driver returned no flavors. Falling back to 'openstack flavor list' CLI...")
-            import subprocess
-            import os
-            
-            # Use the cloud name to set OS_CLOUD environment variable for the CLI
-            env = os.environ.copy()
-            env["OS_CLOUD"] = self.cloud_name
-            
-            cmd = ["openstack", "flavor", "list"]
-            result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            
-            if result.returncode != 0:
-                logger.error(f"CLI fallback failed: {result.stderr}")
-                return []
+            # Use the helper method to benefit from region override and consistent env setup
+            result_stdout = self._run_cli_command(["openstack", "flavor", "list"])
             
             # Parse the table output
-            lines = result.stdout.strip().split('\n')
+            lines = result_stdout.strip().split('\n')
             if len(lines) < 3:
                 return []
                 

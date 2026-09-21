@@ -51,7 +51,7 @@ def get_provider(cloud_name: str):
     try:
         from cloudmesh.ai.command.vm._shared.context import state
         if state.config:
-            config = state.config.get_cloud_config(cloud_name)
+            config = state.config
         else:
             config = {}
     except Exception:

@@ -14,7 +14,7 @@ def config(tmp_path, runner):
         "username": "smoke_user",
         "password": "smoke_password",
         "tenant_id": "smoke_tenant",
-        "region": "us-east-1",
+        "region_name": "KVM@TACC",
         "image": "ubuntu-22.04",
         "flavor": "m1.small",
         "key_path": "~/.ssh/id_rsa",

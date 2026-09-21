@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 class ProviderConfig:
     name: str
     enabled: bool = True
+    username: Optional[str] = None
     image: Optional[str] = None
     size: Optional[str] = None
     flavor: Optional[str] = None
@@ -19,6 +20,7 @@ class ProviderConfig:
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
     region: Optional[str] = None
+    region_name: Optional[str] = None
     tenant_id: Optional[str] = None
     subscription_id: Optional[str] = None
     client_id: Optional[str] = None
@@ -65,3 +67,10 @@ class GlobalConfig:
             clouds=clouds,
             last_vm=last_vm
         )
+
+    def get_cloud_config(self, cloud_name: str) -> Dict[str, Any]:
+        """Retrieves configuration for a specific cloud."""
+        cloud_cfg = self.clouds.get(cloud_name)
+        if cloud_cfg:
+            return cloud_cfg.__dict__
+        return {}
