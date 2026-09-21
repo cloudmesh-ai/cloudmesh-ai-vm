@@ -102,6 +102,10 @@ class CloudBaseManager(BaseVMProvider, ABC):
     def validate_config(self) -> Dict[str, List[str]]:
         """Validates that the cloud configuration has all required fields."""
         return {}
+    def get_account_info(self) -> Dict[str, Any]:
+        """Returns account and quota information for the current provider."""
+        return {"error": "Account information not supported for this provider."}
+
 
     def add_security_group_rule(self, group_name: str, port: int, protocol: str = "tcp", cidr: str = "0.0.0.0/0") -> bool:
         """Adds a security group rule to allow traffic on a specific port."""

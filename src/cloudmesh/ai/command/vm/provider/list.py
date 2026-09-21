@@ -12,8 +12,8 @@ def list_providers(ctx: click.Context):
     
     # Access the current configuration from the state proxy
     config = state.config
-    configured_clouds = config.clouds if config else {}
-    default_cloud = config.default_cloud if config else None
+    configured_clouds = config.db.get("clouds", {}) if config else {}
+    default_cloud = config.db.get("default_cloud", "multipass") if config else None
     
     # Prepare rows for the provider support matrix
     rows = []

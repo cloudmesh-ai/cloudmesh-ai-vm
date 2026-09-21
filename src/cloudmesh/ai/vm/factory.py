@@ -1,6 +1,5 @@
-from typing import Dict, Type, Optional
+from typing import Dict, Type, Optional, Any
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
-from cloudmesh.ai.vm.config_models import GlobalConfig
 from cloudmesh.ai.vm.logger import logger
 
 class ProviderFactory:
@@ -15,7 +14,7 @@ class ProviderFactory:
         logger.debug(f"Registered provider: {name} -> {manager_cls.__name__}")
 
     @classmethod
-    def create(cls, cloud_name: str, config: GlobalConfig, console=None) -> CloudBaseManager:
+    def create(cls, cloud_name: str, config: Any, console=None) -> CloudBaseManager:
         manager_cls = cls._registry.get(cloud_name)
         if not manager_cls:
             # Fallback to checking if it's a generic libcloud provider

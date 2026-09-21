@@ -64,7 +64,7 @@ def load_commands_recursively(group: click.Group, current_dir: str, package_path
 @click.option("--verbose", is_flag=True, callback=verbose_callback, expose_value=False, help="Print raw subprocess/SSH commands")
 @click.option("-i", "--interactive", is_flag=True, help="Enter interactive mode")
 @click.pass_context
-def vm_group(ctx: click.Context, interactive: bool) -> None:
+def vm_group(ctx: click.Context, interactive: bool = False) -> None:
     """VM management commands"""
     ctx.obj = VMContext()
     

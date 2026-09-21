@@ -26,12 +26,12 @@ def test_jetstream_cli_lifecycle(runner, config):
     Smoke test for Jetstream CLI lifecycle.
     """
     # 1. providers
-    result = runner.invoke(vm.vm_group, ["providers", "list"])
+    result = runner.invoke(vm.vm_group, ["provider", "list"])
     assert result.exit_code == 0
     assert "jetstream" in result.output.lower()
 
     # 2. set
-    result = runner.invoke(vm.vm_group, ["providers", "set", "jetstream"])
+    result = runner.invoke(vm.vm_group, ["provider", "set", "jetstream"])
     assert result.exit_code == 0
 
     # 3. start

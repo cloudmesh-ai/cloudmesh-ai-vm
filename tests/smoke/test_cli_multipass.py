@@ -20,12 +20,12 @@ def test_multipass_cli_lifecycle(runner, config):
     Smoke test for Multipass CLI lifecycle.
     """
     # 1. providers
-    result = runner.invoke(vm.vm_group, ["providers", "list"])
+    result = runner.invoke(vm.vm_group, ["provider", "list"])
     assert result.exit_code == 0
     assert "multipass" in result.output.lower()
 
     # 2. set
-    result = runner.invoke(vm.vm_group, ["providers", "set", "multipass"])
+    result = runner.invoke(vm.vm_group, ["provider", "set", "multipass"])
     assert result.exit_code == 0
 
     # 3. start (without name)

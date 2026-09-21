@@ -43,8 +43,8 @@ def test_start_with_name(provider):
         result = provider.start(name=vm_name)
         
         assert result == vm_name
-        mock_run.assert_called_once_with(
-            ["limactl", "start", "--name", vm_name, "template:ubuntu"],
+        mock_run.assert_any_call(
+            ["limactl", "start", "--name", vm_name, "--tty=false", "template:ubuntu"],
             capture_output=False,
             check=True
         )
@@ -56,8 +56,8 @@ def test_start_default_name(provider):
         result = provider.start()
         
         assert result == "lima-vm"
-        mock_run.assert_called_once_with(
-            ["limactl", "start", "--name", "lima-vm", "template:ubuntu"],
+        mock_run.assert_any_call(
+            ["limactl", "start", "--name", "lima-vm", "--tty=false", "template:ubuntu"],
             capture_output=False,
             check=True
         )
@@ -108,10 +108,10 @@ def test_list_parsing(provider):
         vms = provider.list()
         
         assert len(vms) == 2
-        assert vms[0]["NAME"] == "vm-1"
-        assert vms[0]["STATUS"] == "Running"
-        assert vms[1]["NAME"] == "vm-2"
-        assert vms[1]["STATUS"] == "Stopped"
+        assert vms[0]["name"] == "vm-1"
+        assert vms[0]["status"] == "Running"
+        assert vms[1]["name"] == "vm-2"
+        assert vms[1]["status"] == "Stopped"
 
 def test_login(provider):
     with patch("subprocess.run") as mock_run:

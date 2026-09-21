@@ -783,3 +783,29 @@ class OpenstackManager(CloudBaseManager):
             
         return errors_map
 
+
+    def get_account_info(self) -> Dict[str, Any]:
+        """Returns account and quota information for the OpenStack provider."""
+        try:
+            # 1. Get Project/Tenant Information
+            project_info = {}
+            project_result = self._run_cli_command(["openstack", "project", "show", "self", "--format", "json"])
+            import json
+            project_info = json.loads(project_result)
+            
+            # 2. Get Quota/Limits
+            quota_info = {}
+            quota_result = self._run_cli_command(["openstack", "quota show", "--format", "json"])
+            quota_info = json.loads(quota_result)
+            
+            return {
+                "project_id": project_info.get("id"),
+                "project_name": project_info.get("name"),
+                "domain_id": project_info.get("domain_id"),
+                "quotas": quota_info
+            }
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error fetching OpenStack account info: {e}")
+            return {"error": f"Failed to fetch OpenStack account info: {str(e)}"}
+

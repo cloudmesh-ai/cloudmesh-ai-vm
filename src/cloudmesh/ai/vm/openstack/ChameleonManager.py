@@ -78,3 +78,29 @@ class Provider(OpenstackManager):
             self.print(f"Error creating reservation in Chameleon: {e}")
             return False
 
+
+    def get_account_info(self) -> Dict[str, Any]:
+        """Returns account information for Chameleon using chi."""
+        try:
+            cloud_config = self.get_cloud_config("chameleon")
+            site = cloud_config.get("site", "CHI@TACC")
+            project = cloud_config.get("project_name")
+            
+            if not project:
+                return {"error": "'project_name' must be configured in clouds.yaml for Chameleon."}
+            
+            # Configure chi to ensure we are targeting the correct site and project
+            chi.use_site(site)
+            chi.set("project_name", project)
+            
+            return {
+                "site": site,
+                "project_name": project,
+                "project_id": chi.get("project_id"),
+                "user_id": chi.get("user_id"),
+                "allocation": chi.get("allocation") if hasattr(chi, "get") else "Unknown"
+            }
+        except Exception as e:
+            self.print(f"Error fetching Chameleon account info: {e}")
+            return {"error": f"Failed to fetch Chameleon account info: {str(e)}"}
+

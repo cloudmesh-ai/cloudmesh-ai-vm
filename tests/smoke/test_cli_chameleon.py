@@ -26,12 +26,12 @@ def test_chameleon_cli_lifecycle(runner, config):
     Smoke test for Chameleon CLI lifecycle.
     """
     # 1. providers
-    result = runner.invoke(vm.vm_group, ["providers", "list"])
+    result = runner.invoke(vm.vm_group, ["provider", "list"])
     assert result.exit_code == 0
     assert "chameleon" in result.output.lower()
 
     # 2. set
-    result = runner.invoke(vm.vm_group, ["providers", "set", "chameleon"])
+    result = runner.invoke(vm.vm_group, ["provider", "set", "chameleon"])
     assert result.exit_code == 0
 
     # 3. start
