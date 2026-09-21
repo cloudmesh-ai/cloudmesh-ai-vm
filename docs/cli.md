@@ -1,18 +1,19 @@
 # CLI Reference
 
-The \`cmc\` tool provides a consistent interface for managing VMs across all supported providers.
+The `cmx` tool provides a consistent interface for managing VMs across all supported providers.
 
 ## Global Command Structure
 
-\`\`\`bash
-cmc vm <command> [options]
-\`\`\`
+```bash
+cmx vm <command> [options]
+```
 
 ## Global Options
 
-The \`vm\` group supports the following global option:
+The `vm` group supports the following global options:
 
-- \`--cloud <cloud_name>\`: Overrides the default cloud provider for the duration of the command. For example, \`cmc vm start --cloud aws\` will start a VM on AWS even if Multipass is your default.
+- `--cloud <cloud_name>`: Overrides the default cloud provider for the duration of the command. For example, `cmx vm start --cloud aws` will start a VM on AWS even if Multipass is your default.
+- `-i, --interactive`: Enters a dedicated interactive shell for VM management, showing the active provider in the prompt.
 
 ## Commands
 
@@ -24,124 +25,124 @@ The `cloud` group provides commands to manage the active cloud provider.
 
 Displays the current default cloud provider.
 
-- **Usage**: `cmc vm cloud get`
-- **Example**: `cmc vm cloud get`
+- **Usage**: `cmx vm cloud get`
+- **Example**: `cmx vm cloud get`
 
 #### `set`
 
 Sets the default cloud provider used for all subsequent commands.
 
-- **Usage**: `cmc vm cloud set <cloud_name>`
-- **Example**: `cmc vm cloud set aws`
-- **Shorthand**: `cmc vm set <cloud_name>`
+- **Usage**: `cmx vm cloud set <cloud_name>`
+- **Example**: `cmx vm cloud set aws`
+- **Shorthand**: `cmx vm set <cloud_name>`
 
 ### 2. VM Lifecycle
 
-Many lifecycle commands now support **Contextual Memory**. If the \`--name\` option is omitted, the tool will target the last VM that was successfully started.
+Many lifecycle commands now support **Contextual Memory**. If the name is omitted, the tool will target the last VM that was successfully started.
 
-#### \`start\`
+#### `start`
 
 Launches a new VM.
 
 - **Options**:
-  - \`--name <name>\`: Specify a custom name. If omitted, the tool uses \`<username><counter+1>\`.
+  - `<name>`: (Optional) Specify a custom name. If omitted, the tool generates a name based on `<username>-<counter>` (e.g., `gregor-1`). Underscores in usernames are automatically replaced with hyphens to ensure provider compatibility.
 - **Examples**:
-  - Default: \`cmc vm start\`
-  - Custom Name: \`cmc vm start --name my-web-server\`
-  - Cloud Override: \`cmc vm start --cloud aws\`
+  - Default: `cmx vm start`
+  - Custom Name: `cmx vm start my-web-server`
+  - Cloud Override: `cmx vm start --cloud aws`
 
-#### \`stop\`
+#### `stop`
 
 Stops a running VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to stop. If omitted, the last started VM is used.
-- **Example**: \`cmc vm stop\` (Stops last VM)
+  - `<name>`: (Optional) Name of the VM to stop. If omitted, the last started VM is used.
+- **Example**: `cmx vm stop` (Stops last VM)
 
-#### \`delete\`
+#### `delete`
 
 Permanently removes a VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to delete. If omitted, the last started VM is used.
-- **Example**: \`cmc vm delete --name my-web-server\`
+  - `<name>`: (Optional) Name of the VM to delete. If omitted, the last started VM is used.
+- **Example**: `cmx vm delete --name my-web-server`
 
-#### \`suspend\`
+#### `suspend`
 
 Suspends a VM to disk (if supported by the provider).
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to suspend. If omitted, the last started VM is used.
-- **Example**: \`cmc vm suspend\`
+  - `<name>`: (Optional) Name of the VM to suspend. If omitted, the last started VM is used.
+- **Example**: `cmx vm suspend`
 
-#### \`restart\`
+#### `restart`
 
 Reboots a VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM to restart. If omitted, the last started VM is used.
-- **Example**: \`cmc vm restart\`
+  - `<name>`: (Optional) Name of the VM to restart. If omitted, the last started VM is used.
+- **Example**: `cmx vm restart`
 
-#### \`login\`
+#### `login`
 
 Provides connection details or logs into the VM.
 
 - **Options**:
-  - \`--name <name>\`: Name of the VM. If omitted, the last started VM is used.
-- **Example**: \`cmc vm login\`
+  - `<name>`: (Optional) Name of the VM. If omitted, the last started VM is used.
+- **Example**: `cmx vm login`
 
 ### 3. Inspection & Discovery
 
-#### \`list\`
+#### `list`
 
-Lists all VMs managed by the current provider.
+Lists all VMs managed by the current provider. The output table includes the provider name in the header (e.g., "VMs on multipass").
 
 - **Options**:
-  - \`--table\`: (Default) Prints a formatted table.
-  - \`--json\`: Prints output in JSON format.
-  - \`--yaml\`: Prints output in YAML format.
-  - \`--csv\`: Prints output in CSV format.
-- **Example**: \`cmc vm list --json\`
+  - `--table`: (Default) Prints a formatted table.
+  - `--json`: Prints output in JSON format.
+  - `--yaml`: Prints output in YAML format.
+  - `--csv`: Prints output in CSV format.
+- **Example**: `cmx vm list --json`
 
-#### \`flavors\`
+#### `flavors`
 
 Lists available hardware profiles for the current cloud.
 
-- **Example**: \`cmc vm flavors\`
+- **Example**: `cmx vm flavors`
 
-#### \`keys\`
+#### `keys`
 
 Lists available SSH keys in the current cloud.
 
-- **Example**: \`cmc vm keys\`
+- **Example**: `cmx vm keys`
 
-#### \`security-groups\`
+#### `security-groups`
 
 Lists available security groups for the current cloud.
 
-- **Example**: \`cmc vm security-groups\`
+- **Example**: `cmx vm security-groups`
 
 ### 4. Networking & SSH
 
-#### \`ssh-config\`
+#### `ssh-config`
 
-Generates suggested SSH configuration entries for all existing VMs in the current cloud. This allows you to connect using \`ssh <vm-name>\` without modifying your config file automatically.
+Generates suggested SSH configuration entries for all existing VMs in the current cloud. This allows you to connect using `ssh <vm-name>` without modifying your config file automatically.
 
-- **Example**: \`cmc vm ssh-config\`
+- **Example**: `cmx vm ssh-config`
 
 ### 5. Specialized Commands
 
-#### \`reservation\` (Chameleon Only)
+#### `reservation` (Chameleon Only)
 
 Creates a hardware reservation (lease) in Chameleon Cloud.
 
 - **Options**:
-  - \`--name <name>\`: (Required) Name of the reservation.
-  - \`--node-type <type>\`: (Required) e.g., \`compute_skylake\`.
-  - \`--count <int>\`: (Required) Number of nodes.
-  - \`--start <datetime>\`: Start date (YYYY-MM-DD HH:MM).
-  - \`--end <datetime>\`: End date (YYYY-MM-DD HH:MM).
-  - \`--duration <int>\`: Duration of the lease in days.
+  - `--name <name>`: (Required) Name of the reservation.
+  - `--node-type <type>`: (Required) e.g., `compute_skylake`.
+  - `--count <int>`: (Required) Number of nodes.
+  - `--start <datetime>`: Start date (YYYY-MM-DD HH:MM).
+  - `--end <datetime>`: End date (YYYY-MM-DD HH:MM).
+  - `--duration <int>`: Duration of the lease in days.
 - **Examples**:
-  - Duration based: \`cmc vm reservation --name my-lease --node-type compute_skylake --count 1 --duration 2\`
-  - Date based: \`cmc vm reservation --name my-lease --node-type compute_skylake --count 1 --start "2026-10-01 08:00" --end "2026-10-02 08:00"\`
+  - Duration based: `cmx vm reservation --name my-lease --node-type compute_skylake --count 1 --duration 2`
+  - Date based: `cmx vm reservation --name my-lease --node-type compute_skylake --count 1 --start "2026-10-01 08:00" --end "2026-10-02 08:00"`

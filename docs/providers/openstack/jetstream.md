@@ -19,6 +19,6 @@ Jetstream requires a credentials file in YAML format. This file should contain y
 ## Examples
 
 \`\`\`bash
-cmc vm set jetstream
-cmc vm start --name jetstream-node-1
+cmx vm set jetstream
+cmx vm start --name jetstream-node-1
 \`\`\`

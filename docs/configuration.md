@@ -1,17 +1,17 @@
 # Configuration
 
-\`cloudmesh-ai-vm\` uses a centralized YAML configuration file located at \`~/.config/cloudmesh/clouds.yaml\`. This file stores your global settings, provider credentials, and the state of your VM counters.
+`cloudmesh-ai-vm` uses a centralized YAML configuration file located at `~/.config/cloudmesh/clouds.yaml`. This file stores your global settings, provider credentials, and the state of your VM counters.
 
 ## File Structure
 
-Below is a comprehensive example of a \`clouds.yaml\` file covering all supported providers.
+Below is a comprehensive example of a `clouds.yaml` file covering all supported providers.
 
-\`\`\`yaml
+```yaml
 # Global Settings
 username: gregor
 counter: 0
 default_cloud: multipass
-last_vm: gregor0
+last_vm: gregor-0
 
 clouds:
   # --- Local Providers ---
@@ -65,19 +65,19 @@ clouds:
     private_key: /home/user/.config/google/service-account.json
     image: ubuntu-2204-lts
     size: n1-standard-1
-\`\`\`
+```
 
 ## Field Descriptions
 
 ### Global Fields
 
-- \`username\`: Used as a prefix for automatically generated VM names (e.g., \`gregor0\`).
-- \`counter\`: Tracks the number of VMs started. Incremented automatically on every \`cmc vm start\` without a name.
-- \`default_cloud\`: The provider used when no specific cloud is mentioned.
-- \`last_vm\`: Tracks the name of the last VM successfully started. This allows lifecycle commands (stop, delete, etc.) to target the VM without specifying \`--name\`.
+- `username`: Used as a prefix for automatically generated VM names (e.g., `gregor-0`). Underscores in the username are automatically replaced with hyphens to ensure compatibility with cloud providers.
+- `counter`: Tracks the number of VMs started. Incremented automatically on every `cmx vm start` without a name.
+- `default_cloud`: The provider used when no specific cloud is mentioned.
+- `last_vm`: Tracks the name of the last VM successfully started. This allows lifecycle commands (stop, delete, etc.) to target the VM without specifying a name.
 
 ### Provider-Specific Fields
 
-- \`auth\`: Path to a YAML file containing credentials (used by OpenStack).
-- \`image\`: The OS image identifier for the specific provider.
-- \`size\` / \`flavour\`: The hardware profile (CPU/RAM) for the VM.
+- `auth`: Path to a YAML file containing credentials (used by OpenStack).
+- `image`: The OS image identifier for the specific provider.
+- `size` / `flavour`: The hardware profile (CPU/RAM) for the VM.

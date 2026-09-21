@@ -20,19 +20,24 @@ class StateProxy:
     """
     @property
     def config(self):
-        return state_manager.config
+        return self._manager.config
     
     def increment_counter(self) -> int:
-        return state_manager.increment_counter()
+        return self._manager.increment_counter()
     
     def set_last_vm(self, cloud_name: str, vm_name: str):
-        state_manager.set_last_vm(cloud_name, vm_name)
+        self._manager.set_last_vm(cloud_name, vm_name)
     
     def get_last_vm(self, cloud_name: str) -> Optional[str]:
-        return state_manager.get_last_vm(cloud_name)
+        return self._manager.get_last_vm(cloud_name)
 
-# Create a singleton instance for use across the CLI
+    def set_manager(self, manager: StateManager):
+        """Allows tests to inject a different StateManager."""
+        self._manager = manager
+
+# Create the singleton instance
 state = StateProxy()
+state.set_manager(state_manager)
 
 def cloud_callback(ctx: click.Context, param, value):
     if value:

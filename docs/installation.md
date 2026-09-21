@@ -39,7 +39,7 @@ pip install -e .
 Run the following command to ensure the CLI is installed and working:
 
 \`\`\`bash
-cmc --help
+cmx --help
 \`\`\`
 
 If you see the help menu, you are ready to go!

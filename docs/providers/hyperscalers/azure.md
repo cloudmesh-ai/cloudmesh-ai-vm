@@ -22,6 +22,6 @@ azure:
 ## Examples
 
 \`\`\`bash
-cmc vm set azure
-cmc vm start --name azure-node
+cmx vm set azure
+cmx vm start --name azure-node
 \`\`\`

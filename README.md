@@ -6,7 +6,7 @@
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
 - **Smart VM Lifecycle**:
-    - **Automatic Naming**: VMs are named automatically using a `<username><counter>` pattern.
+    - **Automatic Naming**: VMs are named automatically using a `<username>-<counter>` pattern (e.g., `gregor-1`).
     - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like `cmx vm stop` without specifying a name.
 - **Provider Flexibility**:
     - **Default Cloud**: Manage your active provider via `cmx vm set <cloud>`.
@@ -14,6 +14,7 @@
 - **Remote Execution**: Execute commands directly on your VMs using `cmx vm run <command>`.
 - **Resource Discovery**: Easily list available flavors, SSH keys, and security groups directly from the CLI.
 - **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
+- **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 
 ## 🛠️ Quick Start
 
@@ -38,7 +39,7 @@ cmx vm get
 # Set your default cloud
 cmx vm set multipass
 
-# Start a VM (will be named user0, user1, etc.)
+# Start a VM (will be named username-1, username-2, etc.)
 cmx vm start
 
 # Run a command on the VM
@@ -52,6 +53,9 @@ cmx vm start --cloud aws
 
 # List all VMs for current cloud
 cmx vm list
+
+# Enter interactive VM shell
+cmx vm -i
 ```
 
 ## 📊 Provider Support Matrix

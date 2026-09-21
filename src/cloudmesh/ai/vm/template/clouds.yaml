@@ -6,15 +6,17 @@ clouds:
     region: us-east-1
   chameleon:
     enabled: true
+    flavor: m1.tiny
     image: CC-Ubuntu24.04
+    key_path: ~/.ssh/id_rsa
     name: chameleon
-    region: KVM@TACC
-    credentials: chameleon:~/.config/openstack/clouds.yaml
+    region: CHI@TACCn
   jetstream:
     enabled: true
+    flavor: m1.tiny
     image: Featured-Minimal-Ubuntu24
+    key_path: ~/.ssh/id_rsa
     name: jetstream
-    credentials: jetstream:~/.config/openstack/clouds.yaml
   lima:
     enabled: true
     name: lima
@@ -23,6 +25,9 @@ clouds:
     enabled: true
     image: 22.04
     name: multipass
-counter: 0
+counter: 36
 default_cloud: multipass
+last_vm:
+  default: {{username}}-1
+  multipass: {{username}}-1
 username: {{username}}

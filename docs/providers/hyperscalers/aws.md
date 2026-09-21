@@ -21,6 +21,6 @@ aws:
 ## Examples
 
 \`\`\`bash
-cmc vm set aws
-cmc vm start --name aws-test-vm
+cmx vm set aws
+cmx vm start --name aws-test-vm
 \`\`\`

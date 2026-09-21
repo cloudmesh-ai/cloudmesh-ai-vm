@@ -17,6 +17,6 @@ If \`ssh_link: true\` is set, \`cloudmesh-ai-vm\` will attempt to symbolically l
 ## Examples
 
 \`\`\`bash
-cmc vm set wsl2
-cmc vm start
+cmx vm set wsl2
+cmx vm start
 \`\`\`

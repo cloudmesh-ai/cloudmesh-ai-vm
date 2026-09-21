@@ -23,11 +23,11 @@
 2. **Configure** your credentials in \`~/.config/cloudmesh/clouds.yaml\`.
 3. **Set** your default provider:
    \`\`\`bash
-   cmc vm set multipass
+   cmx vm set multipass
    \`\`\`
 4. **Launch** your first VM:
    \`\`\`bash
-   cmc vm start
+   cmx vm start
    \`\`\`
 
 See the [Installation Guide](installation.md) to get started.

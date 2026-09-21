@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 from cloudmesh.ai.command.vm import cmx
-from cloudmesh.ai.command.vm.exceptions import VMCommandError
+from cloudmesh.ai.command.vm._shared.exceptions import VMCommandError
 
 @pytest.fixture
 def runner():

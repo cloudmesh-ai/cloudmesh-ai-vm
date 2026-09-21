@@ -19,6 +19,6 @@ vbox:
 ## Examples
 
 \`\`\`bash
-cmc vm set vbox
-cmc vm start
+cmx vm set vbox
+cmx vm start
 \`\`\`

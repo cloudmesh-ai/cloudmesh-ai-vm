@@ -6,13 +6,13 @@ Multipass is a lightweight VM manager for Ubuntu, developed by Canonical. It is 
 
 In your `clouds.yaml`, you can specify the resources for Multipass VMs:
 
-\`\`\`yaml
+```yaml
 multipass:
   image: 22.04
   cpus: 2
   memory: 4GiB
   disk: 20GiB
-\`\`\`
+```
 
 ## Key Features
 
@@ -22,13 +22,13 @@ multipass:
 
 ## Examples
 
-\`\`\`bash
+```bash
 # Set Multipass as default
-cmc vm set multipass
+cmx vm set multipass
 
-# Start a VM with default config
-cmc vm start
+# Start a VM with default config (named <username>-<counter>)
+cmx vm start
 
-# List local Multipass VMs
-cmc vm list
-\`\`\`
+# List local Multipass VMs (header will show "VMs on multipass")
+cmx vm list
+```

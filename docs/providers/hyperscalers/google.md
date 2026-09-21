@@ -20,6 +20,6 @@ google:
 ## Examples
 
 \`\`\`bash
-cmc vm set google
-cmc vm start --name gcp-vm
+cmx vm set google
+cmx vm start --name gcp-vm
 \`\`\`
