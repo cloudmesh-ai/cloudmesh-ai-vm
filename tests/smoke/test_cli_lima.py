@@ -19,12 +19,12 @@ def test_lima_cli_lifecycle(runner, config):
     Smoke test for Lima CLI lifecycle.
     """
     # 1. providers
-    result = runner.invoke(vm.vm_group, ["providers"])
+    result = runner.invoke(vm.vm_group, ["providers", "list"])
     assert result.exit_code == 0
-    assert "lima" in result.output
+    assert "lima" in result.output.lower()
 
     # 2. set
-    result = runner.invoke(vm.vm_group, ["set", "lima"])
+    result = runner.invoke(vm.vm_group, ["providers", "set", "lima"])
     assert result.exit_code == 0
 
     # 3. start

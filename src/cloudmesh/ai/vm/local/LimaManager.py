@@ -12,6 +12,7 @@ class Provider(CloudBaseManager):
 
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)
+        self.cloud_name = "lima"
         self._verify_installation()
 
     def _verify_installation(self):
@@ -91,7 +92,16 @@ class Provider(CloudBaseManager):
             # For built-in templates, Lima expects 'template:name' when using --name
             template_arg = f"template:{template}"
 
-        command = ["limactl", "start", "--name", vm_name, template_arg]
+        # Check if the VM already exists to avoid "instance already exists" error
+        existing_vms = self.list()
+        vm_exists = any(vm.get("name") == vm_name or vm.get("NAME") == vm_name for vm in existing_vms)
+
+        if vm_exists:
+            # VM exists, just start it
+            command = ["limactl", "start", vm_name, "--tty=false"]
+        else:
+            # VM doesn't exist, create and start it
+            command = ["limactl", "start", "--name", vm_name, "--tty=false", template_arg]
         
         self._run_interactive(command)
         return vm_name
@@ -136,15 +146,16 @@ class Provider(CloudBaseManager):
             for line in lines[1:]:
                 parts = line.split()
                 if len(parts) >= 2:
-                    vm_info = {headers[i]: parts[i] for i in range(min(len(headers), len(parts)))}
+                    # Use lowercase keys for consistency across providers
+                    vm_info = {headers[i].lower(): parts[i] for i in range(min(len(headers), len(parts)))}
                     
                     # Normalize keys for ssh_config and other tools
                     # Lima uses NAME and SSH
-                    name = vm_info.get("NAME") or vm_info.get("Name")
-                    ip = vm_info.get("SSH") or vm_info.get("IP")
+                    name = vm_info.get("name")
+                    ip = vm_info.get("ssh") or vm_info.get("ip")
                     
-                    vm_info["Name"] = name
-                    vm_info["IP"] = ip
+                    vm_info["name"] = name
+                    vm_info["ip"] = ip
                     
                     vms.append(vm_info)
             

@@ -22,6 +22,10 @@ class StateProxy:
     def config(self):
         return self._manager.config
     
+    def save(self):
+        """Saves the current configuration to the file."""
+        self._manager.save()
+    
     def increment_counter(self) -> int:
         return self._manager.increment_counter()
     

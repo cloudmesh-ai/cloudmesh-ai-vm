@@ -104,8 +104,7 @@ def vm_group(ctx: click.Context, interactive: bool) -> None:
             except Exception as e:
                 console.print(f"[bold red]Shell Error:[/bold red] {str(e)}")
     else:
-        # Print a subtle header showing the target cloud for non-interactive commands
-        console.print(f"[dim]Targeting cloud: [bold blue]{active_p}[/bold blue][/dim]")
+        pass
 
 # Initialize the dynamic loading
 COMMANDS_DIR = os.path.dirname(__file__)
