@@ -21,42 +21,34 @@ def provider(mock_config):
     return Provider(mock_config)
 
 def test_start_with_name_and_config(provider):
-    with patch("subprocess.Popen") as mock_popen:
-        mock_process = MagicMock()
-        mock_process.stdout = iter(["Success\n"])
-        mock_process.returncode = 0
-        mock_popen.return_value = mock_process
+    # Mock subprocess.run for _run_interactive
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
         
         vm_name = "test-vm"
         result = provider.start(name=vm_name)
         
         # Verify the command constructed
         expected_command = ["multipass", "launch", "-c", "2", "-m", "4GiB", "-d", "20GiB", "-n", vm_name, "22.04"]
-        mock_popen.assert_called_once_with(
-            expected_command, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
-            text=True, 
-            bufsize=1
+        mock_run.assert_called_once_with(
+            expected_command,
+            capture_output=False,
+            check=True
         )
         assert result == vm_name
 
 def test_start_without_name(provider):
-    with patch("subprocess.Popen") as mock_popen:
-        mock_process = MagicMock()
-        mock_process.stdout = iter(["Success\n"])
-        mock_process.returncode = 0
-        mock_popen.return_value = mock_process
+    # Mock subprocess.run for _run_interactive
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
         
         result = provider.start()
         
         expected_command = ["multipass", "launch", "-c", "2", "-m", "4GiB", "-d", "20GiB", "22.04"]
-        mock_popen.assert_called_once_with(
-            expected_command, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
-            text=True, 
-            bufsize=1
+        mock_run.assert_called_once_with(
+            expected_command,
+            capture_output=False,
+            check=True
         )
         assert result == "multipass-generated"
 
@@ -65,6 +57,7 @@ def test_stop_success(provider):
         mock_process = MagicMock()
         mock_process.stdout = iter(["Stopped\n"])
         mock_process.returncode = 0
+        mock_process.communicate.return_value = ("", "")
         mock_popen.return_value = mock_process
         
         assert provider.stop(name="test-vm") is True
@@ -81,6 +74,7 @@ def test_stop_failure(provider):
         mock_process = MagicMock()
         mock_process.stdout = iter(["VM not found\n"])
         mock_process.returncode = 1
+        mock_process.communicate.return_value = ("", "")
         mock_popen.return_value = mock_process
         
         assert provider.stop(name="non-existent") is False
@@ -90,6 +84,7 @@ def test_delete_success(provider):
         mock_process = MagicMock()
         mock_process.stdout = iter(["Deleted\n"])
         mock_process.returncode = 0
+        mock_process.communicate.return_value = ("", "")
         mock_popen.return_value = mock_process
         
         assert provider.delete(name="test-vm") is True
@@ -117,30 +112,35 @@ def test_list_parsing(provider):
         "vm-1                    Running           192.168.64.5     Ubuntu 22.04 LTS\n"
         "vm-2                    Stopped           192.168.64.6     Ubuntu 22.04 LTS\n"
     )
-    with patch("subprocess.Popen") as mock_popen:
-        mock_process = MagicMock()
-        mock_process.stdout = iter(mock_output.splitlines(keepends=True))
-        mock_process.returncode = 0
-        mock_popen.return_value = mock_process
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            stdout=mock_output, 
+            returncode=0
+        )
         
         vms = provider.list()
         
         assert len(vms) == 2
-        assert vms[0]["Name"] == "vm-1"
-        assert vms[0]["State"] == "Running"
-        assert vms[1]["Name"] == "vm-2"
-        assert vms[1]["State"] == "Stopped"
+        assert vms[0]["name"] == "vm-1"
+        assert vms[0]["status"] == "Running"
+        assert vms[1]["name"] == "vm-2"
+        assert vms[1]["status"] == "Stopped"
 
 def test_restart_success(provider):
-    with patch("subprocess.Popen") as mock_popen:
+    with patch("subprocess.Popen") as mock_popen, \
+         patch("subprocess.run") as mock_run:
+        # Mock Popen for stop()
         mock_process = MagicMock()
         mock_process.stdout = iter(["Success\n"])
         mock_process.returncode = 0
+        mock_process.communicate.return_value = ("", "")
         mock_popen.return_value = mock_process
+        
+        # Mock run for start()
+        mock_run.return_value = MagicMock(returncode=0)
         
         assert provider.restart(name="test-vm") is True
         # Verify stop was called then start
-        assert mock_popen.call_count == 2
         mock_popen.assert_any_call(
             ["multipass", "stop", "test-vm"], 
             stdout=subprocess.PIPE, 
@@ -148,12 +148,10 @@ def test_restart_success(provider):
             text=True, 
             bufsize=1
         )
-        mock_popen.assert_any_call(
-            ["multipass", "start", "test-vm"], 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
-            text=True, 
-            bufsize=1
+        mock_run.assert_any_call(
+            ["multipass", "start", "test-vm"],
+            capture_output=False,
+            check=True
         )
 
 def test_getters(provider):

@@ -107,13 +107,10 @@ class CloudBaseManager(BaseVMProvider, ABC):
 
     def print_ansi(self, text: str, **kwargs):
         """Prints text and cleans up ANSI sequences and CLI spinner artifacts."""
-        import re
-        sanitized_text = re.sub(r'[/\\-\\\\|]{4,}', '', text)
-        sanitized_text = re.sub(r'\\r|\\x1b\\[[0-9]*G|\\x1b\\[H', '', sanitized_text)
         if self.console:
-            self.console.print(Text.from_ansi(sanitized_text), **kwargs)
+            self.console.print(Text.from_ansi(text), **kwargs)
         else:
-            print(sanitized_text, **kwargs)
+            print(text, **kwargs)
 
     def _run_interactive(self, command: List[str]):
         """Runs a command directly connected to the terminal for smooth animations."""

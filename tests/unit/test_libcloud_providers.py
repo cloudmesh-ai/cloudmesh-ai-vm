@@ -114,11 +114,11 @@ class TestLibcloudProviders:
 
             # Test Stop
             assert provider.stop(name="test-vm") is True
-            mock_driver.stop_node.assert_called()
+            mock_driver.get_node.return_value.stop.assert_called_once()
 
             # Test Delete
             assert provider.delete(name="test-vm") is True
-            mock_driver.destroy_node.assert_called()
+            mock_driver.get_node.return_value.destroy.assert_called_once()
 
             # Test List
             vms = provider.list()

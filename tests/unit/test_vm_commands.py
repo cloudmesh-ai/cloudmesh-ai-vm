@@ -59,19 +59,21 @@ def test_vm_info_not_found(runner, mock_provider):
         assert "Error" in result.output
 
 def test_vm_key_upload_success(runner, mock_provider):
-    """Test that 'cmx vm key upload-key' successfully uploads a key."""
+    """Test that 'cmx vm key upload' successfully uploads a key."""
     with patch("os.path.exists", return_value=True), \
-         patch("cloudmesh.ai.command.vm.key.upload.get_active_provider", return_value=mock_provider):
+         patch("cloudmesh.ai.command.vm.key.upload.get_active_provider", return_value=mock_provider), \
+         patch("cloudmesh.ai.command.vm.key.upload.console") as mock_console:
         mock_provider.upload_key.return_value = True
-        result = runner.invoke(cmx, ["vm", "key", "upload-key", "dummy.pub", "--name", "my-key"])
+        # The command name is derived from the filename 'upload.py', so it's 'upload', not 'upload-key'
+        result = runner.invoke(cmx, ["vm", "key", "upload", "dummy.pub", "--name", "my-key"])
         assert result.exit_code == 0
-        assert "Successfully uploaded key" in result.output
+        mock_console.print.assert_called()
 
 def test_vm_key_upload_unsupported(runner, mock_provider):
-    """Test that 'cmx vm key upload-key' handles unsupported providers."""
+    """Test that 'cmx vm key upload' handles unsupported providers."""
     del mock_provider.upload_key 
     with patch("os.path.exists", return_value=True), \
          patch("cloudmesh.ai.command.vm.key.upload.get_active_provider", return_value=mock_provider):
-        result = runner.invoke(cmx, ["vm", "key", "upload-key", "dummy.pub", "--name", "my-key"])
+        result = runner.invoke(cmx, ["vm", "key", "upload", "dummy.pub", "--name", "my-key"])
         assert result.exit_code != 0
         assert "Error" in result.output

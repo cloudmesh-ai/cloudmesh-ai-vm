@@ -118,6 +118,32 @@ class Provider(CloudBaseManager):
             self.print(f"Error deleting VM {name}: {e}")
             return False
 
+    def restart(self, name: Optional[str] = None) -> bool:
+        """Restarts a Multipass VM."""
+        if not name:
+            return False
+        try:
+            # Stop the VM
+            self.stop(name)
+            
+            # Start the VM using multipass start (instead of launch)
+            command = ["multipass", "start", name]
+            self._run_interactive(command)
+            
+            return True
+        except Exception as e:
+            self.print(f"Error restarting VM {name}: {e}")
+            return False
+
+    def get_flavors(self) -> List[Dict[str, Any]]:
+        """Lists available hardware profiles for Multipass."""
+        return [
+            {"name": "default", "cpu": 1, "ram": "1GiB", "disk": "5GiB"},
+            {"name": "medium", "cpu": 2, "ram": "2GiB", "disk": "10GiB"},
+            {"name": "large", "cpu": 4, "ram": "4GiB", "disk": "20GiB"},
+        ]
+
+
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Multipass VMs."""
         try:
