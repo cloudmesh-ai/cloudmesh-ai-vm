@@ -2,6 +2,8 @@
 
 `cloudmesh-ai-vm` is a unified Python CLI tool (`cmx`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers. Whether you are using local virtualization for development or scaling in the cloud for production, `cmx` provides a consistent interface for the entire VM lifecycle.
 
+![Hybrid Virtual Machine Management wich Cloudmesh](assets/images/cmx-vm-chatgpt.png)
+
 ## Key Value Propositions
 
 - **One Interface, Many Clouds**: Stop learning different CLI tools for AWS, Azure, Multipass, and OpenStack. Use `cmx` for all of them.
