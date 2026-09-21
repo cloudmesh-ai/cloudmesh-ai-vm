@@ -164,7 +164,7 @@ def setup_cluster(n=3):
         print(f"🔑 Configuring keys for {source_vm}...")
         
         # 1. Generate key on source
-        run_cmd(f"multipass exec {source_vm} -- bash -c 'ssh-keygen -t rsa -N \"\" -f ~/.ssh/id_rsa'")
+        run_cmd(f"multipass exec {source_vm} -- bash -c 'ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa'")
         pub_key = run_cmd(f"multipass exec {source_vm} -- cat ~/.ssh/id_rsa.pub")
 
         # 2. Distribute key to all other VMs
@@ -172,7 +172,7 @@ def setup_cluster(n=3):
             if source_vm == dest_vm: continue
             dest_ip = ip_map[dest_vm]
             # Append public key to authorized_keys of destination
-            run_cmd(f"multipass exec {dest_vm} -- bash -c 'echo \"{pub_key}\" >> ~/.ssh/authorized_keys'")
+            run_cmd(f"multipass exec {dest_vm} -- bash -c 'echo "{pub_key}" >> ~/.ssh/authorized_keys'")
 
     print("\n✅ Cluster Ready! All nodes can SSH into each other.")
     print("Try it: multipass shell node-1 && ssh ubuntu@<node-2-ip>")

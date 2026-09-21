@@ -454,9 +454,17 @@ class OpenstackManager(CloudBaseManager):
         Lists available keys in OpenStack using the CLI.
         """
         try:
-            result = self._run_cli_command(["openstack", "key", "list", "--format", "value", "-c", "name"])
-            names = result.strip().split("\n")
-            return [{"name": name} for name in names if name]
+            result = self._run_cli_command(["openstack", "key", "list", "--format", "value", "-c", "name", "-c", "fingerprint"])
+            lines = result.strip().split("\n")
+            keys = []
+            for line in lines:
+                if not line:
+                    continue
+                parts = line.split(maxsplit=1)
+                name = parts[0]
+                fingerprint = parts[1] if len(parts) > 1 else "N/A"
+                keys.append({"name": name, "fingerprint": fingerprint})
+            return keys
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"Error listing OpenStack keys: {e}")
