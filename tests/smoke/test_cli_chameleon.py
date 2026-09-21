@@ -64,21 +64,36 @@ def test_chameleon_cli_lifecycle(runner, config):
     if result.exit_code != 0:
         pytest.skip("Chameleon flavors failed")
 
-    # 9. keys
-    result = runner.invoke(vm.vm_group, ["keys"])
+    # 9. keys list
+    result = runner.invoke(vm.vm_group, ["key", "list"])
     if result.exit_code != 0:
-        pytest.skip("Chameleon keys failed")
+        pytest.skip("Chameleon key list failed")
 
-    # 10. security_groups
+    # 10. keys list --all
+    result = runner.invoke(vm.vm_group, ["key", "list", "--all"])
+    if result.exit_code != 0:
+        pytest.skip("Chameleon key list --all failed")
+
+    # 11. keys upload
+    result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"])
+    if result.exit_code != 0:
+        pytest.skip("Chameleon key upload failed")
+
+    # 12. keys delete
+    result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
+    if result.exit_code != 0:
+        pytest.skip("Chameleon key delete failed")
+
+    # 13. security_groups
     result = runner.invoke(vm.vm_group, ["security_groups"])
     if result.exit_code != 0:
         pytest.skip("Chameleon security_groups failed")
 
-    # 11. ssh_config
+    # 14. ssh_config
     result = runner.invoke(vm.vm_group, ["ssh_config"])
     assert result.exit_code == 0
 
-    # 12. reservation
+    # 15. reservation
     # Try to create a reservation
     result = runner.invoke(vm.vm_group, ["reservation", "smoke-res", "--node-type", "gpu", "--count", "1"])
     if result.exit_code != 0:

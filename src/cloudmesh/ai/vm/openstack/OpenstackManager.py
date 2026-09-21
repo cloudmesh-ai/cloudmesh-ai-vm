@@ -489,6 +489,27 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"Error listing security groups: {e}")
             return []
 
+    def get_security_group_info(self, name: str) -> Dict[str, Any]:
+        """
+        Gets detailed information for a specific security group using the CLI.
+        """
+        try:
+            # Use --format value to get key=value pairs
+            result = self._run_cli_command(["openstack", "security", "group", "show", name, "--format", "value"])
+            # OpenStack 'show' with --format value returns lines of values. 
+            # To get keys as well, we can use --format json or just parse the output.
+            # Since _run_cli_command is simple, let's try to use json if possible, 
+            # but usually we can just use 'openstack security group show <name>' and parse.
+            
+            # Actually, 'openstack security group show <name> -f json' is the most reliable.
+            import json
+            result_json = self._run_cli_command(["openstack", "security", "group", "show", name, "-f", "json"])
+            return json.loads(result_json)
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error getting security group info for {name}: {e}")
+            raise RuntimeError(f"Could not get security group info: {e}")
+
     def add_security_group_rule(self, group_name: str, port: int, protocol: str = "tcp", cidr: str = "0.0.0.0/0") -> bool:
         """
         Adds a security group rule to allow traffic on a specific port using OpenStack CLI.

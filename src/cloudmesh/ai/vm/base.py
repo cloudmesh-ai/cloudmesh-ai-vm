@@ -80,6 +80,10 @@ class BaseVMProvider(ABC):
         """Lists available security groups."""
         raise ProviderFeatureNotSupported(self.cloud_name, "get_security_groups")
 
+    def get_security_group_info(self, name: str) -> Dict[str, Any]:
+        """Gets detailed information for a specific security group."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "get_security_group_info")
+
     # --- Network Methods ---
     def list_regions(self) -> List[Dict[str, Any]]:
         """Lists available regions."""

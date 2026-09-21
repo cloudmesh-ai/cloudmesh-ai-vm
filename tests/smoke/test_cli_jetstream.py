@@ -64,16 +64,31 @@ def test_jetstream_cli_lifecycle(runner, config):
     if result.exit_code != 0:
         pytest.skip("Jetstream flavors failed")
 
-    # 9. keys
-    result = runner.invoke(vm.vm_group, ["keys"])
+    # 9. keys list
+    result = runner.invoke(vm.vm_group, ["key", "list"])
     if result.exit_code != 0:
-        pytest.skip("Jetstream keys failed")
+        pytest.skip("Jetstream key list failed")
 
-    # 10. security_groups
+    # 10. keys list --all
+    result = runner.invoke(vm.vm_group, ["key", "list", "--all"])
+    if result.exit_code != 0:
+        pytest.skip("Jetstream key list --all failed")
+
+    # 11. keys upload
+    result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"])
+    if result.exit_code != 0:
+        pytest.skip("Jetstream key upload failed")
+
+    # 12. keys delete
+    result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
+    if result.exit_code != 0:
+        pytest.skip("Jetstream key delete failed")
+
+    # 13. security_groups
     result = runner.invoke(vm.vm_group, ["security_groups"])
     if result.exit_code != 0:
         pytest.skip("Jetstream security_groups failed")
 
-    # 11. ssh_config
+    # 14. ssh_config
     result = runner.invoke(vm.vm_group, ["ssh_config"])
     assert result.exit_code == 0
