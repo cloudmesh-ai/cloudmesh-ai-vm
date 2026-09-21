@@ -3,7 +3,7 @@
 ## [1.3.0] - 2026-09-18
 
 ### Added
-- **New CLI Command**: Implemented `cmc vm images` to list available images for the active cloud provider.
+- **New CLI Command**: Implemented `cmc vm image` to list available images for the active cloud provider.
 - **Cloud Defaults**: Added recommended default images, flavors, and regions for Jetstream and Chameleon Cloud in sample and local configurations.
 - **VM Information**: Introduced `info()` method to retrieve detailed VM metadata (ID, State, IPs, RAM, CPUs) across all providers.
 - **Provider Validation**: Added `check_requirements()` to unify how the CLI detects if a provider is supported on the current host system.
@@ -14,7 +14,7 @@
 
 ### Changed
 - **Provider Table**: Changed the "Enabled" status indicator from a yellow dot to a white dot for providers with missing configuration.
-- **CLI Output**: Removed debug messages from `cmc vm providers`.
+- **CLI Output**: Removed debug messages from `cmc vm provider`.
 - **OpenStack Driver**: Enhanced `OpenstackManager` to dynamically retrieve and apply the `region` from `~/.config/openstack/clouds.yaml`.
 - **Libcloud Initialization**: Modified `LibcloudManager` to avoid hard failures during driver initialization when performing requirement checks.
 

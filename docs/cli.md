@@ -104,11 +104,11 @@ Lists all VMs managed by the current provider. The output table includes the pro
   - `--csv`: Prints output in CSV format.
 - **Example**: `cmx vm list --json`
 
-#### `flavors`
+#### `flavor`
 
 Lists available hardware profiles for the current cloud.
 
-- **Example**: `cmx vm flavors`
+- **Example**: `cmx vm flavor`
 
 #### `keys`
 

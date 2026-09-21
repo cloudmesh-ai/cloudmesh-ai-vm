@@ -24,7 +24,8 @@ def start(ctx: click.Context, name: Optional[str] = None) -> None:
         # Generate name using username and incremented counter from state
         # Try to get provider-specific username first, then fallback to global username
         provider_config = provider.get_cloud_config(provider.cloud_name)
-        raw_username = provider_config.get("username") or state.config.username or "user"
+
+        raw_username = provider_config.get("username") or state.config.db.get("username", "user")
         username = raw_username.replace("_", "-")
         
         counter = state.increment_counter()

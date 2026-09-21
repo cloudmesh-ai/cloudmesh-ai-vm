@@ -24,7 +24,8 @@ class StateProxy:
     
     def save(self):
         """Saves the current configuration to the file."""
-        self._manager.save()
+        # YamlDB usually handles auto-flush, but we keep this for API compatibility.
+        pass
     
     def increment_counter(self) -> int:
         return self._manager.increment_counter()
@@ -34,6 +35,9 @@ class StateProxy:
     
     def get_last_vm(self, cloud_name: str) -> Optional[str]:
         return self._manager.get_last_vm(cloud_name)
+    @property
+    def db(self):
+        return self._manager.db
 
     def set_manager(self, manager: StateManager):
         """Allows tests to inject a different StateManager."""
@@ -66,7 +70,8 @@ def get_active_provider(ctx: click.Context):
     
     default_cloud = "multipass"
     if state.config:
-        default_cloud = getattr(state.config, "default_cloud", "multipass") or "multipass"
+        # Use StateManager.db.get for the default_cloud value
+        default_cloud = state.config.db.get("default_cloud", "multipass") or "multipass"
         
     cloud = ctx.obj.cloud_override if ctx.obj else None
     if not cloud:

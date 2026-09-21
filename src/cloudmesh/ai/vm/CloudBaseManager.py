@@ -16,14 +16,23 @@ class CloudBaseManager(BaseVMProvider, ABC):
     def get_cloud_config(self, cloud_name: str) -> Dict[str, Any]:
         """
         Helper to retrieve configuration for a specific cloud, 
-        handling both dictionary and GlobalConfig object inputs.
+        handling both dictionary, StateManager, and GlobalConfig object inputs.
         """
+        # 1. Handle StateManager (YamlDB)
+        if hasattr(self.config, "get_cloud_config") and callable(getattr(self.config, "get_cloud_config")):
+            return self.config.get_cloud_config(cloud_name)
+
+        # 2. Handle plain dictionary
         if isinstance(self.config, dict):
             return self.config.get("clouds", {}).get(cloud_name, {})
         
-        # Assume it's a GlobalConfig object (dataclass)
+        # 3. Handle GlobalConfig object (dataclass)
         clouds = getattr(self.config, "clouds", {})
-        cloud_cfg = clouds.get(cloud_name, {})
+        if isinstance(clouds, dict):
+            cloud_cfg = clouds.get(cloud_name, {})
+        else:
+            # Fallback if clouds is not a dict
+            return {}
         
         # If the cloud_cfg is a dataclass (ProviderConfig), convert to dict
         if not isinstance(cloud_cfg, dict) and hasattr(cloud_cfg, "__dict__"):

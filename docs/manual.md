@@ -45,11 +45,11 @@ Manage the CLI configuration stored in `~/.config/cloudmesh/clouds.yaml`.
   - `cmx vm list vms`: List all VMs in the active cloud.
   - `cmx vm list regions`: List available regions for the current provider.
 - **`info NAME`**: Get detailed information (IPs, State, etc.) about a specific VM.
-- **`images`**: List available VM images for the active provider.
-- **`flavors`**: List available VM flavors/sizes.
+- **`image`**: List available VM image for the active provider.
+- **`flavor`**: List available VM flavor/sizes.
 - **`security_groups`**: List available security groups.
 
-### Provider Management (`cmx vm providers`)
+### Provider Management (`cmx vm provider`)
 Manage the cloud providers available to the tool.
 
 - **`get`**: Get the current default cloud provider.

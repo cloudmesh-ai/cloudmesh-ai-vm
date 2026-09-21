@@ -25,8 +25,11 @@ def _render_vms(cloud_name, vms):
             name = getattr(vm, "name", vm.get("name") if isinstance(vm, dict) else "Unknown")
             status = getattr(vm, "status", vm.get("status") if isinstance(vm, dict) else "Unknown")
             ip = getattr(vm, "ip", vm.get("ip") if isinstance(vm, dict) else "Unknown")
-            rows.append([name, status, ip])
-        render_table(table_title, ["Name", "Status", "IP"], rows)
+            image = getattr(vm, "image", vm.get("image") if isinstance(vm, dict) else "Unknown")
+            flavor = getattr(vm, "flavor", vm.get("flavor") if isinstance(vm, dict) else "Unknown")
+            networks = getattr(vm, "networks", vm.get("networks") if isinstance(vm, dict) else "Unknown")
+            rows.append([name, status, ip, image, flavor, networks])
+        render_table(table_title, ["Name", "Status", "IP", "Image", "Flavor", "Networks"], rows)
         return True
     return False
 

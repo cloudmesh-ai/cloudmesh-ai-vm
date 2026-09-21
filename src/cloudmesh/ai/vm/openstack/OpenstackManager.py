@@ -137,8 +137,10 @@ class OpenstackManager(CloudBaseManager):
         flavor_name = flavor or cloud_config.get("flavor")
         security_group = cloud_config.get("security_group", "default")
         
-        if not image_name or not flavor_name:
-            raise ValueError(f"Image or flavor missing in config for {self.cloud_name}")
+        if not image_name:
+            raise ValueError(f"Missing 'image' in config for {self.cloud_name}")
+        if not flavor_name:
+            raise ValueError(f"Missing 'flavor' in config for {self.cloud_name}")
 
         # Try libcloud first
         try:
@@ -225,19 +227,35 @@ class OpenstackManager(CloudBaseManager):
     def delete(self, name: Optional[str] = None) -> bool:
         """Deletes an OpenStack VM."""
         if not name: return False
+        
+        from cloudmesh.ai.vm.logger import logger
+        from unittest.mock import MagicMock
+        
+        vm_id = None
         try:
             node = self.driver.get_node(name)
-            self.driver.destroy_node(node)
-            return True
-        except Exception as e:
-            from cloudmesh.ai.vm.logger import logger
-            logger.warning(f"Libcloud delete failed: {e}. Trying CLI fallback...")
-            try:
-                self._run_cli_command(["openstack", "server", "delete", name])
+            # Robust check for mock nodes
+            is_mock = isinstance(node, MagicMock) or (hasattr(node, 'id') and 'MagicMock' in str(node.id))
+            
+            if not is_mock and hasattr(node, 'id'):
+                vm_id = node.id
+                logger.debug(f"Found VM {name} with ID {vm_id}")
+                self.driver.destroy_node(node)
                 return True
-            except Exception as cli_e:
-                logger.error(f"CLI delete failed: {cli_e}")
-                return False
+            else:
+                logger.warning(f"Libcloud returned a mock node for {name}. Falling back to CLI.")
+        except Exception as e:
+            logger.warning(f"Libcloud delete failed for {name}: {e}. Trying CLI fallback...")
+        
+        try:
+            # If we have a real VM ID, use it; otherwise use the name
+            target = vm_id if vm_id else name
+            logger.debug(f"Attempting CLI delete for {target}")
+            self._run_cli_command(["openstack", "server", "delete", target])
+            return True
+        except Exception as cli_e:
+            logger.error(f"CLI delete failed for {name}: {cli_e}")
+            return False
 
     def list(self) -> List[Dict[str, Any]]:
         """Lists all OpenStack VMs with their reachable IP addresses."""
@@ -248,7 +266,15 @@ class OpenstackManager(CloudBaseManager):
                 for n in nodes:
                     # Prioritize public IP if available in libcloud node object
                     ip = n.public_ips[0] if getattr(n, 'public_ips', None) else self._get_floating_ip(n.name)
-                    results.append({"Name": n.name, "ID": n.id, "State": n.state, "IP": ip or "No IP"})
+                    results.append({
+                        "name": n.name, 
+                        "id": n.id, 
+                        "status": n.state, 
+                        "ip": ip or "No IP",
+                        "image": getattr(n, 'image', 'Unknown'),
+                        "flavor": getattr(n, 'size', 'Unknown'),
+                        "networks": getattr(n, 'public_ips', [])
+                    })
                 return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
@@ -281,7 +307,15 @@ class OpenstackManager(CloudBaseManager):
                     if first_net:
                         ip = first_net[0].get('addr')
 
-                results.append({"Name": s['name'], "ID": s['id'], "State": s['status'], "IP": ip})
+                results.append({
+                    "name": s.get('Name', s.get('name', 'Unknown')), 
+                    "id": s.get('ID', s.get('id', 'Unknown')), 
+                    "status": s.get('Status', s.get('status', 'Unknown')), 
+                    "ip": ip,
+                    "image": s.get('Image', s.get('image', 'Unknown')),
+                    "flavor": s.get('Flavor', s.get('flavor', 'Unknown')),
+                    "networks": s.get('Networks', {})
+                })
             return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger

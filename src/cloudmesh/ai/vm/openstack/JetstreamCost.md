@@ -19,7 +19,7 @@ SUs are consumed at a rate of:
 *   Jetstream2-LM (Large Memory) - 2 SUs per vCPU_core-hour
 *   Jetstream2-GPU - 2 SUs per vCPU_core-hour
 
-Please refer to [VM Sizes and configurations](../general/vmsizes.md){target=_blank} to see available VM flavors and per hour cost on Jetstream2.
+Please refer to [VM Sizes and configurations](../general/vmsizes.md){target=_blank} to see available VM flavor and per hour cost on Jetstream2.
 
 ---
 
