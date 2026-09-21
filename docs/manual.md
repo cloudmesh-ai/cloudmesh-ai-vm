@@ -34,6 +34,8 @@ Manage the CLI configuration stored in `~/.config/cloudmesh/clouds.yaml`.
 - **`restart [NAME]`**: Restarts a VM.
   - *Example*: `cmx vm restart my-vm`
 - **`suspend [NAME]`**: Suspends a VM to disk.
+- **`shelve [NAME]`**: Shelve the VM (OpenStack only).
+- **`unshelve [NAME]`**: Unshelve the VM (OpenStack only).
 - **`delete [NAME]`**: Deletes a VM from the provider.
   - *Example*: `cmx vm delete my-vm`
 
@@ -68,5 +70,3 @@ Manage SSH keys for VM access.
 - **`run [NAME] [COMMAND]`**: Executes a command on a VM via SSH.
   - *Example*: `cmx vm run my-vm "ls -la /home"`
 - **`ssh_config [NAME]`**: Generate a local SSH configuration snippet for easy access.
-- **`shelve [NAME]`**: Shelve the VM (OpenStack only).
-- **`unshelve [NAME]`**: Unshelve the VM (OpenStack only).
