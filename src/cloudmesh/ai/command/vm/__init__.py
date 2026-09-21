@@ -34,7 +34,7 @@ def load_commands_recursively(group: click.Group, current_dir: str, package_path
                     # Fallback: Create a generic group if 'cmd' is missing or not a Group
                     group_obj = click.Group(name=group_name)
                 
-                group.add_command(group_obj)
+                group.add_command(group_obj, name=group_name)
                 
                 # Recurse into the folder
                 load_commands_recursively(group_obj, full_path, module_path)
@@ -51,7 +51,7 @@ def load_commands_recursively(group: click.Group, current_dir: str, package_path
                 cmd_obj = getattr(mod, 'cmd', None)
                 
                 if cmd_obj:
-                    group.add_command(cmd_obj)
+                    group.add_command(cmd_obj, name=cmd_name)
                 else:
                     logging.warning(f"Module {module_path} does not export a 'cmd' object.")
                     

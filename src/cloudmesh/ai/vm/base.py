@@ -58,6 +58,11 @@ class BaseVMProvider(ABC):
         """Lists available hardware profiles."""
         raise ProviderFeatureNotSupported(self.cloud_name, "get_flavors")
 
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Gets detailed information about the provider configuration and status."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "get_provider_info")
+
+
     # --- Identity & Security Methods ---
     def get_keys(self) -> List[Dict[str, Any]]:
         """Lists available SSH keys."""

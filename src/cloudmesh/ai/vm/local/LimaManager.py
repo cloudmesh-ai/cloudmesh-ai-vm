@@ -323,3 +323,20 @@ class Provider(CloudBaseManager):
         """
         return {"value": 0, "unit": None}
 
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Gets detailed information about the Lima provider from 'limactl info'."""
+        try:
+            result = self._run_command_silent(["limactl", "info"])
+            info = {}
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    info[key.strip()] = value.strip()
+            return info
+        except Exception as e:
+            self.print(f"Error getting Lima provider info: {e}")
+            return {}
+

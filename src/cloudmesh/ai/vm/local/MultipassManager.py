@@ -142,15 +142,6 @@ class Provider(CloudBaseManager):
             self.print(f"Error listing Multipass VMs: {e}")
             return []
 
-    def info(self, name: str) -> Dict[str, Any]:
-        """Gets detailed information about a Multipass VM."""
-        try:
-            result = self._run_command_silent(["multipass", "info", name])
-            return {"name": name, "details": result.stdout}
-        except Exception as e:
-            self.print(f"Error getting info for VM {name}: {e}")
-            return {}
-
     def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
         """Helper to run shell commands without printing output to the console."""
         try:
@@ -211,3 +202,19 @@ class Provider(CloudBaseManager):
     def get_cost(self, **kwargs) -> Optional[Any]:
         """Returns the cost information for Multipass."""
         return {"value": 0, "unit": None}
+    
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Gets detailed information about the Multipass provider version."""
+        info = {}
+        try:
+            version_result = self._run_command_silent(["multipass", "version"])
+            if hasattr(version_result, "stdout") and version_result.stdout:
+                for line in version_result.stdout.strip().split("\n"):
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        info[parts[0]] = parts[1]
+        except Exception:
+            pass
+        
+        return info
+

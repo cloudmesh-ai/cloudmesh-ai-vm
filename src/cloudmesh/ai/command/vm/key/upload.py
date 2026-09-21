@@ -3,6 +3,7 @@ from .._shared.context import console, get_active_provider
 from .._shared.exceptions import handle_errors
 
 @click.command()
+@click.pass_context
 @click.argument("key_path")
 @click.option("--name", help="Custom name for the key")
 @handle_errors
