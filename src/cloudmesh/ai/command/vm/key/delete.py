@@ -3,6 +3,7 @@ from .._shared.context import console, get_active_provider
 from .._shared.exceptions import handle_errors
 
 @click.command()
+@click.pass_context
 @click.argument("key_name")
 @handle_errors
 def delete_key(ctx: click.Context, key_name: str):

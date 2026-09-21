@@ -60,7 +60,7 @@ def test_jetstream_cli_lifecycle(runner, config):
         pytest.skip("Jetstream images failed")
 
     # 8. flavors
-    result = runner.invoke(vm.vm_group, ["flavors"])
+    result = runner.invoke(vm.vm_group, ["flavor"])
     if result.exit_code != 0:
         pytest.skip("Jetstream flavors failed")
 

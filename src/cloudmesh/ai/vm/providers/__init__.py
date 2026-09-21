@@ -59,5 +59,5 @@ def get_provider(cloud_name: str):
     
     try:
         return provider_class(config=config, cloud_name=cloud_name)
-    except TypeError:
-        return provider_class(config=config)
+    except Exception as e:
+        raise ValueError(f"Failed to instantiate provider {provider_class.__name__}: {e}")

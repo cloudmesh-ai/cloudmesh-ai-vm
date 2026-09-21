@@ -1,5 +1,5 @@
 import click
-from cloudmesh.ai.command.vm._shared.context import VMContext
+from cloudmesh.ai.command.vm._shared.context import VMContext, get_active_provider
 from cloudmesh.ai.command.vm._shared.ui import console, render_table
 
 @click.command()
@@ -8,11 +8,11 @@ def cmd(ctx: click.Context):
     """
     List account information and resource limits for the current VM provider.
     """
-    # Get the active provider from the context
-    provider = ctx.obj.get_provider()
-    
-    if not provider:
-        console.print("[red]Error: No active provider found. Please set a provider using 'cmx vm provider set'.[/red]")
+    # Get the active provider using the helper function
+    try:
+        provider = get_active_provider(ctx)
+    except click.ClickException as e:
+        console.print(f"[red]{str(e)}[/red]")
         return
 
     console.print(f"[bold blue]Fetching account information for provider: {provider.cloud_name}...[/bold blue]")

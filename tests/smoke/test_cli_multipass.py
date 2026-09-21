@@ -64,11 +64,11 @@ def test_multipass_cli_lifecycle(runner, config):
     assert result.exit_code == 0
 
     # 8. images
-    result = runner.invoke(vm.vm_group, ["images"])
+    result = runner.invoke(vm.vm_group, ["image"])
     assert result.exit_code == 0
 
     # 9. flavors
-    result = runner.invoke(vm.vm_group, ["flavors"])
+    result = runner.invoke(vm.vm_group, ["flavor"])
     assert result.exit_code == 0
 
     # 10. keys

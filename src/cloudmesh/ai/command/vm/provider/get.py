@@ -7,7 +7,7 @@ from .._shared.exceptions import handle_errors
 @handle_errors
 def get_provider(ctx: click.Context):
     """Get the current default cloud provider."""
-    provider = state.config.default_cloud or "multipass"
+    provider = state.config.db.get("default_cloud", "multipass") or "multipass"
     console.print(f"Current provider: [bold green]{provider}[/bold green].")
 
 cmd = get_provider

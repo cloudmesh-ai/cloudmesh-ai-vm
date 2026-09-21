@@ -11,10 +11,10 @@ def list_keys(ctx: click.Context, all: bool):
     """List all SSH keys for the current provider."""
     if all:
         from cloudmesh.ai.vm.providers import PROVIDER_MAP, get_provider
-        from ._shared.context import state
+        from .._shared.context import state
         
         config = state.config
-        configured_clouds = config.clouds if config else {}
+        configured_clouds = config.db.get("clouds", {}) if config else {}
         
         any_keys = False
         for cloud_name in sorted(PROVIDER_MAP.keys()):

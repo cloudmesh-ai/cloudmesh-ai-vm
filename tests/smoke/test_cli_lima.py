@@ -47,11 +47,11 @@ def test_lima_cli_lifecycle(runner, config):
     assert result.exit_code == 0
 
     # 7. images
-    result = runner.invoke(vm.vm_group, ["images"])
+    result = runner.invoke(vm.vm_group, ["image"])
     assert result.exit_code == 0
 
     # 8. flavors
-    result = runner.invoke(vm.vm_group, ["flavors"])
+    result = runner.invoke(vm.vm_group, ["flavor"])
     assert result.exit_code == 0
 
     # 9. keys
