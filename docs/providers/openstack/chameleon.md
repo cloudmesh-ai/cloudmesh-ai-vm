@@ -4,14 +4,14 @@ Chameleon Cloud is a testbed for cloud research, offering both bare-metal and vi
 
 ## Configuration
 
-\`\`\`yaml
+```yaml
 chameleon:
   flavour: c1.small
   image: rocky-linux-8
   auth: /path/to/chameleon/auth.yaml
   project_name: CH-XXXXXX
   site: CHI@TACC
-\`\`\`
+```
 
 ## Advanced Feature: Hardware Reservations
 
@@ -19,23 +19,23 @@ Unlike standard clouds, Chameleon allows you to reserve specific hardware (e.g.,
 
 ### Creating a Reservation
 
-You can use the \`reservation\` command to create a lease.
+You can use the `reservation` command to create a lease.
 
 **Example: 2-day lease for a Skylake node**
 
-\`\`\`bash
+```bash
 cmx vm reservation --name my-research-lease --node-type compute_skylake --count 1 --duration 2
-\`\`\`
+```
 
 **Example: Explicit dates**
 
-\`\`\`bash
+```bash
 cmx vm reservation --name my-lease --node-type compute_skylake --count 1 --start "2026-10-01 08:00" --end "2026-10-03 08:00"
-\`\`\`
+```
 
 ## Examples
 
-\`\`\`bash
+```bash
 cmx vm set chameleon
 cmx vm start
-\`\`\`
+```

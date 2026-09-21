@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide will walk you through the process of installing \`cloudmesh-ai-vm\` on your local machine.
+This guide will walk you through the process of installing `cloudmesh-ai-vm` on your local machine.
 
 ## Prerequisites
 
@@ -11,35 +11,35 @@ This guide will walk you through the process of installing \`cloudmesh-ai-vm\` o
 
 ### 1. Clone the Repository
 
-\`\`\`bash
+```bash
 git clone https://github.com/your-repo/cloudmesh-ai-vm.git
 cd cloudmesh-ai-vm
-\`\`\`
+```
 
 ### 2. Install Dependencies
 
 We recommend using a virtual environment to avoid dependency conflicts.
 
-\`\`\`bash
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
-\`\`\`
+```
 
 ### 3. Install the CLI Tool
 
 Install the package in editable mode so you can make changes to the source code:
 
-\`\`\`bash
+```bash
 pip install -e .
-\`\`\`
+```
 
 ## Verifying Installation
 
 Run the following command to ensure the CLI is installed and working:
 
-\`\`\`bash
+```bash
 cmx --help
-\`\`\`
+```
 
 If you see the help menu, you are ready to go!

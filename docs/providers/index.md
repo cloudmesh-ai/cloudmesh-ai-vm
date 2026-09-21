@@ -1,6 +1,6 @@
 # Providers Overview
 
-\`cloudmesh-ai-vm\` supports a wide array of providers, categorized by their hosting model.
+`cloudmesh-ai-vm` supports a wide array of providers, categorized by their hosting model.
 
 ## Local Providers
 
@@ -19,7 +19,7 @@ Enterprise-grade cloud infrastructure often used in research and academic enviro
 
 ## Hyperscaler Providers
 
-Global scale cloud services provided via the \`libcloud\` abstraction layer.
+Global scale cloud services provided via the `libcloud` abstraction layer.
 
 - **AWS EC2**: Amazon's Elastic Compute Cloud.
 - **Azure VMs**: Microsoft Azure Virtual Machines.

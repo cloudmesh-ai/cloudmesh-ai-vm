@@ -4,13 +4,13 @@ Jetstream provides high-performance computing (HPC) and cloud environments based
 
 ## Configuration
 
-\`\`\`yaml
+```yaml
 jetstream:
   flavour: m1.small
   image: ubuntu-22.04
   auth: /path/to/jetstream/auth.yaml
   security_group: default
-\`\`\`
+```
 
 ## Authentication
 
@@ -18,7 +18,7 @@ Jetstream requires a credentials file in YAML format. This file should contain y
 
 ## Examples
 
-\`\`\`bash
+```bash
 cmx vm set jetstream
 cmx vm start --name jetstream-node-1
-\`\`\`
+```
