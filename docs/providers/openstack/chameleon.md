@@ -13,13 +13,12 @@ chameleon:
   site: CHI@TACC
 ```
 
-## Advanced Feature: Hardware Reservations
+## Usage Notes
 
-Unlike standard clouds, Chameleon allows you to reserve specific hardware (e.g., specific CPU architectures) for a set period.
+- **Hardware Reservations**: Unlike standard clouds, Chameleon allows you to reserve specific hardware (e.g., specific CPU architectures) for a set period.
+- **Creating a Reservation**: You can use the `reservation` command to create a lease.
 
-### Creating a Reservation
-
-You can use the `reservation` command to create a lease.
+### Reservation Examples
 
 **Example: 2-day lease for a Skylake node**
 

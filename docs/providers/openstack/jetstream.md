@@ -12,9 +12,9 @@ jetstream:
   security_group: default
 ```
 
-## Authentication
+## Usage Notes
 
-Jetstream requires a credentials file in YAML format. This file should contain your username, password, and auth URL.
+- **Authentication**: Jetstream requires a credentials file in YAML format. This file should contain your username, password, and auth URL.
 
 ## Examples
 

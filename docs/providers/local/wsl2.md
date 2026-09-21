@@ -10,9 +10,9 @@ wsl2:
   ssh_link: true
 ```
 
-## Special Feature: SSH Linking
+## Usage Notes
 
-If `ssh_link: true` is set, `cloudmesh-ai-vm` will attempt to symbolically link your host's `.ssh` directory into the WSL2 distribution. This allows you to share your SSH keys and config between Windows and Linux seamlessly.
+- **SSH Linking**: If `ssh_link: true` is set, `cloudmesh-ai-vm` will attempt to symbolically link your host's `.ssh` directory into the WSL2 distribution. This allows you to share your SSH keys and config between Windows and Linux seamlessly.
 
 ## Examples
 
