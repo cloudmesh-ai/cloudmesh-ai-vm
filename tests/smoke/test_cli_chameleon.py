@@ -7,18 +7,7 @@ from tests.smoke.cli_helper import setup_cli_config
 def runner():
     return CliRunner()
 
-@pytest.fixture
-def config(tmp_path, runner):
-    provider_config = {
-        "enabled": True,
-        "region_name": "KVM@TACC",
-        "image": "CC-Ubuntu26.04",
-        "flavor": "m1.small",
-        "key_path": "~/.ssh/id_rsa",
-    }
-    setup_cli_config(tmp_path, "chameleon", provider_config)
-
-def test_chameleon_cli_lifecycle(runner, config):
+def test_chameleon_cli_lifecycle(runner):
     """
     Smoke test for Chameleon CLI lifecycle.
     """

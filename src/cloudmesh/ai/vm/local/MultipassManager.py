@@ -128,6 +128,32 @@ class Provider(CloudBaseManager):
             
             # Start the VM using multipass start (instead of launch)
             command = ["multipass", "start", name]
+            self._run_command(command)
+            return True
+        except Exception as e:
+            self.print(f"Error restarting VM {name}: {e}")
+            return False
+
+    def reset(self, name: Optional[str] = None) -> bool:
+        """
+        Resets the Multipass daemon.
+        This is a provider-level operation and ignores the name parameter.
+        """
+        import platform
+        if platform.system() != "Darwin":
+            self.print("Daemon reset via launchctl is only supported on macOS.")
+            return False
+        try:
+            self.print("Resetting Multipass daemon...")
+            # Use sudo to kickstart the Multipass background service on macOS
+            self._run_command(["sudo", "launchctl", "kickstart", "-k", "system/com.canonical.multipassd"])
+            return True
+        except Exception as e:
+            self.print(f"Error resetting Multipass daemon: {e}")
+            return False
+        except Exception as e:
+            self.print(f"Error resetting Multipass daemon: {e}")
+            return False
             self._run_interactive(command)
             
             return True

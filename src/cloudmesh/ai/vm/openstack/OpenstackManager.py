@@ -1,26 +1,12 @@
 import yaml
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
-from unittest.mock import MagicMock
 
 try:
     from libcloud.compute.types import Provider as LibcloudProvider
     from libcloud.compute.drivers.openstack import OpenStackNodeDriver as OpenStackDriver
 except ImportError:
-    # Mocking libcloud for environments where it is not installed
-    class LibcloudProvider: pass
-    class OpenStackDriver:
-        def __init__(self, *args, **kwargs):
-            pass
-        def list_images(self): return []
-        def list_sizes(self): return []
-        def list_nodes(self): return []
-        def get_node(self, name): return MagicMock()
-        def create_node(self, **kwargs): return MagicMock()
-        def stop_node(self, node): pass
-        def destroy_node(self, node): pass
-        def suspend_node(self, node): pass
-        def reboot_node(self, node): pass
+    raise ImportError("libcloud is required for OpenStackManager. Please install it using 'pip install apache-libcloud'.")
 
 class OpenstackManager(CloudBaseManager):
     """
@@ -37,16 +23,78 @@ class OpenstackManager(CloudBaseManager):
 
     def _get_driver(self):
         """
-        Returns a mock driver because the installed libcloud version in this environment
-        is incompatible with OpenStackNodeDriver instantiation.
-        All real operations are handled via the OpenStack CLI.
+        Returns an authenticated Libcloud OpenStack driver using application credentials.
+        Checks both the Cloudmesh config and the standard ~/.config/openstack/clouds.yaml.
         """
         from cloudmesh.ai.vm.logger import logger
-        logger.warning("Libcloud OpenStack driver is incompatible with this environment. Falling back to OpenStack CLI for all operations.")
+        from libcloud.compute.providers import get_driver
+        from libcloud.compute.types import Provider
+        import os
+        import yaml
         
-        # Return a mock driver that does nothing, as we use _run_cli_command for everything
-        from unittest.mock import MagicMock
-        return MagicMock()
+        # 1. Get config from Cloudmesh State
+        cloud_config = self.get_cloud_config(self.cloud_name) or {}
+        
+        # 2. Load from standard OpenStack clouds.yaml as a fallback/merge
+        os_clouds_path = os.path.expanduser("~/.config/openstack/clouds.yaml")
+        if os.path.exists(os_clouds_path):
+            try:
+                with open(os_clouds_path, "r") as f:
+                    os_full_config = yaml.safe_load(f) or {}
+                    # Standard clouds.yaml has a top-level 'clouds' key
+                    os_clouds = os_full_config.get("clouds", {})
+                    os_cloud_cfg = os_clouds.get(self.cloud_name, {})
+                    
+                    # Merge: OS config takes priority for auth credentials
+                    os_auth = os_cloud_cfg.get("auth", {})
+                    cm_auth = cloud_config.get("auth", {})
+                    
+                    # Merged auth: OS values override CM values
+                    merged_auth = {**cm_auth, **os_auth}
+                    
+                    # Update cloud_config with merged auth and other OS settings
+                    cloud_config = {**cloud_config, **os_cloud_cfg}
+                    cloud_config["auth"] = merged_auth
+                    
+                    logger.debug(f"Merged configuration for '{self.cloud_name}' from {os_clouds_path}")
+            except Exception as e:
+                logger.warning(f"Could not parse {os_clouds_path}: {e}")
+
+        auth = cloud_config.get("auth", {})
+        
+        # Extract credentials, checking both 'auth' sub-dict and top-level
+        app_cred_id = auth.get("application_credential_id") or cloud_config.get("application_credential_id")
+        app_cred_secret = auth.get("application_credential_secret") or cloud_config.get("application_credential_secret")
+        auth_url = auth.get("auth_url") or cloud_config.get("auth_url")
+        region_name = cloud_config.get("region_name", auth.get("region_name", "RegionOne"))
+
+        if not all([app_cred_id, app_cred_secret, auth_url]):
+            raise RuntimeError(
+                f"Missing required application credentials for cloud '{self.cloud_name}'. "
+                f"Checked both Cloudmesh config and {os_clouds_path}. "
+                f"Please ensure 'application_credential_id', 'application_credential_secret', "
+                f"and 'auth_url' are configured."
+            )
+
+        logger.debug(f"Initializing OpenStack driver for cloud '{self.cloud_name}' using application credentials.")
+        OpenStackDriver = get_driver(Provider.OPENSTACK)
+        return OpenStackDriver(
+            app_cred_id,
+            app_cred_secret,
+            ex_force_auth_url=auth_url,
+            ex_force_auth_version="3.x_appcred",
+            ex_force_service_region=region_name
+        )
+
+        logger.debug(f"Initializing OpenStack driver for cloud '{self.cloud_name}' using application credentials.")
+        OpenStackDriver = get_driver(Provider.OPENSTACK)
+        return OpenStackDriver(
+            app_cred_id,
+            app_cred_secret,
+            ex_force_auth_url=auth_url,
+            ex_force_auth_version="3.x_appcred",
+            ex_force_service_region=region_name
+        )
 
     def _run_cli_command(self, cmd: List[str]) -> str:
         """Runs an OpenStack CLI command with OS_CLOUD and OS_REGION_NAME environment variables set."""
@@ -74,7 +122,7 @@ class OpenstackManager(CloudBaseManager):
         return result.stdout
 
     def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
-        """Starts a VM in OpenStack."""
+        """Starts a VM in OpenStack using libcloud."""
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = image or cloud_config.get("image")
         flavor_name = flavor or cloud_config.get("flavor")
@@ -85,119 +133,105 @@ class OpenstackManager(CloudBaseManager):
         if not flavor_name:
             raise ValueError(f"Missing 'flavor' in config for {self.cloud_name}")
 
-        # Try libcloud first
         try:
-            images = self.driver.list_images()
-            image = next((img for img in images if img.name == image_name), None)
-            
-            sizes = self.driver.list_sizes()
-            size = next((s for s in sizes if s.id == flavor_name or s.name == flavor_name), None)
-            
-            if image and size:
-                node = self.driver.create_node(
-                    name=name, 
-                    image=image, 
-                    size=size, 
-                    ex_properties={'security_groups': [security_group]}
-                )
-                return node.name
+            # Find image and flavor objects
+            all_images = self.driver.list_images()
+            img = next((i for i in all_images if i.name == image_name), None)
+            if not img:
+                raise RuntimeError(f"Could not find image {image_name} in {self.cloud_name}")
+
+            all_flavors = self.driver.list_sizes()
+            flv = next((f for f in all_flavors if f.name == flavor_name), None)
+            if not flv:
+                raise RuntimeError(f"Could not find flavor {flavor_name} in {self.cloud_name}")
+
+            vm_name = name or f"vm-{self.cloud_name}"
+            node = self.driver.create_node(name=vm_name, image=img, size=flv)
+            return node.id
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.warning(f"Libcloud start failed: {e}. Trying CLI fallback...")
+            logger.error(f"Libcloud start failed for {self.cloud_name}: {e}")
+            raise e
 
-        # CLI Fallback
-        # Resolve IDs
-        resolved_images = self.get_images()
-        resolved_flavor = next((f for f in self.get_flavors() if f['name'] == flavor_name or f['id'] == flavor_name), None)
-        resolved_image = next((i for i in resolved_images if i['name'] == image_name), None)
-
-        if not resolved_image or not resolved_flavor:
-            raise RuntimeError(f"Could not find image {image_name} or flavor {flavor_name} in {self.cloud_name}")
-
-        image_id = resolved_image['id']
-        flavor_id = resolved_flavor['id']
-
-        # Use CLI to create node
-        cmd = ["openstack", "server", "create", "--flavor", str(flavor_id), "--image", str(image_id), "--format", "value", "-c", "name"]
+    def _find_node(self, name: str):
+        """Helper to find a node by name since some driver versions lack get_node."""
+        try:
+            if hasattr(self.driver, 'get_node'):
+                return self.driver.get_node(name)
+        except Exception:
+            pass
         
-        if security_group:
-            cmd.extend(["--security-group", str(security_group)])
-        
-        # The server name is a positional argument at the end of the command
-        cmd.append(str(name))
-        
-        return self._run_cli_command(cmd).strip()
+        nodes = self.driver.list_nodes()
+        return next((n for n in nodes if n.name == name), None)
 
     def stop(self, name: Optional[str] = None) -> bool:
         """Stops an OpenStack VM."""
         if not name: return False
         try:
-            node = self.driver.get_node(name)
+            node = self._find_node(name)
+            if not node:
+                return False
+            
+            # Handle ConflictException 409: cannot stop while BUILDING
+            import time
+            from cloudmesh.ai.vm.logger import logger
+            
+            max_retries = 5
+            for i in range(max_retries):
+                state = getattr(node, 'state', '').lower()
+                if state != 'building':
+                    break
+                logger.warning(f"VM {name} is still building (attempt {i+1}/{max_retries}). Waiting 5s...")
+                time.sleep(5)
+                node = self._find_node(name)
+            
             self.driver.stop_node(node)
             return True
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.warning(f"Libcloud stop failed: {e}. Trying CLI fallback...")
-            try:
-                self._run_cli_command(["openstack", "server", "stop", name])
-                return True
-            except Exception as cli_e:
-                logger.error(f"CLI stop failed: {cli_e}")
-                return False
+            logger.error(f"Libcloud stop failed for {name}: {e}")
+            return False
 
     def shelve(self, name: Optional[str] = None) -> bool:
         """Shelves an OpenStack VM (preserves disk, releases compute resources)."""
         if not name: return False
         try:
-            self._run_cli_command(["openstack", "server", "shelve", name])
-            return True
+            node = self._find_node(name)
+            if node:
+                self.driver.shelve_node(node)
+                return True
+            return False
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"Error shelving VM {name}: {e}")
+            logger.error(f"Libcloud shelve failed for {name}: {e}")
             return False
 
     def unshelve(self, name: Optional[str] = None) -> bool:
         """Unshelves an OpenStack VM."""
         if not name: return False
         try:
-            self._run_cli_command(["openstack", "server", "unshelve", name])
-            return True
+            node = self._find_node(name)
+            if node:
+                self.driver.unshelve_node(node)
+                return True
+            return False
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"Error unshelving VM {name}: {e}")
+            logger.error(f"Libcloud unshelve failed for {name}: {e}")
             return False
 
     def delete(self, name: Optional[str] = None) -> bool:
         """Deletes an OpenStack VM."""
         if not name: return False
-        
-        from cloudmesh.ai.vm.logger import logger
-        from unittest.mock import MagicMock
-        
-        vm_id = None
         try:
-            node = self.driver.get_node(name)
-            # Robust check for mock nodes
-            is_mock = isinstance(node, MagicMock) or (hasattr(node, 'id') and 'MagicMock' in str(node.id))
-            
-            if not is_mock and hasattr(node, 'id'):
-                vm_id = node.id
-                logger.debug(f"Found VM {name} with ID {vm_id}")
+            node = self._find_node(name)
+            if node:
                 self.driver.destroy_node(node)
                 return True
-            else:
-                logger.warning(f"Libcloud returned a mock node for {name}. Falling back to CLI.")
+            return False
         except Exception as e:
-            logger.warning(f"Libcloud delete failed for {name}: {e}. Trying CLI fallback...")
-        
-        try:
-            # If we have a real VM ID, use it; otherwise use the name
-            target = vm_id if vm_id else name
-            logger.debug(f"Attempting CLI delete for {target}")
-            self._run_cli_command(["openstack", "server", "delete", target])
-            return True
-        except Exception as cli_e:
-            logger.error(f"CLI delete failed for {name}: {cli_e}")
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Libcloud delete failed for {name}: {e}")
             return False
 
     def list(self) -> List[Dict[str, Any]]:

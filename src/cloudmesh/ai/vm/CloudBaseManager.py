@@ -79,6 +79,10 @@ class CloudBaseManager(BaseVMProvider, ABC):
         """Restarts a VM."""
         return super().restart(name)
 
+    def reset(self, name: Optional[str] = None) -> bool:
+        """Resets a VM or the provider service."""
+        return super().reset(name)
+
     def info(self, name: str) -> Dict[str, Any]:
         """Gets detailed information about a specific VM."""
         return super().info(name)

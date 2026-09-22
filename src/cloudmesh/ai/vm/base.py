@@ -26,6 +26,9 @@ class BaseVMProvider(ABC):
     def restart(self, name: str) -> bool:
         raise ProviderFeatureNotSupported(self.cloud_name, "restart")
 
+    def reset(self, name: str) -> bool:
+        raise ProviderFeatureNotSupported(self.cloud_name, "reset")
+
     def suspend(self, name: str) -> bool:
         raise ProviderFeatureNotSupported(self.cloud_name, "suspend")
 
