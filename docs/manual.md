@@ -38,6 +38,8 @@ Manage the CLI configuration stored in `~/.config/cloudmesh/clouds.yaml`.
 - **`unshelve [NAME]`**: Unshelve the VM (OpenStack only).
 - **`delete [NAME]`**: Deletes a VM from the provider.
   - *Example*: `cmx vm delete my-vm`
+- **`reset [NAME]`**: Reset a VM or restart the provider service (e.g., Multipass daemon).
+  - *Example*: `cmx vm reset`
 
 ### Resource Discovery
 
@@ -70,3 +72,11 @@ Manage SSH keys for VM access.
 - **`run [NAME] [COMMAND]`**: Executes a command on a VM via SSH.
   - *Example*: `cmx vm run my-vm "ls -la /home"`
 - **`ssh_config [NAME]`**: Generate a local SSH configuration snippet for easy access.
+
+### Account & System
+
+- **`account`**: View account information, including usage quotas and limits for the current cloud.
+  - *Example*: `cmx vm account`
+- **`reset`**: Restart the cloud provider service or reset the local environment (e.g., restart Multipass daemon on macOS).
+  - *Example*: `cmx vm reset`
+

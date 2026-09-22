@@ -17,24 +17,24 @@ The `vm` group supports the following global options:
 
 ## Commands
 
-### 1. Cloud Management
+### 1. Provider Management
 
-The `cloud` group provides commands to manage the active cloud provider.
+The `provider` group provides commands to manage the active cloud provider.
 
 #### `get`
 
 Displays the current default cloud provider.
 
-- **Usage**: `cmx vm cloud get`
-- **Example**: `cmx vm cloud get`
+- **Usage**: `cmx vm provider get`
+- **Example**: `cmx vm provider get`
 
 #### `set`
 
 Sets the default cloud provider used for all subsequent commands.
 
-- **Usage**: `cmx vm cloud set <cloud_name>`
-- **Example**: `cmx vm cloud set aws`
-- **Shorthand**: `cmx vm set <cloud_name>`
+- **Usage**: `cmx vm provider set <cloud_name>`
+- **Example**: `cmx vm provider set aws`
+- **Shorthand**: `cmx vm provider set <cloud_name>`
 
 ### 2. VM Lifecycle
 
@@ -104,17 +104,23 @@ Lists all VMs managed by the current provider. The output table includes the pro
   - `--csv`: Prints output in CSV format.
 - **Example**: `cmx vm list --json`
 
+#### `image`
+
+Lists available VM images for the current cloud.
+
+- **Example**: `cmx vm image`
+
 #### `flavor`
 
 Lists available hardware profiles for the current cloud.
 
 - **Example**: `cmx vm flavor`
 
-#### `keys`
+#### `key`
 
 Lists available SSH keys in the current cloud.
 
-- **Example**: `cmx vm keys`
+- **Example**: `cmx vm key`
 
 #### `security-groups`
 
@@ -130,7 +136,23 @@ Generates suggested SSH configuration entries for all existing VMs in the curren
 
 - **Example**: `cmx vm ssh-config`
 
-### 5. Specialized Commands
+### 5. System & Account
+
+#### `account`
+
+Displays account information, including usage quotas and limits for the current cloud.
+
+- **Usage**: `cmx vm account`
+- **Example**: `cmx vm account`
+
+#### `reset`
+
+Restarts the cloud provider service or resets the local environment. For Multipass on macOS, this restarts the `multipassd` daemon.
+
+- **Usage**: `cmx vm reset`
+- **Example**: `cmx vm reset`
+
+### 6. Specialized Commands
 
 #### `reservation` (Chameleon Only)
 

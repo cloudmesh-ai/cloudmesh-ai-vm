@@ -9,12 +9,13 @@
     - **Automatic Naming**: VMs are named automatically using a `<username>-<counter>` pattern (e.g., `gregor-1`).
     - **Contextual Memory**: The tool remembers the last used VM, allowing you to run commands like `cmx vm stop` without specifying a name.
 - **Provider Flexibility**:
-    - **Default Cloud**: Manage your active provider via `cmx vm set <cloud>`.
+    - **Default Cloud**: Manage your active provider via `cmx vm provider set <cloud>`.
     - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmx vm start --cloud aws`).
 - **Remote Execution**: Execute commands directly on your VMs using `cmx vm run <command>`.
 - **Resource Discovery**: Easily list available flavors, SSH keys, and security groups directly from the CLI.
 - **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
+- **Libcloud Native**: OpenStack providers (Chameleon, Jetstream) are implemented strictly using the Libcloud driver for improved stability and consistency.
 
 ## 🛠️ Quick Start
 
@@ -34,10 +35,10 @@ Configure your credentials in `~/.config/cloudmesh/clouds.yaml`. See the [Config
 
 ```bash
 # Check current default cloud
-cmx vm get
+cmx vm provider get
 
 # Set your default cloud
-cmx vm set multipass
+cmx vm provider set multipass
 
 # Start a VM (will be named username-1, username-2, etc.)
 cmx vm start
@@ -64,7 +65,7 @@ cmx vm -i
 | :--- | :---: | :---: | :--- |
 | **Multipass** | ✅ | ✅ (Agent) | Fully Functional |
 | **Lima** | ✅ | ✅ (Agent) | Fully Functional |
-| **OpenStack** | ✅ | ✅ (SSH) | Fully Functional |
+| **OpenStack** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
 | **WSL2** | ✅ | ✅ (Direct) | Fully Functional |
 | **VirtualBox** | ✅ | ✅ (GuestCtrl) | Fully Functional |
 | **AWS** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |

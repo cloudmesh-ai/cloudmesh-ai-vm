@@ -24,6 +24,8 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Configuration: configuration.md
+  - Cheatsheet: cheatsheet.md
+  - Manual: manual.md
   - CLI Reference: cli.md
   - Changelog: CHANGELOG.md
   - API: api.md
@@ -42,7 +44,6 @@ nav:
       - Azure VMs: providers/hyperscalers/azure.md
       - Google GCE: providers/hyperscalers/google.md
   - Architecture: architecture.md
-  - Manual: manual.md
   - Contributing: contributing.md
 
 plugins:
