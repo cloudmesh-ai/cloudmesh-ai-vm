@@ -2,7 +2,7 @@
 
 `cloudmesh-ai-vm` is a unified Python CLI tool (`cmx`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
 
-## 🚀 Key Features
+## Key Features
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
 - **Smart VM Lifecycle**:
@@ -17,7 +17,7 @@
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **Libcloud Native**: OpenStack providers (Chameleon, Jetstream) are implemented strictly using the Libcloud driver for improved stability and consistency.
 
-## 🛠️ Quick Start
+## Quick Start
 
 ### 1. Installation
 
@@ -59,7 +59,7 @@ cmx vm list
 cmx vm -i
 ```
 
-## 📊 Provider Support Matrix
+## Provider Support Matrix
 
 | Provider | Lifecycle (S/S/D) | Remote Exec (`run`) | Implementation Status |
 | :--- | :---: | :---: | :--- |
@@ -83,6 +83,6 @@ Full documentation is available in the `/docs` folder or hosted via GitHub Pages
 - [CLI Reference](docs/cli.md)
 - [Architecture Overview](docs/architecture.md)
 
-## 🤝 Contributing
+## Contributing
 
 See [Contributing](docs/contributing.md) for guidelines on adding new providers.
