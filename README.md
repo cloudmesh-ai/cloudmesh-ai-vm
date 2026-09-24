@@ -74,7 +74,7 @@ cmx vm -i
 
 🟡 = has been implemented but not tested. We anticipate issues
 
-## 📖 Documentation
+## Documentation
 
 Full documentation is available in the `/docs` folder or hosted via GitHub Pages.
 
