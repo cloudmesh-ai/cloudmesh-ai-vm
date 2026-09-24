@@ -1,16 +1,16 @@
 # Google GCE Provider
 
-Integration for Google Compute Engine (GCE) using the \`libcloud\` abstraction layer.
+Integration for Google Compute Engine (GCE) using the `libcloud` abstraction layer.
 
 ## Configuration
 
-\`\`\`yaml
+```yaml
 google:
   project_id: YOUR_PROJECT_ID
   private_key: /path/to/service-account.json
   image: ubuntu-2204-lts
   size: n1-standard-1
-\`\`\`
+```
 
 ## Usage Notes
 
@@ -19,7 +19,7 @@ google:
 
 ## Examples
 
-\`\`\`bash
+```bash
 cmx vm set google
 cmx vm start --name gcp-vm
-\`\`\`
+```
