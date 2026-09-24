@@ -1,10 +1,10 @@
 # Azure VMs Provider
 
-Integration for Microsoft Azure Virtual Machines using the \`libcloud\` abstraction layer.
+Integration for Microsoft Azure Virtual Machines using the `libcloud` abstraction layer.
 
 ## Configuration
 
-\`\`\`yaml
+```yaml
 azure:
   tenant_id: YOUR_TENANT_ID
   subscription_id: YOUR_SUB_ID
@@ -12,7 +12,7 @@ azure:
   client_secret: YOUR_CLIENT_SECRET
   image: ubuntu-22.04
   size: Standard_DS1_v2
-\`\`\`
+```
 
 ## Usage Notes
 
@@ -21,7 +21,7 @@ azure:
 
 ## Examples
 
-\`\`\`bash
+```bash
 cmx vm set azure
 cmx vm start --name azure-node
-\`\`\`
+```

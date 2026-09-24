@@ -2,7 +2,7 @@
 
 `cloudmesh-ai-vm` is a unified Python CLI tool (`cmx`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
 
-## 🚀 Key Features
+## Key Features
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
 - **Smart VM Lifecycle**:
@@ -17,7 +17,9 @@
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **Libcloud Native**: OpenStack providers (Chameleon, Jetstream) are implemented strictly using the Libcloud driver for improved stability and consistency.
 
-## 🛠️ Quick Start
+The full documentation is available at: <https://cloudmesh-ai.github.io/cloudmesh-ai-vm/>
+
+## Quick Start
 
 ### 1. Installation
 
@@ -59,21 +61,22 @@ cmx vm list
 cmx vm -i
 ```
 
-## 📊 Provider Support Matrix
+## Provider Support Matrix
 
 | Provider | Lifecycle (S/S/D) | Remote Exec (`run`) | Implementation Status |
 | :--- | :---: | :---: | :--- |
-| **Multipass** | ✅ | ✅ (Agent) | Fully Functional |
-| **Lima** | ✅ | ✅ (Agent) | Fully Functional |
-| **OpenStack** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **WSL2** | ✅ | ✅ (Direct) | Fully Functional |
-| **VirtualBox** | ✅ | ✅ (GuestCtrl) | Fully Functional |
-| **AWS** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **Azure** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **Google** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
+| **Multipass** | ✅ | ✅ (Agent) |  🟢 |
+| **Lima** | ✅ | ✅ (Agent) | 🟢 |
+| **OpenStack** | ✅ | ✅ (SSH) |  🟢 (via Libcloud) |
+| **WSL2** | ✅ | ✅ (Direct) | 🟡 |
+| **VirtualBox** | ✅ | ✅ (GuestCtrl) | 🟡 |
+| **AWS** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
+| **Azure** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
+| **Google** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
 
+🟡 = has been implemented but not tested. We anticipate issues
 
-## 📖 Documentation
+## Documentation
 
 Full documentation is available in the `/docs` folder or hosted via GitHub Pages.
 
@@ -82,6 +85,6 @@ Full documentation is available in the `/docs` folder or hosted via GitHub Pages
 - [CLI Reference](docs/cli.md)
 - [Architecture Overview](docs/architecture.md)
 
-## 🤝 Contributing
+## Contributing
 
 See [Contributing](docs/contributing.md) for guidelines on adding new providers.
