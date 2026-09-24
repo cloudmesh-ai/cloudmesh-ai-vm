@@ -63,15 +63,16 @@ cmx vm -i
 
 | Provider | Lifecycle (S/S/D) | Remote Exec (`run`) | Implementation Status |
 | :--- | :---: | :---: | :--- |
-| **Multipass** | ✅ | ✅ (Agent) | Fully Functional |
-| **Lima** | ✅ | ✅ (Agent) | Fully Functional |
-| **OpenStack** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **WSL2** | ✅ | ✅ (Direct) | Fully Functional |
-| **VirtualBox** | ✅ | ✅ (GuestCtrl) | Fully Functional |
-| **AWS** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **Azure** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
-| **Google** | ✅ | ✅ (SSH) | Fully Functional (via Libcloud) |
+| **Multipass** | ✅ | ✅ (Agent) |  🟢 |
+| **Lima** | ✅ | ✅ (Agent) | 🟢 |
+| **OpenStack** | ✅ | ✅ (SSH) |  🟢 (via Libcloud) |
+| **WSL2** | ✅ | ✅ (Direct) | 🟡 |
+| **VirtualBox** | ✅ | ✅ (GuestCtrl) | 🟡 |
+| **AWS** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
+| **Azure** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
+| **Google** | ✅ | ✅ (SSH) | 🟡 (via Libcloud) |
 
+🟡 = has been implemented but not tested. We anticipate issues
 
 ## 📖 Documentation
 
