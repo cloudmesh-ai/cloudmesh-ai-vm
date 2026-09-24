@@ -17,6 +17,8 @@
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **Libcloud Native**: OpenStack providers (Chameleon, Jetstream) are implemented strictly using the Libcloud driver for improved stability and consistency.
 
+The full documentation is available at: <https://cloudmesh-ai.github.io/cloudmesh-ai-vm/>
+
 ## Quick Start
 
 ### 1. Installation
