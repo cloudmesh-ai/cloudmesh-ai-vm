@@ -15,6 +15,7 @@ A quick reference guide for all available Virtual Machine management commands in
 | | `delete [name]` | Permanently remove a VM | `cmx vm delete` |
 | | `reset` | Reset VM or restart provider daemon | `cmx vm reset` |
 | | `login [name]` | Get connection info or log into VM | `cmx vm login` |
+| | `ssh [name]` | Start an interactive SSH session | `cmx vm ssh` |
 | **Discovery** | `list` | List all VMs for the active provider | `cmx vm list` |
 | | `image` | List available VM images | `cmx vm image` |
 | | `flavor` | List available hardware profiles | `cmx vm flavor` |

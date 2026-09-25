@@ -148,6 +148,15 @@ Manage firewall security groups for the current cloud.
 
 ### 4. Networking & SSH
 
+#### `ssh`
+
+Starts an interactive SSH session with the VM.
+
+- **Options**:
+  - `<name>`: (Optional) Name of the VM. If omitted, the last started VM is used.
+- **Example**: `cmx vm ssh` (Connects to last VM)
+- **Example**: `cmx vm ssh my-web-server`
+
 #### `ssh-config`
 
 Generates suggested SSH configuration entries for all existing VMs in the current cloud. This allows you to connect using `ssh <vm-name>` without modifying your config file automatically.

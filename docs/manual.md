@@ -78,6 +78,10 @@ Manage SSH keys for VM access.
 
 - **`run [NAME] [COMMAND]`**: Executes a command on a VM via SSH.
   - *Example*: `cmx vm run my-vm "ls -la /home"`
+- **`ssh [NAME]`**: Starts an interactive SSH session with the VM.
+  - *Example*: `cmx vm ssh my-vm`
+- **`login [NAME]`**: Get connection info or log into the VM.
+  - *Example*: `cmx vm login my-vm`
 - **`ssh_config [NAME]`**: Generate a local SSH configuration snippet for easy access.
 
 ### Account & System

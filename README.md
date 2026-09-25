@@ -48,6 +48,12 @@ cmx vm start
 # Run a command on the VM
 cmx vm run "hostname"
 
+# Log into the VM (interactive)
+cmx vm login
+
+# Start an interactive SSH session
+cmx vm ssh
+
 # Stop the last started VM
 cmx vm stop
 
@@ -59,6 +65,7 @@ cmx vm list
 
 # Enter interactive VM shell
 cmx vm -i
+
 ```
 
 ## Provider Support Matrix
