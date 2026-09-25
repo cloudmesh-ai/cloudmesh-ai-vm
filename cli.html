@@ -1,0 +1,2051 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A unified VM management tool across local and cloud providers.">
+      
+      
+      
+        <link rel="canonical" href="https://cloudmesh-ai.github.io/cloudmesh-ai-vm/cli.html">
+      
+      
+        <link rel="prev" href="manual.html">
+      
+      
+        <link rel="next" href="CHANGELOG.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/theme/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CLI Reference - cloudmesh-ai-vm</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="css/custom.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="cloudmesh-ai-vm" class="md-header__button md-logo" aria-label="cloudmesh-ai-vm" data-md-component="logo">
+      
+  <img src="assets/theme/logo-white.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cloudmesh-ai-vm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/cloudmesh-ai/cloudmesh-ai-vm" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cloudmesh-ai-vm
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="cloudmesh-ai-vm" class="md-nav__button md-logo" aria-label="cloudmesh-ai-vm" data-md-component="logo">
+      
+  <img src="assets/theme/logo-white.png" alt="logo">
+
+    </a>
+    cloudmesh-ai-vm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/cloudmesh-ai/cloudmesh-ai-vm" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cloudmesh-ai-vm
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cheatsheet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cheatsheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="manual.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="cli.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-command-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Command Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-provider-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Provider Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Provider Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-vm-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. VM Lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. VM Lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#suspend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        suspend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        login
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-inspection-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Inspection &amp; Discovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Inspection &amp; Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flavor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        flavor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        security-group
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-networking-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Networking &amp; SSH
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Networking &amp; SSH">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ssh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssh-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ssh-config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-system-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. System &amp; Account
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. System &amp; Account">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-specialized-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Specialized Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Specialized Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reservation-chameleon-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reservation (Chameleon Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="CHANGELOG.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="readme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Readme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Providers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Providers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2" id="__nav_10_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Providers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Local Providers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/local/multipass.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multipass
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/local/wsl2.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WSL2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/local/vbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VirtualBox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenStack Providers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OpenStack Providers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/openstack/jetstream.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jetstream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/openstack/chameleon.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chameleon
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_4" id="__nav_10_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hyperscaler Providers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hyperscaler Providers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/hyperscalers/aws.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS EC2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/hyperscalers/azure.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="providers/hyperscalers/google.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Google GCE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-command-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Command Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-provider-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Provider Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Provider Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-vm-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. VM Lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. VM Lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#suspend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        suspend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        login
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-inspection-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Inspection &amp; Discovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Inspection &amp; Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flavor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        flavor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        security-group
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-networking-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Networking &amp; SSH
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Networking &amp; SSH">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ssh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssh-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ssh-config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-system-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. System &amp; Account
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. System &amp; Account">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-specialized-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Specialized Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Specialized Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reservation-chameleon-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reservation (Chameleon Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+
+<style>
+.doc-object { 
+    border: 1px solid rgba(0, 0, 0, 0.2) !important; 
+    border-radius: 4px !important; 
+    padding: 0.5rem !important; 
+    margin: 0.5rem 0 !important; 
+    background-color: #ffffff !important;
+}
+
+.doc-object .doc-object {
+    background-color: transparent !important;
+}
+
+[data-md-color-scheme="slate"] .doc-object {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Remove width restrictions to allow content to fill available space */
+:root {
+    --md-content-max-width: 100% !important;
+}
+
+.md-content__inner, 
+.md-main__inner,
+.md-grid {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* Add breathing room between the middle column and sidebars */
+.md-content__inner {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+</style>
+<h1 id="cli-reference">CLI Reference</h1>
+<p>The <code>cmx</code> tool provides a consistent interface for managing VMs across all supported providers.</p>
+<h2 id="global-command-structure">Global Command Structure</h2>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cmx<span class="w"> </span>vm<span class="w"> </span>&lt;command&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</span></code></pre></div>
+<h2 id="global-options">Global Options</h2>
+<p>The <code>vm</code> group supports the following global options:</p>
+<ul>
+<li><code>--cloud &lt;cloud_name&gt;</code>: Overrides the default cloud provider for the duration of the command. For example, <code>cmx vm start --cloud aws</code> will start a VM on AWS even if Multipass is your default.</li>
+<li><code>-i, --interactive</code>: Enters a dedicated interactive shell for VM management, showing the active provider in the prompt.</li>
+</ul>
+<h2 id="commands">Commands</h2>
+<h3 id="1-provider-management">1. Provider Management</h3>
+<p>The <code>provider</code> group provides commands to manage the active cloud provider.</p>
+<h4 id="get"><code>get</code></h4>
+<p>Displays the current default cloud provider.</p>
+<ul>
+<li><strong>Usage</strong>: <code>cmx vm provider get</code></li>
+<li><strong>Example</strong>: <code>cmx vm provider get</code></li>
+</ul>
+<h4 id="set"><code>set</code></h4>
+<p>Sets the default cloud provider used for all subsequent commands.</p>
+<ul>
+<li><strong>Usage</strong>: <code>cmx vm provider set &lt;cloud_name&gt;</code></li>
+<li><strong>Example</strong>: <code>cmx vm provider set aws</code></li>
+<li><strong>Shorthand</strong>: <code>cmx vm provider set &lt;cloud_name&gt;</code></li>
+</ul>
+<h3 id="2-vm-lifecycle">2. VM Lifecycle</h3>
+<p>Many lifecycle commands now support <strong>Contextual Memory</strong>. If the name is omitted, the tool will target the last VM that was successfully started.</p>
+<h4 id="start"><code>start</code></h4>
+<p>Launches a new VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Specify a custom name. If omitted, the tool generates a name based on <code>&lt;username&gt;-&lt;counter&gt;</code> (e.g., <code>gregor-1</code>). Underscores in usernames are automatically replaced with hyphens to ensure provider compatibility.</li>
+<li><strong>Examples</strong>:</li>
+<li>Default: <code>cmx vm start</code></li>
+<li>Custom Name: <code>cmx vm start my-web-server</code></li>
+<li>Cloud Override: <code>cmx vm start --cloud aws</code></li>
+</ul>
+<h4 id="stop"><code>stop</code></h4>
+<p>Stops a running VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM to stop. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm stop</code> (Stops last VM)</li>
+</ul>
+<h4 id="delete"><code>delete</code></h4>
+<p>Permanently removes a VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM to delete. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm delete --name my-web-server</code></li>
+</ul>
+<h4 id="suspend"><code>suspend</code></h4>
+<p>Suspends a VM to disk (if supported by the provider).</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM to suspend. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm suspend</code></li>
+</ul>
+<h4 id="restart"><code>restart</code></h4>
+<p>Reboots a VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM to restart. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm restart</code></li>
+</ul>
+<h4 id="login"><code>login</code></h4>
+<p>Provides connection details or logs into the VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm login</code></li>
+</ul>
+<h3 id="3-inspection-discovery">3. Inspection &amp; Discovery</h3>
+<h4 id="list"><code>list</code></h4>
+<p>Lists all VMs managed by the current provider. The output table includes the provider name in the header (e.g., "VMs on multipass").</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>--table</code>: (Default) Prints a formatted table.</li>
+<li><code>--json</code>: Prints output in JSON format.</li>
+<li><code>--yaml</code>: Prints output in YAML format.</li>
+<li><code>--csv</code>: Prints output in CSV format.</li>
+<li><strong>Example</strong>: <code>cmx vm list --json</code></li>
+</ul>
+<h4 id="image"><code>image</code></h4>
+<p>Lists available VM images for the current cloud.</p>
+<ul>
+<li><strong>Example</strong>: <code>cmx vm image</code></li>
+</ul>
+<h4 id="flavor"><code>flavor</code></h4>
+<p>Lists available hardware profiles for the current cloud.</p>
+<ul>
+<li><strong>Example</strong>: <code>cmx vm flavor</code></li>
+</ul>
+<h4 id="key"><code>key</code></h4>
+<p>Lists available SSH keys in the current cloud.</p>
+<ul>
+<li><strong>Example</strong>: <code>cmx vm key</code></li>
+</ul>
+<h4 id="security-group"><code>security-group</code></h4>
+<p>Manage firewall security groups for the current cloud.</p>
+<ul>
+<li><strong>Subcommands</strong>:</li>
+<li><code>list</code>: List all available security groups.</li>
+<li><code>info &lt;name&gt;</code>: Show detailed info and rules for a specific group.</li>
+<li><code>create &lt;name&gt; [--description TEXT] [--preset PRESET]</code>: Create a new security group.<ul>
+<li><code>--preset</code>: Apply a pre-defined rule set (<code>web-server</code>, <code>db-server</code>, <code>internal</code>).</li>
+</ul>
+</li>
+<li><code>delete &lt;name&gt;</code>: Permanently remove a security group.</li>
+<li><code>add &lt;vm-name&gt; &lt;sg-name&gt;</code>: Assign a security group to a VM.</li>
+<li><code>remove &lt;vm-name&gt; &lt;sg-name&gt;</code>: Remove a security group from a VM.</li>
+<li>
+<p><code>rule [COMMAND]</code>: Manage rules within a security group.</p>
+<ul>
+<li><code>rule list &lt;sg-name&gt;</code>: List all rules in the group.</li>
+<li><code>rule add &lt;sg-name&gt; --port &lt;port&gt; [--protocol PROTO] [--cidr CIDR]</code>: Add a new rule.</li>
+<li><code>rule remove &lt;sg-name&gt; &lt;rule-id&gt;</code>: Delete a rule by its ID.</li>
+</ul>
+</li>
+<li>
+<p><strong>Examples</strong>:</p>
+</li>
+<li>List groups: <code>cmx vm security-group list</code></li>
+<li>Create web-ready group: <code>cmx vm security-group create web-sg --preset web-server</code></li>
+<li>Assign to VM: <code>cmx vm security-group add my-vm web-sg</code></li>
+<li>Add custom rule: <code>cmx vm security-group rule add web-sg --port 8080</code></li>
+</ul>
+<h3 id="4-networking-ssh">4. Networking &amp; SSH</h3>
+<h4 id="ssh"><code>ssh</code></h4>
+<p>Starts an interactive SSH session with the VM.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>&lt;name&gt;</code>: (Optional) Name of the VM. If omitted, the last started VM is used.</li>
+<li><strong>Example</strong>: <code>cmx vm ssh</code> (Connects to last VM)</li>
+<li><strong>Example</strong>: <code>cmx vm ssh my-web-server</code></li>
+</ul>
+<h4 id="ssh-config"><code>ssh-config</code></h4>
+<p>Generates suggested SSH configuration entries for all existing VMs in the current cloud. This allows you to connect using <code>ssh &lt;vm-name&gt;</code> without modifying your config file automatically.</p>
+<ul>
+<li><strong>Example</strong>: <code>cmx vm ssh-config</code></li>
+</ul>
+<h3 id="5-system-account">5. System &amp; Account</h3>
+<h4 id="account"><code>account</code></h4>
+<p>Displays account information, including usage quotas and limits for the current cloud.</p>
+<ul>
+<li><strong>Usage</strong>: <code>cmx vm account</code></li>
+<li><strong>Example</strong>: <code>cmx vm account</code></li>
+</ul>
+<h4 id="reset"><code>reset</code></h4>
+<p>Restarts the cloud provider service or resets the local environment. For Multipass on macOS, this restarts the <code>multipassd</code> daemon.</p>
+<ul>
+<li><strong>Usage</strong>: <code>cmx vm reset</code></li>
+<li><strong>Example</strong>: <code>cmx vm reset</code></li>
+</ul>
+<h3 id="6-specialized-commands">6. Specialized Commands</h3>
+<h4 id="reservation-chameleon-only"><code>reservation</code> (Chameleon Only)</h4>
+<p>Creates a hardware reservation (lease) in Chameleon Cloud.</p>
+<ul>
+<li><strong>Options</strong>:</li>
+<li><code>--name &lt;name&gt;</code>: (Required) Name of the reservation.</li>
+<li><code>--node-type &lt;type&gt;</code>: (Required) e.g., <code>compute_skylake</code>.</li>
+<li><code>--count &lt;int&gt;</code>: (Required) Number of nodes.</li>
+<li><code>--start &lt;datetime&gt;</code>: Start date (YYYY-MM-DD HH:MM).</li>
+<li><code>--end &lt;datetime&gt;</code>: End date (YYYY-MM-DD HH:MM).</li>
+<li><code>--duration &lt;int&gt;</code>: Duration of the lease in days.</li>
+<li><strong>Examples</strong>:</li>
+<li>Duration based: <code>cmx vm reservation --name my-lease --node-type compute_skylake --count 1 --duration 2</code></li>
+<li>Date based: <code>cmx vm reservation --name my-lease --node-type compute_skylake --count 1 --start "2026-10-01 08:00" --end "2026-10-02 08:00"</code></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
