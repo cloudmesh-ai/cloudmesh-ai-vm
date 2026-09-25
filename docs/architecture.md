@@ -11,7 +11,7 @@ The system uses a multi-layered inheritance structure to maximize code reuse.
 The `CloudBaseManager` is an Abstract Base Class (ABC) that defines the "contract" for all providers. It ensures that every manager implements a consistent set of methods:
 
 - `start()`, `stop()`, `delete()`, `list()`, `login()`, `suspend()`, `restart()`
-- `get_flavors()`, `get_keys()`, `get_security_groups()`
+- `get_flavors()`, `get_keys()`, and security group management (`get_security_groups()`, `create_security_group()`, etc.)
 
 ### 2. LibcloudManager (Intermediate Base)
 

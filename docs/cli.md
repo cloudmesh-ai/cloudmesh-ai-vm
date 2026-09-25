@@ -122,11 +122,29 @@ Lists available SSH keys in the current cloud.
 
 - **Example**: `cmx vm key`
 
-#### `security-groups`
+#### `security-group`
 
-Lists available security groups for the current cloud.
+Manage firewall security groups for the current cloud.
 
-- **Example**: `cmx vm security-groups`
+- **Subcommands**:
+  - `list`: List all available security groups.
+  - `info <name>`: Show detailed info and rules for a specific group.
+  - `create <name> [--description TEXT] [--preset PRESET]`: Create a new security group.
+    - `--preset`: Apply a pre-defined rule set (`web-server`, `db-server`, `internal`).
+  - `delete <name>`: Permanently remove a security group.
+  - `add <vm-name> <sg-name>`: Assign a security group to a VM.
+  - `remove <vm-name> <sg-name>`: Remove a security group from a VM.
+  - `rule [COMMAND]`: Manage rules within a security group.
+    - `rule list <sg-name>`: List all rules in the group.
+    - `rule add <sg-name> --port <port> [--protocol PROTO] [--cidr CIDR]`: Add a new rule.
+    - `rule remove <sg-name> <rule-id>`: Delete a rule by its ID.
+
+- **Examples**:
+  - List groups: `cmx vm security-group list`
+  - Create web-ready group: `cmx vm security-group create web-sg --preset web-server`
+  - Assign to VM: `cmx vm security-group add my-vm web-sg`
+  - Add custom rule: `cmx vm security-group rule add web-sg --port 8080`
+
 
 ### 4. Networking & SSH
 

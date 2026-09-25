@@ -19,7 +19,7 @@ A quick reference guide for all available Virtual Machine management commands in
 | | `image` | List available VM images | `cmx vm image` |
 | | `flavor` | List available hardware profiles | `cmx vm flavor` |
 | | `key list` | List available SSH keys | `cmx vm key list` |
-| | `security-groups` | List available security groups | `cmx vm security-groups` |
+| | `security-group` | Manage security groups (list, create, assign) | `cmx vm security-group list` |
 | **SSH/Net** | `run [name] "cmd"` | Run a command on the VM via SSH | `cmx vm run "hostname"` |
 | | `ssh-config [name]` | Generate SSH config for `~/.ssh/config` | `cmx vm ssh-config` |
 | | `key upload <path>` | Upload a public key to the cloud | `cmx vm key upload ~/.ssh/id_rsa.pub` |

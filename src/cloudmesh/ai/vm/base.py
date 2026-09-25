@@ -87,6 +87,34 @@ class BaseVMProvider(ABC):
         """Gets detailed information for a specific security group."""
         raise ProviderFeatureNotSupported(self.cloud_name, "get_security_group_info")
 
+    def create_security_group(self, name: str, description: str = "") -> bool:
+        """Creates a security group in the cloud."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "create_security_group")
+
+    def delete_security_group(self, name: str) -> bool:
+        """Deletes a security group from the cloud."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "delete_security_group")
+
+    def add_security_group_to_vm(self, vm_name: str, sg_name: str) -> bool:
+        """Associates a security group with a VM."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "add_security_group_to_vm")
+
+    def remove_security_group_from_vm(self, vm_name: str, sg_name: str) -> bool:
+        """Removes a security group association from a VM."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "remove_security_group_from_vm")
+
+    def add_security_group_rule(self, sg_name: str, protocol: str, port: str, cidr: str, direction: str = "ingress") -> str:
+        """Adds a firewall rule to a security group. Returns the rule ID."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "add_security_group_rule")
+
+    def remove_security_group_rule(self, sg_name: str, rule_id: str) -> bool:
+        """Removes a specific rule from a security group using its ID."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "remove_security_group_rule")
+
+    def list_security_group_rules(self, sg_name: str) -> List[Dict[str, Any]]:
+        """Lists all rules for a specific security group."""
+        raise ProviderFeatureNotSupported(self.cloud_name, "list_security_group_rules")
+
     # --- Network Methods ---
     def list_regions(self) -> List[Dict[str, Any]]:
         """Lists available regions."""

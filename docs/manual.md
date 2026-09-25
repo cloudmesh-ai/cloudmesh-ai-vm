@@ -49,7 +49,14 @@ Manage the CLI configuration stored in `~/.config/cloudmesh/clouds.yaml`.
 - **`info NAME`**: Get detailed information (IPs, State, etc.) about a specific VM.
 - **`image`**: List available VM image for the active provider.
 - **`flavor`**: List available VM flavor/sizes.
-- **`security_groups`**: List available security groups.
+- **`security-group`**: Manage firewall security groups.
+  - `list`: List all available security groups.
+  - `info <name>`: Get detailed information and rules.
+  - `create <name> [--preset PRESET]`: Create a new group (presets: `web-server`, `db-server`, `internal`).
+  - `delete <name>`: Remove a security group.
+  - `add <vm> <sg>`: Assign a group to a VM.
+  - `remove <vm> <sg>`: Unassign a group from a VM.
+  - `rule [list|add|remove]`: Manage rules within a group.
 
 ### Provider Management (`cmx vm provider`)
 Manage the cloud providers available to the tool.

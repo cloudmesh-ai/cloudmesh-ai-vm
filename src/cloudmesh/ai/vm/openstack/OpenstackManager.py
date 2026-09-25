@@ -511,14 +511,6 @@ class OpenstackManager(CloudBaseManager):
         Gets detailed information for a specific security group using the CLI.
         """
         try:
-            # Use --format value to get key=value pairs
-            result = self._run_cli_command(["openstack", "security", "group", "show", name, "--format", "value"])
-            # OpenStack 'show' with --format value returns lines of values. 
-            # To get keys as well, we can use --format json or just parse the output.
-            # Since _run_cli_command is simple, let's try to use json if possible, 
-            # but usually we can just use 'openstack security group show <name>' and parse.
-            
-            # Actually, 'openstack security group show <name> -f json' is the most reliable.
             import json
             result_json = self._run_cli_command(["openstack", "security", "group", "show", name, "-f", "json"])
             return json.loads(result_json)
@@ -527,24 +519,98 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"Error getting security group info for {name}: {e}")
             raise RuntimeError(f"Could not get security group info: {e}")
 
-    def add_security_group_rule(self, group_name: str, port: int, protocol: str = "tcp", cidr: str = "0.0.0.0/0") -> bool:
-        """
-        Adds a security group rule to allow traffic on a specific port using OpenStack CLI.
-        """
+    def create_security_group(self, name: str, description: str = "") -> bool:
+        """Creates a security group in OpenStack."""
         try:
-            cmd = [
-                "openstack", "security", "group", "rule", "create",
-                "--protocol", protocol,
-                "--dst-port", str(port),
-                "--remote-ip", cidr,
-                group_name
-            ]
+            cmd = ["openstack", "security", "group", "create"]
+            if description:
+                cmd.extend(["--description", description])
+            cmd.append(name)
             self._run_cli_command(cmd)
             return True
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"Error adding security group rule to {group_name}: {e}")
+            logger.error(f"Error creating security group {name}: {e}")
             return False
+
+    def delete_security_group(self, name: str) -> bool:
+        """Deletes a security group in OpenStack."""
+        try:
+            self._run_cli_command(["openstack", "security", "group", "delete", name])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error deleting security group {name}: {e}")
+            return False
+
+    def add_security_group_to_vm(self, vm_name: str, sg_name: str) -> bool:
+        """Associates a security group with a VM."""
+        try:
+            self._run_cli_command(["openstack", "server", "add", "security", "group", vm_name, sg_name])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error adding security group {sg_name} to VM {vm_name}: {e}")
+            return False
+
+    def remove_security_group_from_vm(self, vm_name: str, sg_name: str) -> bool:
+        """Removes a security group association from a VM."""
+        try:
+            self._run_cli_command(["openstack", "server", "remove", "security", "group", vm_name, sg_name])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error removing security group {sg_name} from VM {vm_name}: {e}")
+            return False
+
+    def add_security_group_rule(self, sg_name: str, protocol: str, port: str, cidr: str, direction: str = "ingress") -> str:
+        """
+        Adds a security group rule. Returns the rule ID.
+        """
+        try:
+            cmd = ["openstack", "security", "group", "rule", "create"]
+            if direction == "egress":
+                cmd.append("--egress")
+            else:
+                cmd.append("--ingress")
+            
+            cmd.extend(["--protocol", protocol])
+            port_flag = "--dst-port" if direction == "ingress" else "--src-port"
+            cmd.extend([port_flag, port])
+            cmd.extend(["--remote-ip", cidr])
+            cmd.append(sg_name)
+            
+            result = self._run_cli_command(cmd)
+            import re
+            match = re.search(r"rule\s+([a-f0-9-]+)", result)
+            if match:
+                return match.group(1)
+            return result.strip()
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error adding security group rule to {sg_name}: {e}")
+            raise RuntimeError(f"Could not add security group rule: {e}")
+
+    def remove_security_group_rule(self, sg_name: str, rule_id: str) -> bool:
+        """Removes a rule by ID."""
+        try:
+            self._run_cli_command(["openstack", "security", "group", "rule", "delete", rule_id])
+            return True
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error removing security group rule {rule_id}: {e}")
+            return False
+
+    def list_security_group_rules(self, sg_name: str) -> List[Dict[str, Any]]:
+        """Lists rules for a group."""
+        try:
+            import json
+            result_json = self._run_cli_command(["openstack", "security", "group", "rule", "list", sg_name, "-f", "json"])
+            return json.loads(result_json)
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error listing rules for {sg_name}: {e}")
+            return []
 
     @property
     def version(self) -> List[str]:

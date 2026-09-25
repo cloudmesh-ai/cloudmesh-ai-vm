@@ -1,18 +1,7 @@
 import click
-from typing import Optional, List
-from hostlist import Hostlist
-from ._shared.context import console, get_active_provider, vm_options, state
+from typing import Optional
+from ._shared.context import console, get_active_provider, vm_options, state, resolve_vms
 from ._shared.exceptions import handle_errors, VMCommandError
-
-def _parse_range(range_str: str) -> List[int]:
-    """Parse a range string like '1-5' or '1' into a list of integers."""
-    try:
-        if '-' in range_str:
-            start_str, end_str = range_str.split('-', 1)
-            return list(range(int(start_str), int(end_str) + 1))
-        return [int(range_str)]
-    except ValueError as e:
-        raise VMCommandError(f"Invalid range format '{range_str}'. Expected 'start-end' (e.g. 1-5).") from e
 
 @click.command()
 @click.pass_context
@@ -38,48 +27,40 @@ def start(ctx: click.Context, name: Optional[str] = None, count: Optional[int] =
     """
     provider = get_active_provider(ctx)
     
-    # 1. Determine the base username for automatic naming
-    provider_config = provider.get_cloud_config(provider.cloud_name)
-    raw_username = provider_config.get("username") or state.config.db.get("username", "user")
-    username = raw_username.replace("_", "-")
-
-    vms_to_start: List[str] = []
-
-    # 2. Resolve the list of VM names to start
-    if vm_range:
-        indices = _parse_range(vm_range)
-        vms_to_start = [f"{username}-{i}" for i in indices]
-        console.print(f"Starting VMs in range {vm_range} ([bold blue]{', '.join(vms_to_start)}[/bold blue])")
+    # If count is provided, we handle automatic naming separately as it's different from resolve_vms (which targets existing VMs)
+    # However, resolve_vms can be used for hostlist, range and single name.
     
-    elif count:
+    vms_to_start = []
+    
+    if count:
+        # Special case for start: count means "create N new VMs"
+        provider_config = provider.get_cloud_config(provider.cloud_name)
+        raw_username = provider_config.get("username") or state.config.db.get("username", "user")
+        username = raw_username.replace("_", "-")
         for _ in range(count):
             counter = state.increment_counter()
             vms_to_start.append(f"{username}-{counter}")
         console.print(f"Starting {count} VMs ([bold blue]{', '.join(vms_to_start)}[/bold blue])")
-    
-    elif name:
-        try:
-            # Expand hostlist specification (e.g. 'node[1-3]' -> ['node1', 'node2', 'node3'])
-            hl = Hostlist.expand(name)
-            vms_to_start = list(hl.hosts)
-            if len(vms_to_start) > 1:
-                console.print(f"Expanded hostlist. Starting VMs: [bold blue]{', '.join(vms_to_start)}[/bold blue]")
-        except Exception:
-            # Fallback to treating 'name' as a single VM name if hostlist expansion fails
-            vms_to_start = [name]
-    
     else:
-        # Default: Single VM with automatic naming
-        counter = state.increment_counter()
-        vms_to_start = [f"{username}-{counter}"]
-        console.print(f"No name, count, or range provided. Generating VM name: [bold blue]{vms_to_start[0]}[/bold blue]")
+        # Use resolve_vms for name, range, or default (last VM)
+        # Note: start's default is to create a new VM, whereas resolve_vms default is the last VM.
+        # We check if name or range is provided first.
+        if name or vm_range:
+            vms_to_start = resolve_vms(ctx, name=name, vm_range=vm_range)
+        else:
+            # Default start: create a new VM
+            provider_config = provider.get_cloud_config(provider.cloud_name)
+            raw_username = provider_config.get("username") or state.config.db.get("username", "user")
+            username = raw_username.replace("_", "-")
+            counter = state.increment_counter()
+            vms_to_start = [f"{username}-{counter}"]
+            console.print(f"No name, count, or range provided. Generating VM name: [bold blue]{vms_to_start[0]}[/bold blue]")
 
-    # 3. Start the VMs
+    # Start the VMs
     started_vms = []
     for vm_name in vms_to_start:
         result = provider.start(name=vm_name)
         if result:
-            # The provider returns the final name of the VM
             final_name = result if isinstance(result, str) else vm_name
             started_vms.append(final_name)
             console.print(f"Successfully started VM [bold green]{final_name}[/bold green].")
@@ -89,7 +70,7 @@ def start(ctx: click.Context, name: Optional[str] = None, count: Optional[int] =
     if not started_vms:
         raise VMCommandError("Failed to start any of the requested VMs.")
 
-    # 4. Update state with the last started VM
+    # Update state with the last started VM
     last_vm = started_vms[-1]
     state.set_last_vm(provider.cloud_name, last_vm)
 
