@@ -111,8 +111,7 @@ class Provider(CloudBaseManager):
             raise ValueError("VM name is required to delete the VM.")
         
         try:
-            self._run_command(["multipass", "delete", name])
-            self._run_command(["multipass", "purge"])
+            self._run_command(["multipass", "delete", "--purge", name])
             return True
         except Exception as e:
             self.print(f"Error deleting VM {name}: {e}")

@@ -1,7 +1,7 @@
 import click
 import logging
 import os
-from typing import Optional
+from typing import List, Optional
 from dataclasses import dataclass
 from cloudmesh.ai.vm.state_manager import StateManager
 
