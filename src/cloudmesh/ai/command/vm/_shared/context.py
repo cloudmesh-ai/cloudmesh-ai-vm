@@ -1,6 +1,7 @@
 import click
 import logging
 import os
+import re
 from typing import List, Optional
 from dataclasses import dataclass
 from cloudmesh.ai.vm.state_manager import StateManager
@@ -11,7 +12,9 @@ class VMContext:
     interactive: bool = False
 
 # Initialize StateManager with the default config path
-CONFIG_PATH = os.path.expanduser("~/.config/cloudmesh/clouds.yaml")
+CONFIG_PATH = os.path.expanduser(os.environ.get(
+    "CLOUDMESH_VM_CONFIG", "~/.config/cloudmesh/clouds.yaml"
+))
 state_manager = StateManager(CONFIG_PATH)
 
 class StateProxy:
@@ -108,8 +111,14 @@ def _parse_range(range_str: str) -> List[int]:
     try:
         if '-' in range_str:
             start_str, end_str = range_str.split('-', 1)
-            return list(range(int(start_str), int(end_str) + 1))
-        return [int(range_str)]
+            start, end = int(start_str), int(end_str)
+            if start < 1 or end < start:
+                raise ValueError("Expected an ascending positive range.")
+            return list(range(start, end + 1))
+        index = int(range_str)
+        if index < 1:
+            raise ValueError("Expected a positive index.")
+        return [index]
     except ValueError as e:
         # We use click.ClickException here to avoid circular dependency with exceptions.py
         raise click.ClickException(f"Invalid range format '{range_str}'. Expected 'start-end' (e.g. 1-5).") from e
@@ -119,6 +128,10 @@ def resolve_vms(ctx: click.Context, name: Optional[str] = None, count: Optional[
     Resolves a list of VM names based on a name (single or hostlist), a count, or a range.
     """
     provider = get_active_provider(ctx)
+    if sum(value is not None for value in (name, count, vm_range)) > 1:
+        raise click.ClickException("Choose only one of NAME, --count, or --range.")
+    if count is not None and count < 1:
+        raise click.ClickException("--count must be at least 1.")
     
     # 1. Determine the base username for range-based resolution
     provider_config = provider.get_cloud_config(provider.cloud_name)
@@ -152,12 +165,17 @@ def resolve_vms(ctx: click.Context, name: Optional[str] = None, count: Optional[
         console.print(f"Targeting last {count} VMs: [bold blue]{', '.join(vms)}[/bold blue]")
     
     elif name:
-        try:
-            hl = Hostlist.expand(name)
-            vms = list(hl.hosts)
-            if len(vms) > 1:
-                console.print(f"Expanded hostlist. Targeting VMs: [bold blue]{', '.join(vms)}[/bold blue]")
-        except Exception:
+        match = re.fullmatch(r"([^\[\]]*)\[([0-9,-]+)\]([^\[\]]*)", name)
+        if match:
+            prefix, indices, suffix = match.groups()
+            for group in indices.split(','):
+                width = len(group.split('-')[0]) if group.startswith('0') else 0
+                vms.extend(f"{prefix}{i:0{width}d}{suffix}" for i in _parse_range(group))
+            vms = list(dict.fromkeys(vms))
+            console.print(f"Expanded hostlist. Targeting VMs: [bold blue]{', '.join(vms)}[/bold blue]")
+        elif '[' in name or ']' in name:
+            raise click.ClickException(f"Invalid hostlist: {name}")
+        else:
             vms = [name]
     
     else:
@@ -165,4 +183,3 @@ def resolve_vms(ctx: click.Context, name: Optional[str] = None, count: Optional[
         vms = [vm_name]
 
     return vms
-

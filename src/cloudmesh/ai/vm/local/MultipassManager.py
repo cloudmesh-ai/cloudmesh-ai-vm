@@ -1,5 +1,5 @@
 import subprocess
-import re
+import json
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 
@@ -56,8 +56,19 @@ class Provider(CloudBaseManager):
 
     def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
         """
-        Starts (launches) a Multipass VM with optional resource configurations.
+        Launch a new VM, or resume an existing stopped or suspended VM.
         """
+        if name:
+            existing = next((vm for vm in self.list() if vm["name"] == name), None)
+            if existing:
+                status = existing["status"].lower()
+                if status == "running":
+                    return name
+                if status in {"stopped", "suspended"}:
+                    self._run_interactive(["multipass", "start", name])
+                    return name
+                raise ValueError(f"Cannot start VM {name} in state {existing['status']}.")
+
         cloud_config = self.get_cloud_config("multipass")
         
         # 1. Resolve image
@@ -122,12 +133,7 @@ class Provider(CloudBaseManager):
         if not name:
             return False
         try:
-            # Stop the VM
-            self.stop(name)
-            
-            # Start the VM using multipass start (instead of launch)
-            command = ["multipass", "start", name]
-            self._run_command(command)
+            self._run_command(["multipass", "restart", name])
             return True
         except Exception as e:
             self.print(f"Error restarting VM {name}: {e}")
@@ -150,15 +156,62 @@ class Provider(CloudBaseManager):
         except Exception as e:
             self.print(f"Error resetting Multipass daemon: {e}")
             return False
-        except Exception as e:
-            self.print(f"Error resetting Multipass daemon: {e}")
-            return False
-            self._run_interactive(command)
-            
+
+    def suspend(self, name: Optional[str] = None) -> bool:
+        """Suspend a VM while retaining its disk and saved machine state."""
+        if not name:
+            raise ValueError("VM name is required to suspend the VM.")
+        try:
+            self._run_command(["multipass", "suspend", name])
             return True
         except Exception as e:
-            self.print(f"Error restarting VM {name}: {e}")
+            self.print(f"Error suspending VM {name}: {e}")
             return False
+
+    def login(self, name: Optional[str] = None) -> bool:
+        """Open the managed guest shell without requiring a user SSH key."""
+        if not name:
+            raise ValueError("VM name is required to log in.")
+        self._run_interactive(["multipass", "shell", name])
+        return True
+
+    def run_command(self, name: str, command: str) -> str:
+        """Execute a shell command in the guest, never in the host shell."""
+        if not name or not command.strip():
+            raise ValueError("A VM name and nonempty command are required.")
+        result = self._run_command_silent(
+            ["multipass", "exec", name, "--", "sh", "-lc", command]
+        )
+        return result.stdout
+
+    def _json_output(self, command: List[str]) -> Dict[str, Any]:
+        result = self._run_command_silent(command)
+        data = json.loads(result.stdout)
+        if not isinstance(data, dict):
+            raise ValueError("Multipass returned an invalid JSON object.")
+        errors = [error for error in data.get("errors", []) if error]
+        if errors:
+            raise RuntimeError("; ".join(str(error) for error in errors))
+        return data
+
+    @staticmethod
+    def _vm_record(name: str, details: Dict[str, Any]) -> Dict[str, Any]:
+        addresses = [ip for ip in details.get("ipv4", []) if ip]
+        return {
+            **details,
+            "name": name,
+            "status": details.get("state", "Unknown"),
+            "ip": addresses[0] if addresses else None,
+            "image": details.get("release") or details.get("image_release"),
+        }
+
+    def info(self, name: str) -> Dict[str, Any]:
+        """Return native details plus the shared name/status/IP fields."""
+        data = self._json_output(["multipass", "info", name, "--format", "json"])
+        details = data.get("info", {}).get(name)
+        if not isinstance(details, dict):
+            raise ValueError(f"No information found for VM '{name}'.")
+        return self._vm_record(name, details)
 
     def get_flavors(self) -> List[Dict[str, Any]]:
         """Lists available hardware profiles for Multipass."""
@@ -171,58 +224,23 @@ class Provider(CloudBaseManager):
 
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Multipass VMs."""
-        try:
-            result = self._run_command_silent(["multipass", "list"])
-            lines = result.stdout.strip().split("\n")
-            if not lines or len(lines) < 2:
-                return []
-            
-            vms = []
-            # Skip the header line
-            for line in lines[1:]:
-                # Multipass output is usually columns. We split by whitespace.
-                parts = re.split(r'\s+', line.strip(), maxsplit=3)
-                if len(parts) >= 3:
-                    vms.append({
-                        "name": parts[0],
-                        "status": parts[1],
-                        "ip": parts[2] if parts[2] != "-" else "None"
-                    })
-            return vms
-        except (subprocess.CalledProcessError, Exception) as e:
-            self.print(f"Error listing Multipass VMs: {e}")
-            return []
+        data = self._json_output(["multipass", "list", "--format", "json"])
+        instances = data.get("list")
+        if not isinstance(instances, list):
+            raise ValueError("Multipass inventory is missing the list field.")
+        return [self._vm_record(vm["name"], vm) for vm in instances]
 
     def _run_command_silent(self, command: List[str]) -> subprocess.CompletedProcess:
         """Helper to run shell commands without printing output to the console."""
-        try:
-            return subprocess.run(command, capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as e:
-            # Log the error but return the process object to allow the caller to handle it
-            return e
+        return subprocess.run(command, capture_output=True, text=True, check=True)
 
     def get_images(self) -> List[Dict[str, Any]]:
         """Lists available Multipass images."""
-        try:
-            result = self._run_command_silent(["multipass", "images"])
-            lines = result.stdout.strip().split("\n")
-            if not lines:
-                return []
-            
-            images = []
-            # Skip the header line "Available images:" and parse lines starting with "- "
-            for line in lines:
-                line = line.strip()
-                if line.startswith("- "):
-                    # Example line: "- 22.04 (Ubuntu Jammy Jellyfish)"
-                    content = line[2:].strip()
-                    if content:
-                        image_name = content.split()[0]
-                        images.append({"name": image_name})
-            return images
-        except (subprocess.CalledProcessError, Exception) as e:
-            self.print(f"Error listing Multipass images: {e}")
-            return []
+        data = self._json_output(["multipass", "find", "--format", "json"])
+        images = data.get("images")
+        if not isinstance(images, dict):
+            raise ValueError("Multipass image inventory is missing the images field.")
+        return [{"name": name, **details} for name, details in images.items()]
 
     def check_requirements(self) -> bool:
         """Checks if the requirements for this provider are met on the current system."""
@@ -243,12 +261,12 @@ class Provider(CloudBaseManager):
         return ["Unknown"]
 
     def get_keys(self) -> List[Dict[str, Any]]:
-        """Multipass manages its own keys internally."""
-        return [{"name": "multipass-default-key", "path": "~/.ssh/multipass_rsa"}]
+        """Multipass has no user-managed key registry to enumerate."""
+        return []
 
     def get_security_groups(self) -> List[Dict[str, Any]]:
-        """Multipass does not use security groups."""
-        return [{"name": "default", "description": "Local network access"}]
+        """Multipass does not expose cloud security-group resources."""
+        return []
 
     def get_cost(self, **kwargs) -> Optional[Any]:
         """Returns the cost information for Multipass."""
@@ -257,15 +275,11 @@ class Provider(CloudBaseManager):
     def get_provider_info(self) -> Dict[str, Any]:
         """Gets detailed information about the Multipass provider version."""
         info = {}
-        try:
-            version_result = self._run_command_silent(["multipass", "version"])
-            if hasattr(version_result, "stdout") and version_result.stdout:
-                for line in version_result.stdout.strip().split("\n"):
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        info[parts[0]] = parts[1]
-        except Exception:
-            pass
-        
+        version_result = self._run_command_silent(["multipass", "version"])
+        for line in version_result.stdout.strip().split("\n"):
+            parts = line.strip().split()
+            if len(parts) >= 2:
+                info[parts[0]] = parts[1]
+        if not info:
+            raise ValueError("Multipass did not return version information.")
         return info
-

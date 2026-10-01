@@ -6,6 +6,7 @@ from ._shared.context import console, get_active_provider, vm_options, resolve_v
 from ._shared.exceptions import handle_errors, VMCommandError
 
 @click.command()
+@click.pass_context
 @click.argument("name", required=False)
 @vm_options
 @handle_errors
@@ -16,6 +17,10 @@ def ssh(ctx: click.Context, name: Optional[str] = None) -> None:
     """
     provider = get_active_provider(ctx)
     vm_name = resolve_vm_name(ctx, name)
+    if provider.cloud_name == "multipass":
+        if not provider.login(vm_name):
+            raise VMCommandError(f"Failed to open a shell on VM {vm_name}.")
+        return
     
     if not vm_name:
         raise VMCommandError("No VM specified and no last-used VM found in context.")
@@ -65,7 +70,7 @@ def ssh(ctx: click.Context, name: Optional[str] = None) -> None:
     
     try:
         # Use subprocess.run without capture_output to allow interactive session
-        subprocess.run(ssh_cmd)
+        subprocess.run(ssh_cmd, check=True)
     except KeyboardInterrupt:
         pass
     except Exception as e:

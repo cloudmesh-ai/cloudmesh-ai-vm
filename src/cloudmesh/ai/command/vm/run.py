@@ -29,9 +29,10 @@ def run(ctx: click.Context, name: Optional[str] = None, command: Optional[str] =
 
     provider = get_active_provider(ctx)
     result = provider.run_command(vm_name, actual_command)
-    if result:
+    if result is not None:
         state.set_last_vm(provider.cloud_name, vm_name)
-        console.print(result)
+        if result:
+            click.echo(result, nl=not result.endswith("\n"))
     else:
         raise VMCommandError(f"Failed to execute command on VM {vm_name}.")
 

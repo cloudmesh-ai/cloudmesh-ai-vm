@@ -66,13 +66,13 @@ def load_commands_recursively(group: click.Group, current_dir: str, package_path
 @click.pass_context
 def vm_group(ctx: click.Context, interactive: bool = False) -> None:
     """VM management commands"""
-    ctx.obj = VMContext()
+    ctx.ensure_object(VMContext)
     
     # Determine the active provider for the header
     from ._shared.context import state
     default_cloud = "multipass"
     if state.config:
-        default_cloud = getattr(state.config, "default_cloud", "multipass") or "multipass"
+        default_cloud = state.db.get("default_cloud", "multipass") or "multipass"
     
     active_p = ctx.obj.cloud_override or default_cloud
     
