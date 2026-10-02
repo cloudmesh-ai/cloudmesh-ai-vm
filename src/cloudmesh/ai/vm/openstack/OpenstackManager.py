@@ -1,3 +1,4 @@
+from pathlib import Path
 import yaml
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
@@ -128,6 +129,9 @@ class OpenstackManager(CloudBaseManager):
         image_name = image or cloud_config.get("image")
         flavor_name = flavor or cloud_config.get("flavor")
         security_group = cloud_config.get("security_group", "default")
+        key_name = cloud_config.get("key_name")
+        if not key_name and cloud_config.get("key_path"):
+            key_name = Path(cloud_config["key_path"]).name.replace(".pub", "")
         
         if not image_name:
             raise ConfigError(f"Missing 'image' in config for {self.cloud_name}")
@@ -146,8 +150,24 @@ class OpenstackManager(CloudBaseManager):
             if not flv:
                 raise VMResourceError(f"Could not find flavor {flavor_name} in {self.cloud_name}")
 
+            security_groups = self.driver.ex_list_security_groups()
+            sg = next(
+                (group for group in security_groups if group.name == security_group),
+                None,
+            )
+            if sg is None:
+                raise VMResourceError(
+                    f"Could not find security group {security_group} in {self.cloud_name}"
+                )
+
             vm_name = name or f"vm-{self.cloud_name}"
-            node = self.driver.create_node(name=vm_name, image=img, size=flv)
+            node = self.driver.create_node(
+                name=vm_name,
+                image=img,
+                size=flv,
+                ex_keyname=key_name,
+                ex_security_groups=[sg],
+            )
             return node.id
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
