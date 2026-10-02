@@ -23,9 +23,16 @@ PRESETS = {
 def get_public_ip() -> str:
     """Fetch the current public IP of the machine."""
     try:
-        return requests.get("https://api.ipify.org").text.strip()
-    except Exception:
-        return "0.0.0.0/0"
+        response = requests.get("https://api.ipify.org", timeout=10)
+        response.raise_for_status()
+        public_ip = response.text.strip()
+        if not public_ip:
+            raise VMCommandError("Public IP lookup returned an empty response.")
+        return public_ip
+    except VMCommandError:
+        raise
+    except Exception as e:
+        raise VMCommandError(f"Could not determine public IP: {e}") from e
 
 def resolve_cidr(cidr: str) -> str:
     """Resolves special CIDR placeholders."""
