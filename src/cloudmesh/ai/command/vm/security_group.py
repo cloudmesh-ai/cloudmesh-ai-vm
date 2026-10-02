@@ -98,6 +98,16 @@ def create_sg(ctx: click.Context, name: str, description: str, preset: Optional[
                     console.print(f"  - Added {rule['protocol']} port {port} from {cidr} ({rule['direction']})")
                 except Exception as e:
                     console.print(f"  [red]Failed to add rule {port}: {e}[/red]")
+                    try:
+                        provider.delete_security_group(name)
+                    except Exception as cleanup_error:
+                        raise VMCommandError(
+                            f"Failed to apply preset '{preset_name}' to security group {name}: {e}. "
+                            f"Cleanup also failed: {cleanup_error}"
+                        )
+                    raise VMCommandError(
+                        f"Failed to apply preset '{preset_name}' to security group {name}: {e}"
+                    )
     else:
         raise VMCommandError(f"Failed to create security group {name}")
 
