@@ -117,8 +117,9 @@ class OpenstackManager(CloudBaseManager):
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         
         if result.returncode != 0:
-            logger.error(f"CLI command failed: {result.stderr}")
-            raise VMProviderError(f"CLI command failed: {result.stderr}")
+            command_name = " ".join(map(str, cmd))
+            logger.error(f"CLI command failed: {command_name}")
+            raise VMProviderError(f"CLI command failed: {command_name}")
         
         return result.stdout
 
