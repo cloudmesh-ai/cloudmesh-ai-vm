@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 from cloudmesh.ai.command.vm import cmx
+from cloudmesh.ai.command.vm._shared.exceptions import VMCommandError
 
 @pytest.fixture
 def runner():
@@ -77,3 +78,14 @@ def test_vm_key_upload_unsupported(runner, mock_provider):
         result = runner.invoke(cmx, ["vm", "key", "upload", "dummy.pub", "--name", "my-key"])
         assert result.exit_code != 0
         assert "Error" in result.output
+
+def test_security_group_current_ip_lookup_failure():
+    """CURRENT_IP must fail safely when the public IP cannot be determined."""
+    from cloudmesh.ai.command.vm.security_group import resolve_cidr
+
+    with patch(
+        "cloudmesh.ai.command.vm.security_group.requests.get",
+        side_effect=Exception("network unavailable"),
+    ):
+        with pytest.raises(VMCommandError):
+            resolve_cidr("CURRENT_IP")

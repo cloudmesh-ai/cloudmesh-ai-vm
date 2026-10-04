@@ -23,9 +23,16 @@ PRESETS = {
 def get_public_ip() -> str:
     """Fetch the current public IP of the machine."""
     try:
-        return requests.get("https://api.ipify.org").text.strip()
-    except Exception:
-        return "0.0.0.0/0"
+        response = requests.get("https://api.ipify.org", timeout=10)
+        response.raise_for_status()
+        public_ip = response.text.strip()
+        if not public_ip:
+            raise VMCommandError("Public IP lookup returned an empty response.")
+        return public_ip
+    except VMCommandError:
+        raise
+    except Exception as e:
+        raise VMCommandError(f"Could not determine public IP: {e}") from e
 
 def resolve_cidr(cidr: str) -> str:
     """Resolves special CIDR placeholders."""
@@ -98,6 +105,16 @@ def create_sg(ctx: click.Context, name: str, description: str, preset: Optional[
                     console.print(f"  - Added {rule['protocol']} port {port} from {cidr} ({rule['direction']})")
                 except Exception as e:
                     console.print(f"  [red]Failed to add rule {port}: {e}[/red]")
+                    try:
+                        provider.delete_security_group(name)
+                    except Exception as cleanup_error:
+                        raise VMCommandError(
+                            f"Failed to apply preset '{preset_name}' to security group {name}: {e}. "
+                            f"Cleanup also failed: {cleanup_error}"
+                        )
+                    raise VMCommandError(
+                        f"Failed to apply preset '{preset_name}' to security group {name}: {e}"
+                    )
     else:
         raise VMCommandError(f"Failed to create security group {name}")
 
