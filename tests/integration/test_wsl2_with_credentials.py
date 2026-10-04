@@ -80,3 +80,20 @@ def test_wsl2_run_command_missing_distribution_raises(provider):
 
     with pytest.raises(VMProviderError, match="VM cloudmesh-does-not-exist not found"):
         provider.run_command("cloudmesh-does-not-exist", "printf test")
+
+
+def test_wsl2_get_provider_info_real_cli(provider):
+    info = provider.get_provider_info()
+
+    assert info["provider"] == "WSL2"
+    assert info["cloud_name"] == "wsl2"
+    assert isinstance(info["version"], list)
+    assert info["version"]
+
+
+def test_wsl2_wait_for_running_status_real_distribution(provider, distro):
+    assert provider.wait_for_status(
+        distro,
+        "Running",
+        timeout=10,
+    ) is True

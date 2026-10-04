@@ -45,16 +45,15 @@ def test_start_import(provider):
             MagicMock(stdout="Imported", returncode=0),
             MagicMock(stdout="Started", returncode=0)
         ]
-        
+
         result = provider.start(name="NewDistro")
-        
         assert result == "NewDistro"
         mock_run.assert_any_call(["wsl", "--import", "NewDistro", "C:\\WSL", "/path/to/rootfs.tar"], capture_output=True, text=True, check=True)
         mock_run.assert_any_call(["wsl", "-d", "NewDistro"], capture_output=True, text=True, check=True)
 
 def test_stop_success(provider):
     with patch.object(provider, "exists", return_value=True), \
-         patch("subprocess.run") as mock_run:
+        patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="Stopped", returncode=0)
         assert provider.stop(name="test-distro") is True
         mock_run.assert_called_once_with(
@@ -66,7 +65,7 @@ def test_stop_success(provider):
 
 def test_delete_success(provider):
     with patch.object(provider, "exists", return_value=True), \
-         patch("subprocess.run") as mock_run:
+        patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="Deleted", returncode=0)
         assert provider.delete(name="test-distro") is True
         mock_run.assert_called_once_with(
@@ -101,10 +100,22 @@ def test_link_ssh_dir_success(provider):
          patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="Linked", returncode=0)
         assert provider.link_ssh_dir(name="test-distro") is True
-        
+
         expected_cmd = "rm -rf /home/wsluser/.ssh && ln -s /mnt/c/Users/winuser/.ssh /home/wsluser/.ssh"
         mock_run.assert_called_once_with(["wsl", "-d", "test-distro", "-u", "root", "sh", "-c", expected_cmd], capture_output=True, text=True, check=True)
 
 def test_link_ssh_dir_missing_config(provider):
     provider.config = {"clouds": {"wsl2": {}}} # Empty config
     assert provider.link_ssh_dir(name="test-distro") is False
+
+
+def test_validate_config_success(provider):
+    assert provider.validate_config() == {}
+
+def test_validate_config_missing_rootfs(provider):
+    provider.config = {"clouds": {"wsl2": {}}}
+
+    errors = provider.validate_config()
+    config_name = "Cloudmesh config (~/.config/cloudmesh/clouds.yaml)"
+    assert config_name in errors
+    assert "Missing required field: 'rootfs' (rootfs image path)" in errors[config_name]
