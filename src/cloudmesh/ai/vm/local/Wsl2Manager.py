@@ -128,7 +128,7 @@ class Provider(LocalBaseManager):
 
         try:
             # launch interactive shell
-            subprocess.run([self._get_wsl_binary(), "-d", name], check=True)
+            self._run_command([self._get_wsl_binary(), "-d", name], stream=True)
             return True
         except Exception:
             return False
@@ -271,6 +271,9 @@ class Provider(LocalBaseManager):
             "provider": "WSL2",
             "cloud_name": self.cloud_name,
             "version": self.version,
+            "config": {
+                "install_dir": self.get_cloud_config("wsl2").get("install_dir", "C:\\WSL"),
+            },
         }
 
     def wait_for_status(self, name: str, target_status: str, timeout: int = 300) -> bool:

@@ -50,7 +50,7 @@ class BaseVMProvider(ABC):
     def suspend(self, name: str) -> bool:
         raise ProviderFeatureNotSupported(self.cloud_name, "suspend")
 
-    def delete(self, name: str) -> bool:
+    def delete(self, name: Optional[str] = None) -> bool:
         raise ProviderFeatureNotSupported(self.cloud_name, "delete")
 
     def login(self, name: str) -> bool:

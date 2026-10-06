@@ -144,8 +144,7 @@ class Provider(LocalBaseManager):
             return False
 
         try:
-            import subprocess
-            subprocess.run(["limactl", "shell", name], check=True)
+            self._run_command(["limactl", "shell", name])
             return True
         except Exception:
             return False
@@ -277,21 +276,15 @@ class Provider(LocalBaseManager):
         return {"value": 0, "unit": None}
 
     def get_provider_info(self) -> Dict[str, Any]:
-        """Gets detailed information about the Lima provider from 'limactl info'."""
-        try:
-            result = self._run_command(["limactl", "info"], stream=False)
-            info = {}
-            for line in result.stdout.strip().split("\n"):
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    info[key.strip()] = value.strip()
-            return info
-        except Exception as e:
-            self.print(f"Error getting Lima provider info: {e}")
-            return {}
+        """Gets detailed information about the Lima provider."""
+        return {
+            "provider": "Lima",
+            "cloud_name": self.cloud_name,
+            "version": self.version,
+            "config": {
+                "template": self.get_cloud_config("lima").get("template", "ubuntu"),
+            },
+        }
 
     def wait_for_status(self, name: str, target_status: str, timeout: int = 300) -> bool:
         """

@@ -870,17 +870,31 @@ class OpenstackManager(CloudBaseManager):
             "cloud_name": self.cloud_name,
             "version": self.version,
         }
+
         try:
-            # Use a simple CLI call to get basic cloud info if possible
-            result = self._run_cli_command(["openstack", "cloud", "show", self.cloud_name, "-f", "json"])
+            result = self._run_cli_command([
+                "openstack",
+                "configuration",
+                "show",
+                "-f",
+                "json",
+                "-c",
+                "region_name",
+                "-c",
+                "auth.auth_url",
+            ])
+
             import json
             cloud_info = json.loads(result)
+
             info.update({
                 "region": cloud_info.get("region_name"),
-                "auth_url": cloud_info.get("auth_url"),
-            })
+                "auth_url": cloud_info.get("auth.auth_url"),
+        })
+
         except Exception:
             pass
+
         return info
 
     def wait_for_status(self, name: str, target_status: str, timeout: int = 300) -> bool:

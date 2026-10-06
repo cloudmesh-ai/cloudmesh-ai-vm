@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -123,3 +123,44 @@ def test_start_prefers_explicit_key_name():
         provider.start(name="test-vm")
 
     assert driver.create_node.call_args.kwargs["ex_keyname"] == "custom-cloud-key"
+
+def test_get_provider_info_uses_supported_configuration_fields():
+    """Provider info should query only supported, non-sensitive OpenStack fields."""
+    config = {"clouds": {"jetstream": {}}}
+    driver = MagicMock()
+
+    with patch.object(OpenstackManager, "_get_driver", return_value=driver):
+        provider = OpenstackManager(config, cloud_name="jetstream")
+
+        with patch.object(
+            OpenstackManager,
+            "version",
+            new_callable=PropertyMock,
+            return_value=["CLI: test", "libcloud: test"],
+        ):
+            with patch.object(
+                provider,
+                "_run_cli_command",
+                return_value=(
+                    '{"region_name": "IU", '
+                    '"auth.auth_url": "https://example.invalid/v3/"}'
+                ),
+            ) as run_cli:
+                info = provider.get_provider_info()
+
+    run_cli.assert_called_once_with([
+        "openstack",
+        "configuration",
+        "show",
+        "-f",
+        "json",
+        "-c",
+        "region_name",
+        "-c",
+        "auth.auth_url",
+    ])
+
+    assert info["provider"] == "OpenStack"
+    assert info["cloud_name"] == "jetstream"
+    assert info["region"] == "IU"
+    assert info["auth_url"] == "https://example.invalid/v3/"    

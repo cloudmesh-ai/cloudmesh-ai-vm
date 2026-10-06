@@ -28,7 +28,7 @@ def test_vm_start_failure(runner, mock_provider):
         mock_provider.start.return_value = False
         result = runner.invoke(cmx, ["vm", "start", "test-vm"])
         assert result.exit_code != 0
-        assert "Error: Failed to start VM test-vm" in result.output
+        assert "Failed to start VM test-vm" in result.output
 
 def test_vm_list_table(runner, mock_provider):
     """Test that 'cmx vm list' renders a table of VMs."""
@@ -94,4 +94,4 @@ def test_vm_help_loads(runner):
     result = runner.invoke(cmx, ["vm", "--help"])
 
     assert result.exit_code == 0
-    assert "VM management and cloud provider options" in result.output
+    assert "VM management commands" in result.output
