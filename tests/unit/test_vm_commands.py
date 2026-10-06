@@ -65,21 +65,20 @@ def test_vm_key_upload_success(runner, mock_provider):
          patch("cloudmesh.ai.command.vm.key.upload.get_active_provider", return_value=mock_provider), \
          patch("cloudmesh.ai.command.vm.key.upload.console") as mock_console:
         mock_provider.upload_key.return_value = True
-        # The command name is derived from the filename 'upload.py', so it's 'upload', not 'upload-key'
         result = runner.invoke(cmx, ["vm", "key", "upload", "dummy.pub", "--name", "my-key"])
         assert result.exit_code == 0
         mock_console.print.assert_called()
 
 def test_vm_key_upload_unsupported(runner, mock_provider):
     """Test that 'cmx vm key upload' handles unsupported providers."""
-    del mock_provider.upload_key 
+    del mock_provider.upload_key
     with patch("os.path.exists", return_value=True), \
          patch("cloudmesh.ai.command.vm.key.upload.get_active_provider", return_value=mock_provider):
         result = runner.invoke(cmx, ["vm", "key", "upload", "dummy.pub", "--name", "my-key"])
         assert result.exit_code != 0
         assert "Error" in result.output
 
-def test_security_group_current_ip_lookup_failure():
+def test_security_group_current_ip_lookup_failure(runner):
     """CURRENT_IP must fail safely when the public IP cannot be determined."""
     from cloudmesh.ai.command.vm.security_group import resolve_cidr
 
@@ -88,4 +87,11 @@ def test_security_group_current_ip_lookup_failure():
         side_effect=Exception("network unavailable"),
     ):
         with pytest.raises(VMCommandError):
-            resolve_cidr("CURRENT_IP")
+            resolve_cidr("CURRENT,IP")
+
+def test_vm_help_loads(runner):
+    """Verify that the VM CLI loads successfully and displays help."""
+    result = runner.invoke(cmx, ["vm", "--help"])
+
+    assert result.exit_code == 0
+    assert "VM management and cloud provider options" in result.output

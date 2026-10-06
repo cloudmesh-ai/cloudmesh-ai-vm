@@ -126,7 +126,7 @@ class Provider(LocalBaseManager):
         """Lists all Multipass VMs."""
         try:
             result = self._run_command(["multipass", "list"], stream=False)
-            lines = result.stdout.strip().split("\n")
+            lines = result.stdout.strip().splitlines()
             if not lines or len(lines) < 2:
                 return []
 
@@ -135,6 +135,8 @@ class Provider(LocalBaseManager):
             for line in lines[1:]:
                 # Multipass output is usually columns. We split by whitespace.
                 parts = re.split(r'\s+', line.strip(), maxsplit=3)
+                if parts and parts[0] == "*":
+                    parts = parts[1:]
                 if len(parts) >= 3:
                     vms.append({
                         "name": parts[0],
@@ -253,9 +255,19 @@ class Provider(LocalBaseManager):
         """Multipass does not use security groups."""
         return [{"name": "default", "description": "Local network access"}]
 
-    def get_cost(self, **kwargs) -> Optional[Any]:
-        """Returns the cost information for Multipass."""
-        return {"value": 0, "unit": None}
+    def shelve(self, name: Optional[str] = None) -> bool:
+        """
+        Multipass does not have a native shelve feature.
+        We implement this by stopping the VM, which releases compute resources
+        while preserving the disk.
+        """
+        return self.stop(name)
+
+    def unshelve(self, name: Optional[str] = None) -> bool:
+        """
+        Unshelves a Multipass VM by starting it.
+        """
+        return self.start(name)
 
     def get_provider_info(self) -> Dict[str, Any]:
         """Gets detailed information about the Multipass provider version."""

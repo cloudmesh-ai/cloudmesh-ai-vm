@@ -36,3 +36,28 @@
 - [ ] NOT NEEDED: **The "Compliance Badge" in the UI**: Feed compliance results into `PROVIDER_METADATA` to show a "Verified" badge in the CLI.
 - [x] **Consistent UX Scenarios**: Implement "Scenario Tests" (e.g., Zero-to-Hero flow) to ensure consistent behavior across clouds.
 - [ ] **Security & Hygiene Compliance**: Add checks for credential leakage in logs and resource cleanup (no zombie resources on failure).
+
+## Testing and fixing
+
+In addition to the general code improvements the code also needs to be tested. Each student ought to take at least 2 cloud providers and test the programs in great detail. While automating the test so they can be run repeatedly without effort. The suggestion is to have some file 
+
+test/test-<cloud>-with-credentials.py
+
+That tests the specified cloud .
+
+We have 
+
+* Local Providers
+    * Multipass (partially tested)
+    * Lima (not tested)
+    * WSL2 (not tested)
+    * VirtualBox (not tested)
+* OpenStack Providers
+    * Jetstream (partially tested)
+    * Chameleon (partially tested)
+* Hyperscaler Providers
+    * AWS EC2 (not tested)
+    * Azure VMs (not tested)
+    * Google GCE (not tested)
+
+Try out the commands and record under each of them which work, which does not. Make sure to not just do it from commandline but integrate it into a testing python file. If you are familiar with pytest, you can use that.

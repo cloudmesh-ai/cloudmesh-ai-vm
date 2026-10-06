@@ -19,7 +19,7 @@ def mock_config():
 @pytest.fixture
 def provider(mock_config):
     provider = Provider(mock_config)
-    provider._wsl_command = MagicMock(return_value="wsl")
+    provider._get_wsl_binary = MagicMock(return_value="wsl")
     return provider
 
 def test_start_existing(provider):

@@ -58,6 +58,15 @@ def start(ctx: click.Context, name: Optional[str] = None, count: Optional[int] =
 
     # Start the VMs
     started_vms = []
+
+    # Pre-check: Ensure requested VMs don't already exist
+    # (This is critical for single names or range expansions to avoid accidental restarts/errors)
+    if vms_to_start:
+        existing_vms = [vm["name"] for vm in provider.list()]
+        for vm_name in vms_to_start:
+            if vm_name in existing_vms:
+                raise click.ClickException(f"VM [bold red]{vm_name}[/bold red] already exists. Please use a different name or 'stop' it first.")
+
     for vm_name in vms_to_start:
         result = provider.start(name=vm_name)
         if result:

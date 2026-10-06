@@ -1,7 +1,32 @@
 import logging
+import re
 from rich.console import Console
 
 console = Console()
+
+def sanitize_output(text: str) -> str:
+    """
+    Removes sensitive information from CLI output using pattern matching.
+    Replaces secrets, tokens, and passwords with [REDACTED].
+    """
+    if not text:
+        return ""
+
+    # Patterns to redact: (Pattern, Replacement)
+    patterns = [
+        (r'(?i)(bearer\s+)[A-Za-z0-9\-\._~\+\/]+=*', r'\1[REDACTED]'),
+        (r'(?i)(api_key\s*[:=]?\s*)[^&\s]+', r'\1[REDACTED]'),
+        (r'(?i)(password\s*[:=]?\s*)[^&\s]+', r'\1[REDACTED]'),
+        (r'(?i)(secret\s*[:=]?\s*)[^&\s]+', r'\1[REDACTED]'),
+        (r'(?i)(token\s*[:=]?\s*)[^&\s]+', r'\1[REDACTED]'),
+        (r'(?i)(auth_token\s*[:=]?\s*)[^&\s]+', r'\1[REDACTED]'),
+    ]
+
+    sanitized = text
+    for pattern, replacement in patterns:
+        sanitized = re.sub(pattern, replacement, sanitized)
+
+    return sanitized
 
 def register_providers():
     """

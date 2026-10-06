@@ -72,6 +72,7 @@ Manage the cloud providers available to the tool.
 - **`set PROVIDER`**: Set the default cloud provider.
 - **`list`**: List all supported providers and their configuration status.
 - **`info`**: Display detailed information about the active provider.
+  - For the **WSL2 provider**, the tool automatically detects the best available binary (`wsl.exe` or `wsl`) for compatibility across Windows CMD, PowerShell, Git Bash, and WSL-native environments.
 
 ### Key Management (`cmx vm key`)
 Manage SSH keys for VM access.

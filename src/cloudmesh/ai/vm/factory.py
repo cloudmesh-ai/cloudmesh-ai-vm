@@ -1,6 +1,7 @@
 from typing import Dict, Type, Optional, Any
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 from cloudmesh.ai.vm.exceptions import VMProviderError
+from cloudmesh.ai.vm.logger import logger
 
 class ProviderFactory:
     """
@@ -21,7 +22,7 @@ class ProviderFactory:
             # In a real system, we might have a default LibcloudManager implementation
             # that handles many providers via config.
             raise VMProviderError(f"Provider '{cloud_name}' is not registered in the factory.")
-        
+
         # Pass the GlobalConfig object itself, and the console, not its __dict__
         return manager_cls(config, console=console)
 

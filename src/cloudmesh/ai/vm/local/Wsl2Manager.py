@@ -15,19 +15,23 @@ class Provider(LocalBaseManager):
         super().__init__(config, console=console, **kwargs)
         self.cloud_name = "wsl2"
 
-    def _wsl_command(self) -> str:
-        """Return the WSL CLI executable available in this environment."""
+    def _get_wsl_binary(self) -> str:
+        """Return the most portable WSL binary for the current environment."""
         if shutil.which("wsl.exe"):
             return "wsl.exe"
         if shutil.which("wsl"):
             return "wsl"
         return "wsl.exe"
 
-    @staticmethod
-    def _normalize_wsl_output(output: str) -> str:
+    def _normalize_wsl_output(self, output: str) -> str:
         """Normalize Windows-side WSL CLI output when called from WSL."""
+        if not output:
+            return ""
         if "\x00" in output:
-            return output.encode("utf-8").decode("utf-16le")
+            try:
+                return output.encode("utf-8").decode("utf-16le")
+            except Exception:
+                return output
         return output
 
     def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
@@ -41,7 +45,7 @@ class Provider(LocalBaseManager):
         # Check if distro already exists
         if self.exists(name):
             try:
-                self._run_command([self._wsl_command(), "-d", name])
+                self._run_command([self._get_wsl_binary(), "-d", name])
                 return name
             except Exception as e:
                 raise VMProviderError(f"Failed to start existing WSL2 distribution {name}: {e}")
@@ -57,8 +61,8 @@ class Provider(LocalBaseManager):
 
         try:
             # wsl --import <Distro> <InstallLocation> <FileName>
-            self._run_command([self._wsl_command(), "--import", name, install_dir, rootfs])
-            self._run_command([self._wsl_command(), "-d", name])
+            self._run_command([self._get_wsl_binary(), "--import", name, install_dir, rootfs])
+            self._run_command([self._get_wsl_binary(), "-d", name])
             return name
         except Exception as e:
             raise VMProviderError(f"Failed to import and start WSL2 distribution {name}: {e}")
@@ -71,7 +75,7 @@ class Provider(LocalBaseManager):
             raise VMResourceError(f"Distribution {name} not found.")
 
         try:
-            self._run_command([self._wsl_command(), "--terminate", name])
+            self._run_command([self._get_wsl_binary(), "--terminate", name])
             return True
         except Exception as e:
             raise VMProviderError(f"Failed to stop WSL2 distribution {name}: {e}")
@@ -84,7 +88,7 @@ class Provider(LocalBaseManager):
             raise VMResourceError(f"Distribution {name} not found.")
 
         try:
-            self._run_command([self._wsl_command(), "--unregister", name])
+            self._run_command([self._get_wsl_binary(), "--unregister", name])
             return True
         except Exception as e:
             raise VMProviderError(f"Failed to delete WSL2 distribution {name}: {e}")
@@ -94,7 +98,7 @@ class Provider(LocalBaseManager):
         Lists WSL2 distributions.
         """
         try:
-            result = self._run_command([self._wsl_command(), "--list", "--verbose"])
+            result = self._run_command([self._get_wsl_binary(), "--list", "--verbose"])
             lines = self._normalize_wsl_output(result.stdout).strip().splitlines()
             if len(lines) < 2:
                 return []
@@ -124,7 +128,7 @@ class Provider(LocalBaseManager):
 
         try:
             # launch interactive shell
-            subprocess.run([self._wsl_command(), "-d", name], check=True)
+            subprocess.run([self._get_wsl_binary(), "-d", name], check=True)
             return True
         except Exception:
             return False
@@ -188,7 +192,7 @@ class Provider(LocalBaseManager):
 
         try:
             shell_command = f"rm -rf {wsl_ssh_path} && ln -s {host_ssh_path} {wsl_ssh_path}"
-            self._run_command([self._wsl_command(), "-d", name, "-u", "root", "sh", "-c", shell_command])
+            self._run_command([self._get_wsl_binary(), "-d", name, "-u", "root", "sh", "-c", shell_command])
             return True
         except Exception:
             return False
@@ -204,7 +208,7 @@ class Provider(LocalBaseManager):
         wsl_user = cloud_config.get("wsl_username", "root")
 
         try:
-            result = self._run_command([self._wsl_command(), "-d", name, "-u", wsl_user, "sh", "-c", cmd])
+            result = self._run_command([self._get_wsl_binary(), "-d", name, "-u", wsl_user, "sh", "-c", cmd])
             return result.stdout
         except Exception as e:
             return f"Error executing command: {e}"
@@ -214,7 +218,7 @@ class Provider(LocalBaseManager):
         if not name or not self.exists(name):
             raise VMResourceError(f"Distribution {name} not found")
         try:
-            result = self._run_command([self._wsl_command(), "--list", "--verbose"])
+            result = self._run_command([self._get_wsl_binary(), "--list", "--verbose"])
             for line in self._normalize_wsl_output(result.stdout).splitlines():
                 if name in line:
                     return {"RawInfo": line.strip()}
@@ -230,7 +234,7 @@ class Provider(LocalBaseManager):
         Returns a list of version strings for the WSL tool.
         """
         try:
-            result = self._run_command([self._wsl_command(), "--version"])
+            result = self._run_command([self._get_wsl_binary(), "--version"])
             lines = self._normalize_wsl_output(result.stdout).strip().splitlines()
             return [line.strip() for line in lines if ":" in line]
         except Exception:
@@ -241,7 +245,8 @@ class Provider(LocalBaseManager):
         """
         Checks if the requirements for this provider are met on the current system.
         """
-        return shutil.which("wsl.exe") is not None or shutil.which("wsl") is not None
+        binary = self._get_wsl_binary()
+        return shutil.which(binary) is not None
 
     def validate_config(self) -> Dict[str, List[str]]:
         """

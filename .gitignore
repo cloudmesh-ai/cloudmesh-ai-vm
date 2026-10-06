@@ -242,4 +242,5 @@ __marimo__/
 # Cloudmesh AI Release specific
 .release_state.json
 release_*.log
+cache-username.yaml
 .DS_Store

@@ -1,27 +1,27 @@
 # Changelog
 
-## [1.4.0] - 2026-10-01
+## [1.6.0] - 2026-10-05
 
 ### Added
-- **Provider Compliance Suite**: Implemented a standardized testing framework to ensure all VM providers meet a minimum functional baseline, featuring core mandatory tests and optional feature checks.
-- **Lifecycle Parity**: Implemented `restart`, `reset`, and `suspend` for all cloud-based providers (AWS, Azure, Google, Oracle).
-- **Network Feature Parity**: Implemented `assign_floating_ip` and `release_floating_ip` for AWS, Azure, and Google providers via `LibcloudManager`.
-- **Existence Checks**: Implemented `exists()` method across all providers to verify VM presence before performing operations, eliminating noisy stack traces and crashes.
-- **Local Provider Base Class**: Introduced `LocalBaseManager` to centralize CLI execution logic for Multipass, VBox, WSL2, and Lima, supporting both silent and streaming output.
-- **Compliance Integration Mode**: Added `COMPLIANCE_MODE` environment variable to the provider compliance suite, allowing tests to run in `unit` (mocked) or `integration` (real infrastructure) mode.
-- **MockDriver Infrastructure**: Implemented a `MockDriver` factory for the compliance suite. Instead of falling back to a generic `MagicMock` when a provider crashes during `__init__`, the suite now patches `_get_driver` (or `_init_oci_client`) to return a structured `MockDriver`, ensuring "Core" tests return correct types (e.g., `dict` for config validation) and pass reliably.
-- **UX Scenario Testing**: Added "Zero-to-Hero" flow tests to the compliance suite to ensure consistent end-to-end behavior across all providers.
-- **State Polling**: Implemented `wait_for_status()` across all VM providers to allow the CLI to wait for VMs to reach a specific state (e.g., RUNNING), preventing race conditions during lifecycle operations.
-- **Provider Metadata**: Implemented `get_provider_info()` for all managers, enabling the `cmx vm provider get` command to return detailed version and status information.
-- **Key Management**: Standardized `upload_key()` and `delete_key()` across all supported providers, including a full implementation for Oracle Cloud Infrastructure.
-- **Developer Onboarding**: Created `COMPLIANCE_GUIDE.md` documenting the provider contract and implementation steps for new compliant providers.
+- **Secret Masking**: Implemented a pattern-based redaction utility in `providers_utils.py` to mask sensitive data (tokens, passwords, API keys) in CLI error messages.
+- **WSL2 Portability**: Enhanced `Wsl2Manager` to automatically detect the most compatible binary (`wsl.exe` or `wsl`) for seamless operation across Windows CMD, PowerShell, Git Bash, and WSL-native environments.
+- **Documentation**: Updated the VM Management Manual to document the new WSL2 environment support.
+
+### Fixed
+- **Security Leakage**: Integrated secret masking into `OpenstackManager` to prevent credential exposure in `stderr` logs.
+- **Git Tracking**: Removed `cache-username.yaml` from version control and added it to `.gitignore`.
+
+## [1.5.0] - 2026-10-02
+
+### Added
+- **Advanced Hostname Resolution**: Implemented regex-based VM identification, allowing users to target groups of VMs using wildcards (e.g., `web-*`) or regular expressions.
+- **Hostlist Expansion**: Fixed and implemented the `Hostlist` expansion logic, enabling the use of range patterns like `node[1-3]` to target multiple VMs.
+- **VM Existence Validation**: Added a pre-start check to `cmx vm start` that prevents attempting to launch a VM if the name already exists in the provider.
+- **Expanded Documentation**: Completed the CLI Reference, Manual, and Provider guides, including new documentation for the Lima provider and a general OpenStack overview.
+- **Improved UX**: Renamed "Pro Tips" to "Tips" and updated the documentation navigation for better discoverability.
 
 ### Changed
-- **Exception Handling**: Standardized exception handling across the VM framework, replacing generic `ValueError` and `RuntimeError` with specific hierarchy types (`ConfigError`, `VMResourceError`, `VMProviderError`) and implementing exception chaining for better traceability.
-- **Libcloud Consolidation**: Moved redundant `start()` and `version` implementations from `AwsManager`, `AzureManager`, and `GoogleManager` into `LibcloudManager` to reduce code duplication.
-- **SSH Execution**: Unified SSH command execution by extracting a shared `_execute_ssh_command` helper into `CloudBaseManager`, reused by both libcloud and OCI providers.
-- **Local Providers**: Migrated Multipass, VBox, WSL2, and Lima managers to inherit from `LocalBaseManager`, removing boilerplate `_run_command` implementations.
-- **Stability**: Updated `stop()`, `delete()`, and `info()` methods across all providers to utilize the new `exists()` check for cleaner error reporting.
+- **Symlink Infrastructure**: Migrated `docs/CHANGELOG.md` and `docs/readme.md` to relative symbolic links to ensure compatibility with CI/CD environments.
 
 ## [1.3.0] - 2026-09-18
 
@@ -40,8 +40,6 @@
 - **CLI Output**: Removed debug messages from `cmc vm provider`.
 - **OpenStack Driver**: Enhanced `OpenstackManager` to dynamically retrieve and apply the `region` from `~/.config/openstack/clouds.yaml`.
 - **Libcloud Initialization**: Modified `LibcloudManager` to avoid hard failures during driver initialization when performing requirement checks.
-
-# Changelog
 
 ## [1.2.1] - 2026-09-18
 
@@ -94,8 +92,8 @@
     - `cmc vm start`: Launch a VM with automatic naming.
     - `cmc vm stop/delete/suspend/restart`: VM lifecycle management.
     - `cmc vm list`: List VMs in Table, JSON, YAML, or CSV formats.
-    - `cmc vm login`: Connect to VMs.
-    - `cmc vm reservation`: Hardware lease management for Chameleon Cloud (supports explicit dates or `--duration`).
+    - `cmx vm login`: Connect to VMs.
+    - `cmx vm reservation`: Hardware lease management for Chameleon Cloud (supports explicit dates or `--duration`).
 - **Testing**: Created comprehensive `pytest` suites for all providers using `unittest.mock`.
 
 ### Changed
