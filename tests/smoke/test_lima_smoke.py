@@ -51,7 +51,7 @@ def ssh_key(tmp_path):
 def test_lima_smoke(temp_config, ssh_key):
     """
     Smoke test for Lima provider:
-    Start -> Connectivity -> SSH Key Upload -> Verify Key -> Info -> List -> Stop -> Delete
+    Start -> Connectivity -> SSH Key Upload -> Verify Key -> Delete Key -> Verify Key Deleted -> Info -> List -> Stop -> Delete
     """
     priv_key_path, pub_key_path = ssh_key
     state = StateManager(temp_config)
@@ -103,6 +103,23 @@ def test_lima_smoke(temp_config, ssh_key):
             result = subprocess.run(verify_cmd, capture_output=True)
             assert result.returncode == 0, f"SSH key was not found in {vm_name}'s authorized_keys"
             print("SSH key verified successfully.")
+
+        # Delete SSH Key
+        with StopWatch.timer("lima_delete_key"):
+            print("Deleting uploaded SSH key...")
+            assert provider.delete_key("smoke-key", vm_name) is True
+
+        # Verify SSH Key Deleted
+        with StopWatch.timer("lima_verify_key_deleted"):
+            print("Verifying SSH key is removed...")
+            verify_cmd_del = [
+                "limactl", "shell", vm_name, "bash", "-c",
+                f"grep -q '{escaped_key}' ~/.ssh/authorized_keys"
+            ]
+            result_del = subprocess.run(verify_cmd_del, capture_output=True)
+            assert result_del.returncode != 0, \
+                f"SSH key should have been removed from {vm_name}"
+            print("SSH key removal verified.")
 
         # Test info
         with StopWatch.timer("lima_info"):

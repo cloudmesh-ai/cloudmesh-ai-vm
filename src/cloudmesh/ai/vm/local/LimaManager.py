@@ -220,6 +220,66 @@ class Provider(LocalBaseManager):
             pass
         return ["Unknown"]
 
+    def upload_key(self, key_path: str, key_name: str, vm_name: Optional[str] = None) -> bool:
+        """
+        Uploads a public SSH key to a Lima VM.
+        Appends the key to ~/.ssh/authorized_keys.
+        """
+        if not vm_name:
+            self.print("Error: upload_key requires a vm_name for Lima.")
+            return False
+
+        try:
+            key_path = os.path.expanduser(key_path)
+            if not os.path.exists(key_path):
+                self.print(f"Error: Key file not found: {key_path}")
+                return False
+
+            with open(key_path, "r") as f:
+                pub_key = f.read().strip()
+
+            escaped_key = pub_key.replace("'", "'\\''")
+            escaped_name = key_name.replace("'", "'\\''")
+
+            command = [
+                "limactl", "shell", vm_name,
+                "sh", "-c",
+                f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && "
+                f"printf '%s\\n' '{escaped_key} # {escaped_name}' >> ~/.ssh/authorized_keys && "
+                f"chmod 600 ~/.ssh/authorized_keys"
+            ]
+
+            self._run_command(command)
+            self.print(f"Successfully uploaded key {key_name} to VM {vm_name}")
+            return True
+        except Exception as e:
+            self.print(f"Error uploading key to {vm_name}: {e}")
+            return False
+
+    def delete_key(self, key_name: str, vm_name: Optional[str] = None) -> bool:
+        """
+        Deletes a named public SSH key from a Lima VM.
+        """
+        if not vm_name:
+            self.print("Error: delete_key requires a vm_name for Lima.")
+            return False
+
+        try:
+            escaped_name = re.escape(key_name)
+            command = [
+                "limactl", "shell", vm_name,
+                "sh", "-c",
+                f"sed -i.bak '/# {escaped_name}$/d' ~/.ssh/authorized_keys && "
+                f"rm -f ~/.ssh/authorized_keys.bak"
+            ]
+
+            self._run_command(command)
+            self.print(f"Successfully deleted key {key_name} from VM {vm_name}")
+            return True
+        except Exception as e:
+            self.print(f"Error deleting key from {vm_name}: {e}")
+            return False
+
     def get_keys(self) -> List[Dict[str, Any]]:
         """Lima manages SSH keys automatically."""
         return [{"name": "lima-ssh-key", "path": "~/.ssh/id_rsa"}]
