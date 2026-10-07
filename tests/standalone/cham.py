@@ -244,29 +244,41 @@ def ensure_ssh_rule(conn, secgroup_name: str):
                 and rule.ether_type == "IPv4"):
             return sg
     log(" ", f"Adding SSH (22/tcp) ingress rule to '{sg.name}'")
-    conn.network.create_security_group_rule(
-        security_group_id=sg.id, direction="ingress", ethertype="IPv4",
-        protocol="tcp", port_range_min=22, port_range_max=22, remote_ip_prefix="0.0.0.0/0",
-    )
+    try:
+        conn.network.create_security_group_rule(
+            security_group_id=sg.id, direction="ingress", ethertype="IPv4",
+            protocol="tcp", port_range_min=22, port_range_max=22, remote_ip_prefix="0.0.0.0/0",
+        )
+    except Exception as e:
+        if "already exists" in str(e).lower():
+            log("   ", "Security group rule already exists (ignoring)")
+        else:
+            log("⚠️ ", f"Rule creation warning: {e}")
     return sg
 
 
 def get_floating_ip(conn, ext_net_name: str, tracker: Tracker):
     """Reuse an unassigned floating IP if one exists, otherwise allocate."""
-    for fip in conn.network.ips():
-        if fip.status == "DOWN" and not fip.port_id:
-            log(" ", f"Reusing free floating IP {fip.floating_ip_address}")
-            return fip
+    try:
+        for fip in conn.network.ips():
+            if fip.status == "DOWN" and not fip.port_id:
+                log(" ", f"Reusing free floating IP {fip.floating_ip_address}")
+                return fip
+    except Exception as e:
+        log("⚠️ ", f"Error listing floating IPs: {e}")
 
     ext = conn.network.find_network(ext_net_name) or next(
         (n for n in conn.network.networks() if n.is_router_external), None)
     if not ext:
         die(f"External network '{ext_net_name}' not found.")
     log("", f"Allocating floating IP from '{ext.name}'")
-    fip = conn.network.create_ip(floating_network_id=ext.id)
-    tracker.fip = fip  # only tracked for cleanup when *we* created it
-    log("✅", f"Allocated {fip.floating_ip_address}")
-    return fip
+    try:
+        fip = conn.network.create_ip(floating_network_id=ext.id)
+        tracker.fip = fip  # only tracked for cleanup when *we* created it
+        log("✅", f"Allocated {fip.floating_ip_address}")
+        return fip
+    except Exception as e:
+        die(f"Failed to allocate floating IP: {e}")
 
 
 # --------------------------------------------------------------------------- #
@@ -291,6 +303,7 @@ def boot_server(conn, args, image, flavor, network, sg, keypair, reservation_id)
                         security_groups=[{"name": sg.name}],
                         key_name=keypair,
                         scheduler_hints={"reservation": reservation_id},
+                        metadata={"reservation": reservation_id},
                     )
                     break
                 except Exception as e:
@@ -316,6 +329,7 @@ def boot_server(conn, args, image, flavor, network, sg, keypair, reservation_id)
                             time.sleep(10)
                             continue
 
+                    # Handle ResourceFailure (server transitioned to ERROR)
                     if "transitioned to failure state ERROR" in str(e):
                         try:
                             sid = server.id if hasattr(server, 'id') else None
@@ -327,9 +341,16 @@ def boot_server(conn, args, image, flavor, network, sg, keypair, reservation_id)
 
                             if sid:
                                 server_info = conn.compute.get_server(sid)
+                                # The fault object is usually a dict or an object with 'message'
                                 fault = getattr(server_info, 'fault', None)
-                                if fault and (fault.get('code') == 500 or "No valid host" in str(fault.get('message', ''))):
-                                    log("", f"NoValidHost detected: {fault.get('message')}")
+                                fault_msg = ""
+                                if isinstance(fault, dict):
+                                    fault_msg = fault.get('message', '')
+                                elif fault:
+                                    fault_msg = getattr(fault, 'message', '')
+
+                                if "No valid host" in fault_msg or (isinstance(fault, dict) and fault.get('code') == 500):
+                                    log("", f"NoValidHost detected: {fault_msg}")
                                     log("", "Retrying entire boot process to find a different host...")
                                     conn.compute.delete_server(sid)
                                     conn.compute.wait_for_delete(sid, wait=60)
