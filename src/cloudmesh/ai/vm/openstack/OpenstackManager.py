@@ -765,6 +765,12 @@ class OpenstackManager(CloudBaseManager):
         Internal helper to retrieve the floating IP address of a VM.
         """
         try:
+            # libcloud lists floating IPs in public_ips (same source as list())
+            node = self._find_node(name)
+            public_ips = getattr(node, "public_ips", None) if node is not None else None
+            if isinstance(public_ips, list) and public_ips:
+                return public_ips[0]
+
             result = self._run_cli_command(["openstack", "server", "show", name, "--format", "value", "-c", "addresses"])
             # Output is like: 'network: a=10.0.0.1,net-id=...; floating: a=1.2.3.4,net-id=...'
             parts = result.split(';')
