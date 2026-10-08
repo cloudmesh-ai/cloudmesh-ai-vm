@@ -158,23 +158,21 @@ class Provider(LocalBaseManager):
             raise VMProviderError(f"Error getting info for VM {name}: {e}")
 
     def get_images(self) -> List[Dict[str, Any]]:
-        """Lists available Multipass images."""
-        try:
-            result = self._run_command(["multipass", "images"], stream=False)
-            lines = result.stdout.strip().split("\n")
-            if not lines:
-                return []
+        """Lists available Multipass images (`multipass find`)."""
+        import json
 
+        try:
+            result = self._run_command(["multipass", "find", "--format", "json"], stream=False)
+            data = json.loads(result.stdout or "{}")
             images = []
-            # Skip the header line "Available images:" and parse lines starting with "- "
-            for line in lines:
-                line = line.strip()
-                if line.startswith("- "):
-                    # Example line: "- 22.04 (Ubuntu Jammy Jellyfish)"
-                    content = line[2:].strip()
-                    if content:
-                        image_name = content.split()[0]
-                        images.append({"name": image_name})
+            for name, details in data.get("images", {}).items():
+                images.append({
+                    "name": name,
+                    "aliases": ", ".join(details.get("aliases", [])),
+                    "os": details.get("os", ""),
+                    "release": details.get("release", ""),
+                    "version": details.get("version", ""),
+                })
             return images
         except Exception as e:
             self.print(f"Error listing Multipass images: {e}")
