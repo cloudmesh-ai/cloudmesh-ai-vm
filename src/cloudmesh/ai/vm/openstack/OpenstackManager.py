@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 import yaml
 from typing import List, Dict, Any, Optional
@@ -69,6 +70,10 @@ class OpenstackManager(CloudBaseManager):
         app_cred_id = auth.get("application_credential_id") or cloud_config.get("application_credential_id")
         app_cred_secret = auth.get("application_credential_secret") or cloud_config.get("application_credential_secret")
         auth_url = auth.get("auth_url") or cloud_config.get("auth_url")
+        # clouds.yaml files from Chameleon/Jetstream use ".../v3"; libcloud
+        # appends "/v3/auth/tokens" itself, so ".../v3/v3/..." returns 404.
+        if auth_url:
+            auth_url = re.sub(r"/v3/?$", "", auth_url.rstrip("/"))
         region_name = cloud_config.get("region_name", auth.get("region_name", "RegionOne"))
 
         if not all([app_cred_id, app_cred_secret, auth_url]):
