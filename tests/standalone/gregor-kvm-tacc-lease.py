@@ -10,6 +10,9 @@ import chi
 from chi import context, lease, server, network, keypair
 import sys
 import uuid
+import traceback
+import openstack
+from blazarclient.v1.client import Client
 
 def banner(msg):
     print("#",  "=" * 60)
@@ -19,7 +22,24 @@ def banner(msg):
 # 1. INITIALIZE CONTEXT OUTSIDE JUPYTER
 context.version = "1.0"
 context.use_site("KVM@TACC")
-# context.use_project("CH-817419")
+
+# MONKEY-PATCH: Bootstrap chi session using OpenStackSDK to support clouds.yaml
+print("Bootstrapping chi session via OpenStackSDK...")
+conn = openstack.connect(cloud="chameleon")
+conn.authorize()
+
+# Patch the global session function to return the authorized OpenStack session
+chi.context.session = lambda: conn.session
+
+# Patch Blazar specifically to fix the 'identity/token/id' None error
+try:
+    blazar_url = conn.catalog.get_endpoint('blazar', interface='public')
+    def patched_blazar():
+        return Client(blazar_url=blazar_url, session=conn.session)
+    chi.lease.blazar = patched_blazar
+    print("✅ Session and Blazar monkey-patched successfully")
+except Exception as e:
+    print(f"⚠️ Blazar patch failed: {e}. Falling back to default chi auth.")
 
 # Verify authentication by listing flavors
 print("Verifying authentication by listing flavors...")

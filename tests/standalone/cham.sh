@@ -19,9 +19,6 @@ KEYFILE="$HOME/.ssh/id_rsa.pub"
 USER="cc"
 EXT_NET="public"
 
-# ... (keep defaults)
-EXT_NET="public"
-
 # Allow overrides via environment variables
 CLOUD=${CLOUD:-$CLOUD}
 VM_NAME=${VM_NAME:-$VM_NAME}
