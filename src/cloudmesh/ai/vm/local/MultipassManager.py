@@ -214,12 +214,16 @@ class Provider(LocalBaseManager):
                 self.print(f"Error: Key file not found: {key_path}")
                 return False
 
+            import shlex
+
             with open(key_path, "r") as f:
                 pub_key = f.read().strip()
 
-            # command: multipass exec <vm> -- bash -c "mkdir -p ~/.ssh && echo '<key>' >> ~/.ssh/authorized_keys"
+            # Append key_name as the last word of the line so delete_key can
+            # find it again by name; the original key line stays intact.
+            line = shlex.quote(f"{pub_key} {key_name}")
             cmd = ["multipass", "exec", vm_name, "--", "bash", "-c",
-                   f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '{pub_key}' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"]
+                   f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo {line} >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"]
 
             self._run_command(cmd)
             self.print(f"Successfully uploaded key {key_name} to VM {vm_name}")
@@ -231,15 +235,19 @@ class Provider(LocalBaseManager):
     def delete_key(self, key_name: str, vm_name: Optional[str] = None) -> bool:
         """
         Deletes a public key from a Multipass VM.
-        Implementation: removes the line containing the key_name from ~/.ssh/authorized_keys.
+        Implementation: removes the lines whose comment is key_name (as written
+        by upload_key) from ~/.ssh/authorized_keys.
         """
         if not vm_name:
             self.print("Error: delete_key requires a vm_name for Multipass.")
             return False
 
         try:
-            # Use sed to remove the line containing the key name/identifier
-            cmd = ["multipass", "exec", vm_name, "--", "bash", "-c", f"sed -i '/{key_name}/d' ~/.ssh/authorized_keys"]
+            import shlex
+
+            name = shlex.quote(key_name)
+            cmd = ["multipass", "exec", vm_name, "--", "bash", "-c",
+                   f"f=~/.ssh/authorized_keys; awk -v n={name} '$NF != n' $f > $f.tmp && mv $f.tmp $f && chmod 600 $f"]
             self._run_command(cmd)
             self.print(f"Successfully deleted key {key_name} from VM {vm_name}")
             return True
