@@ -276,9 +276,18 @@ class Provider(LocalBaseManager):
 
     def unshelve(self, name: Optional[str] = None) -> bool:
         """
-        Unshelves a Multipass VM by starting it.
+        Unshelves a Multipass VM by starting the existing (stopped) instance.
+        start() would run `multipass launch`, which fails because the
+        instance already exists.
         """
-        return self.start(name)
+        if not name or not self.exists(name):
+            raise VMResourceError(f"VM {name} not found in multipass.")
+
+        try:
+            self._run_command(["multipass", "start", name])
+            return True
+        except Exception as e:
+            raise VMProviderError(f"Error unshelving VM {name}: {e}")
 
     def get_provider_info(self) -> Dict[str, Any]:
         """Gets detailed information about the Multipass provider."""
