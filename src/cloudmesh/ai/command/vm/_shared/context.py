@@ -77,7 +77,13 @@ def get_active_provider(ctx: click.Context):
 
     cloud = ctx.obj.cloud_override if ctx.obj else None
     if not cloud:
-        cloud = default_cloud
+        # Priority: Environment variable > Config > Default
+        cloud = os.environ.get("OS_CLOUD")
+    if not cloud:
+        if state.config:
+            cloud = state.config.db.get("default_cloud", "multipass") or "multipass"
+        else:
+            cloud = "multipass"
 
     try:
         from cloudmesh.ai.vm.providers import get_provider

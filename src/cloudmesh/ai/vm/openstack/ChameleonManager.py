@@ -22,7 +22,7 @@ except ImportError:
         lease = Lease()
     chi = ChiMock()
 
-class Provider(CloudBaseManager):
+class Provider(OpenstackManager):
     """
     Chameleon Cloud implementation of the VM Manager.
     Uses the native chi library for all operations.
@@ -400,15 +400,26 @@ class Provider(CloudBaseManager):
             self.print(f"Error fetching Chameleon account info: {e}")
             return {"error": f"Failed to fetch Chameleon account info: {str(e)}"}
 
-    def get_images(self) -> List[Dict[str, Any]]:
-        """Lists available images in Chameleon Cloud."""
-        self._setup_chi_context()
+    def get_images(self, **kwargs) -> List[Dict[str, Any]]:
+        """Lists all available images in Chameleon Cloud.
+
+        Uses the OpenStack CLI fallback with JSON output to ensure all images
+        are returned, matching the output of 'openstack image list'.
+        """
         try:
-            images = chi.image.list_images()
-            return [{"id": img.id, "name": img.name} for img in images]
+            # Use the CLI fallback with JSON output for reliable parsing
+            result_stdout = self._run_cli_command(["openstack", "image", "list", "--format", "json"])
+
+            import json
+            images = json.loads(result_stdout)
+
+            # DEBUG: Print count of images received from CLI
+            print(f"DEBUG: Received {len(images)} images from CLI JSON output")
+
+            return [{"id": img.get("ID"), "name": img.get("Name")} for img in images]
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"CHI get_images failed: {e}")
+            logger.error(f"Error getting images via CLI (JSON) for {self.cloud_name}: {e}")
             return []
 
     def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:

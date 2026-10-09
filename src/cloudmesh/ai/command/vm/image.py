@@ -7,12 +7,14 @@ from ._shared.ui import render_table
 @click.pass_context
 @vm_options
 @handle_errors
-def image(ctx: click.Context):
+def image(ctx: click.Context, **kwargs):
     """List available VM image."""
     provider = get_active_provider(ctx)
     imgs = provider.get_images() # Adjusted to use get_images() from MultipassManager
     if imgs:
-        render_table("Images", ["Name", "ID"], [[img.get("name", "Unknown"), img.get("id", "Unknown")] for img in imgs])
+        columns = ["Name", "ID"]
+        rows = [[img.get("name", "Unknown"), img.get("id", "Unknown")] for img in imgs]
+        render_table("Available VM Images", columns, rows)
     else:
         console.print("No images found.")
 
