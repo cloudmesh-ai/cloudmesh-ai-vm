@@ -243,4 +243,4 @@ __marimo__/
 .release_state.json
 release_*.log
 cache-username.yaml
-.DS_Store
+.DS_Storetests/standalone/python-chi/
