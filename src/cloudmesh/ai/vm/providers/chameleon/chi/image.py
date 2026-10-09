@@ -51,7 +51,7 @@ def list_images(is_chameleon_supported: Optional[bool] = False) -> List[Image]:
     """List all images available at the current site, filtered by support status.
 
     Args:
-        is_chameleon_supported (bool, optional): Filter images by Chameleon support. Defaults to True.
+        is_chameleon_supported (bool, optional): Filter images by Chameleon support. Defaults to False.
 
     Returns:
         List[Image]: A list of Image objects.
@@ -61,6 +61,7 @@ def list_images(is_chameleon_supported: Optional[bool] = False) -> List[Image]:
             filters={"build-repo": "https://github.com/ChameleonCloud/cc-images"}
         )
     else:
+        # By default, we now return all images to match 'openstack image list'
         glance_images = glance().images.list()
     return [Image.from_glance_image(image) for image in glance_images]
 

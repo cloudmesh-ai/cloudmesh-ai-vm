@@ -401,25 +401,15 @@ class Provider(OpenstackManager):
             return {"error": f"Failed to fetch Chameleon account info: {str(e)}"}
 
     def get_images(self, **kwargs) -> List[Dict[str, Any]]:
-        """Lists all available images in Chameleon Cloud.
-
-        Uses the OpenStack CLI fallback with JSON output to ensure all images
-        are returned, matching the output of 'openstack image list'.
-        """
+        """Lists all available images in Chameleon Cloud using python-chi."""
+        self._setup_chi_context()
         try:
-            # Use the CLI fallback with JSON output for reliable parsing
-            result_stdout = self._run_cli_command(["openstack", "image", "list", "--format", "json"])
-
-            import json
-            images = json.loads(result_stdout)
-
-            # DEBUG: Print count of images received from CLI
-            print(f"DEBUG: Received {len(images)} images from CLI JSON output")
-
-            return [{"id": img.get("ID"), "name": img.get("Name")} for img in images]
+            # is_chameleon_supported=False returns all images without filtering
+            images = chi.image.list_images(is_chameleon_supported=False)
+            return [{"id": img.uuid, "name": img.name} for img in images]
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"Error getting images via CLI (JSON) for {self.cloud_name}: {e}")
+            logger.error(f"CHI get_images failed for {self.cloud_name}: {e}")
             return []
 
     def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
