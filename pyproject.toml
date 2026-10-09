@@ -23,6 +23,20 @@ dependencies = [
     "yamldb",
     "oci",
     "apache-libcloud",
+    "openstacksdk",
+    "keystoneauth1",
+    "python-novaclient",
+    "python-neutronclient",
+    "python-glanceclient",
+    "python-cinderclient",
+    "python-manilaclient",
+    "python-ironicclient",
+    "python-swiftclient",
+    "paramiko",
+    "fabric",
+    "git+https://github.com/ChameleonCloud/python-blazarclient",
+    "git+https://github.com/chameleoncloud/python-zunclient",
+    "git+https://github.com/ChameleonCloud/ccauth.git",
 ]
 
 [project.scripts]
