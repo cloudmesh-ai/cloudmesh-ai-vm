@@ -7,7 +7,7 @@ from ._shared.ui import render_table
 @click.pass_context
 @vm_options
 @handle_errors
-def flavor(ctx: click.Context):
+def flavor(ctx: click.Context, **kwargs):
     """List available VM flavor."""
     provider = get_active_provider(ctx)
     flv = provider.get_flavors() # Adjusted to use get_flavors()

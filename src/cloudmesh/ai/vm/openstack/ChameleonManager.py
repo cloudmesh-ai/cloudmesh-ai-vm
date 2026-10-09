@@ -411,7 +411,7 @@ class Provider(CloudBaseManager):
             logger.error(f"CHI get_images failed: {e}")
             return []
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """Lists available flavors in Chameleon Cloud."""
         self._setup_chi_context()
         try:

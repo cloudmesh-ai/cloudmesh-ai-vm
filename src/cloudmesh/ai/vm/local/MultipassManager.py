@@ -123,7 +123,7 @@ class Provider(LocalBaseManager):
             self.print(f"Error resetting Multipass daemon: {e}")
             return False
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """Lists available hardware profiles for Multipass."""
         return [
             {"name": "default", "cpu": 1, "ram": "1GiB", "disk": "5GiB"},

@@ -82,7 +82,7 @@ class BaseVMProvider(ABC):
         """Lists available VM image."""
         raise ProviderFeatureNotSupported(self.cloud_name, "get_images")
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """Lists available hardware profiles."""
         raise ProviderFeatureNotSupported(self.cloud_name, "get_flavors")
 

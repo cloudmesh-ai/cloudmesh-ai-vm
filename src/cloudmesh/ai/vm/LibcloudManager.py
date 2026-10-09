@@ -228,7 +228,7 @@ class LibcloudManager(CloudBaseManager, ABC):
             logger.error(f"Error getting images for {self.cloud_name}: {e}")
             return []
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         try:
             sizes = self.driver.list_sizes()
             return [{"id": s.id, "name": s.name, "ram": getattr(s, 'ram', 'N/A'), "vcpus": getattr(s, 'vcpus', 'N/A')} for s in sizes]

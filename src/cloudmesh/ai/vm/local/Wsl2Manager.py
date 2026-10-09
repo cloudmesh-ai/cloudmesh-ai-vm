@@ -152,7 +152,7 @@ class Provider(LocalBaseManager):
         except Exception:
             return False
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """
         WSL2 does not have 'flavors' in the cloud sense.
         """

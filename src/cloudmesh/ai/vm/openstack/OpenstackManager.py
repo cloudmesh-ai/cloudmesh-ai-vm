@@ -586,7 +586,7 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"Error getting images: {e}")
             return []
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """
         Lists available flavors in OpenStack.
         Falls back to 'openstack flavor list' CLI if libcloud returns empty results.

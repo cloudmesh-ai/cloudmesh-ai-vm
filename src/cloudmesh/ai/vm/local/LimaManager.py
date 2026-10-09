@@ -188,7 +188,7 @@ class Provider(LocalBaseManager):
             self.print(f"Error listing Lima images: {e}")
             return []
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """
         Lima uses templates rather than fixed flavors, but provides common resource profiles.
         """

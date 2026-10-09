@@ -116,7 +116,7 @@ class Provider(LocalBaseManager):
         except Exception:
             return False
 
-    def get_flavors(self) -> List[Dict[str, Any]]:
+    def get_flavors(self, **kwargs) -> List[Dict[str, Any]]:
         """
         VirtualBox resources are configured per VM.
         """
