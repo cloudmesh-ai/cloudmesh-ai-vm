@@ -220,7 +220,7 @@ class LibcloudManager(CloudBaseManager, ABC):
             logger.error(f"Error getting info for VM {name} in {self.cloud_name}: {e}")
             return {"error": str(e)}
 
-    def get_images(self) -> List[Dict[str, Any]]:
+    def get_images(self, **kwargs) -> List[Dict[str, Any]]:
         try:
             images = self.driver.list_images()
             return [{"id": i.id, "name": i.name} for i in images]

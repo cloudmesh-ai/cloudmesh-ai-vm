@@ -536,7 +536,7 @@ class OpenstackManager(CloudBaseManager):
             self.print(f"Error restarting node {name}: {e}")
             return False
 
-    def get_images(self) -> List[Dict[str, Any]]:
+    def get_images(self, **kwargs) -> List[Dict[str, Any]]:
         """
         Lists available images in OpenStack.
         Falls back to 'openstack image list' CLI if libcloud returns empty results.

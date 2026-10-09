@@ -166,7 +166,7 @@ class Provider(LocalBaseManager):
         except Exception as e:
             raise VMProviderError(f"Error getting info for VM {name}: {e}")
 
-    def get_images(self) -> List[Dict[str, Any]]:
+    def get_images(self, **kwargs) -> List[Dict[str, Any]]:
         """Lists available Multipass images using 'multipass find --format json'."""
         try:
             import json

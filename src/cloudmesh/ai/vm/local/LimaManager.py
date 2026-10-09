@@ -164,7 +164,7 @@ class Provider(LocalBaseManager):
         except Exception:
             return False
 
-    def get_images(self) -> List[Dict[str, Any]]:
+    def get_images(self, **kwargs) -> List[Dict[str, Any]]:
         """
         Lists available images in Lima using 'limactl start --list-templates'.
         """
