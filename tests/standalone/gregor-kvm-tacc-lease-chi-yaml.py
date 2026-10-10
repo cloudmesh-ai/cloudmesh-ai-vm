@@ -127,5 +127,7 @@ else:
 s.add_security_group(sg.id)
 
 # 7. PRINT SSH CONNECTION DETAILS
+
 print(f"\nVM is ready! You can SSH in using:")
 print(f"ssh cc@{fip_addr}")
+
