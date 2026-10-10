@@ -75,8 +75,8 @@ def test_multipass_cli_lifecycle(runner, config):
         assert result.exit_code == 0
 
         # 10. keys
-        # git commit -aresult = runner.invoke(vm.vm_group, ["keys"])
-        # assert result.exit_code == 0
+        result = runner.invoke(vm.vm_group, ["key"])
+        assert result.exit_code == 0
 
     finally:
         # Cleanup
