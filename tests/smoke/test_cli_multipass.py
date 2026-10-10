@@ -73,7 +73,7 @@ def test_multipass_cli_lifecycle(runner, config):
         assert result.exit_code == 0
 
         # 10. keys
-        result = runner.invoke(vm.vm_group, ["keys"])
+        result = runner.invoke(vm.vm_group, ["key", "list"])
         assert result.exit_code == 0
 
     finally:
