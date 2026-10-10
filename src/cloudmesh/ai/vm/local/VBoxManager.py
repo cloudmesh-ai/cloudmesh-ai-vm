@@ -9,7 +9,7 @@ class Provider(LocalBaseManager):
     Uses the 'VBoxManage' CLI tool to manage local VMs.
     """
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Starts a VirtualBox VM.
         Note: VBoxManage does not have a simple 'launch' like Multipass.

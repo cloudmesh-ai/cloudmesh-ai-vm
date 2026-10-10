@@ -51,7 +51,7 @@ class Provider(CloudBaseManager):
             logger.error(f"Failed to initialize OCI client: {e}")
             self.compute_client = None
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Launches a VM in Oracle Cloud.
         """

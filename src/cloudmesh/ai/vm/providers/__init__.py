@@ -27,6 +27,8 @@ def get_provider_classes():
         "lima": LimaProvider,
     }
 
+PROVIDER_MAP = get_provider_classes()
+
 PROVIDER_METADATA = {
     "multipass": {"lifecycle": "🟢", "remote_exec": "🟢 (Agent)", "status": "Fully Functional"},
     "lima": {"lifecycle": "🟢", "remote_exec": "🟢 (SSH)", "status": "Fully Functional"},

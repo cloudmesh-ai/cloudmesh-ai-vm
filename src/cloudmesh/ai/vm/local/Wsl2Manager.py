@@ -34,7 +34,7 @@ class Provider(LocalBaseManager):
                 return output
         return output
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Starts a WSL2 distribution.
         If the distribution doesn't exist, it attempts to import it from a rootfs image.

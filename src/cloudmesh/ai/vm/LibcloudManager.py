@@ -39,7 +39,7 @@ class LibcloudManager(CloudBaseManager, ABC):
         except Exception:
             return False
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Starts a VM using libcloud.
         """

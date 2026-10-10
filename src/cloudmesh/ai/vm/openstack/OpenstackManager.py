@@ -145,7 +145,7 @@ class OpenstackManager(CloudBaseManager):
 
         return result.stdout
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, assign_ip: bool = True) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """Starts a VM in OpenStack using libcloud."""
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = image or cloud_config.get("image")
@@ -211,7 +211,7 @@ class OpenstackManager(CloudBaseManager):
                 raise VMProviderError(f"VM {vm_name} failed to become ACTIVE. Aborting start.")
 
             # Automatically assign a floating IP to make the VM reachable if requested
-            if assign_ip:
+            if kwargs.get('assign_ip', True):
                 fip = self.assign_floating_ip(vm_name)
                 if fip:
                     from cloudmesh.ai.vm.logger import logger
