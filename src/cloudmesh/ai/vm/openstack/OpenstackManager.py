@@ -467,7 +467,7 @@ class OpenstackManager(CloudBaseManager):
         Gets detailed information about an OpenStack VM.
         """
         try:
-            node = self.driver.get_node(name)
+            node = self._find_node(name)
             if not node:
                 raise VMResourceError(f"VM {name} not found")
 
@@ -516,7 +516,7 @@ class OpenstackManager(CloudBaseManager):
         """
         if not name: return False
         try:
-            node = self.driver.get_node(name)
+            node = self._find_node(name)
             self.driver.suspend_node(node)
             return True
         except Exception as e:
@@ -529,7 +529,7 @@ class OpenstackManager(CloudBaseManager):
         """
         if not name: return False
         try:
-            node = self.driver.get_node(name)
+            node = self._find_node(name)
             self.driver.reboot_node(node)
             return True
         except Exception as e:
