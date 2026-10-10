@@ -67,32 +67,31 @@ def load_commands_recursively(group: click.Group, current_dir: str, package_path
 def vm_group(ctx: click.Context, interactive: bool = False) -> None:
     """VM management commands"""
     ctx.obj = VMContext()
-    
-    # Determine the active provider for the header
-    from ._shared.context import state
-    default_cloud = "multipass"
-    if state.config:
-        default_cloud = getattr(state.config, "default_cloud", "multipass") or "multipass"
-    
-    active_p = ctx.obj.cloud_override or default_cloud
-    
+
+    os_cloud = os.environ.get("OS_CLOUD")
+    if not os_cloud:
+        raise click.ClickException("OS_CLOUD environment variable is not set. Please set it to specify the cloud provider (e.g., export OS_CLOUD=my-cloud).")
+
+    active_cloud = ctx.obj.cloud_override or os_cloud
+    console.print(f"Running on cloud: [bold blue]{active_cloud}[/bold blue]")
+
     if interactive:
         console.print("[bold green]Entering interactive VM shell. Type 'exit' or 'quit' to leave.[/bold green]")
-        
+
         while True:
             try:
-                prompt = f"[bold blue]({active_p}) vm>[bold blue] "
-                
+                prompt = f"[bold blue]({active_cloud}) vm>[bold blue] "
+
                 user_input = console.input(prompt)
                 if not user_input.strip():
                     continue
                 if user_input.strip().lower() in ("exit", "quit"):
                     break
-                
+
                 args = shlex.split(user_input)
                 cmd_name = args[0]
                 cmd_args = args[1:]
-                
+
                 # Use the group's get_command to find the command
                 cmd = vm_group.get_command(ctx, cmd_name)
                 if cmd:

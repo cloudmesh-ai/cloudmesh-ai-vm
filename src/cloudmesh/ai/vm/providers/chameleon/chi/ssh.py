@@ -1,5 +1,5 @@
 from fabric import Connection
-from paramiko.client import WarningPolicy
+from paramiko.client import AutoAddPolicy
 
 from . import context
 
@@ -24,7 +24,6 @@ class Remote(Connection):
         key_filename = context.get("keypair_private_key")
         kwargs["connect_kwargs"].setdefault("key_filename", key_filename)
         super(Remote, self).__init__(ip, user=user, **kwargs)
-        # Default policy is to reject unknown hosts - for our use-case,
-        # printing a warning is probably enough, given the host is almost
-        # always guaranteed to be unknown.
-        self.client.set_missing_host_key_policy(WarningPolicy)
+        # Default policy is to automatically add unknown hosts
+        # - for our use-case, the host is almost always guaranteed to be unknown.
+        self.client.set_missing_host_key_policy(AutoAddPolicy)
