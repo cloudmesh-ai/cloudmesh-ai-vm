@@ -9,7 +9,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.argument("name", required=False)
 @vm_options
 @handle_errors
-def ssh(ctx: click.Context, name: Optional[str] = None) -> None:
+def ssh(ctx: click.Context, name: Optional[str] = None, **kwargs)-> None:    
+    
     """
     Start an interactive SSH session with the VM.
     If name is omitted, the last started VM is used.

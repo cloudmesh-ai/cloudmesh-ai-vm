@@ -7,7 +7,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.argument("name", required=False)
 @vm_options
 @handle_errors
-def login(ctx: click.Context, name: Optional[str] = None) -> None:
+def login(ctx: click.Context, name: Optional[str] = None, **kwargs)-> None:    
+    
     """
     Log into a VM or get connection details.
     If name is omitted, the last started VM is used.

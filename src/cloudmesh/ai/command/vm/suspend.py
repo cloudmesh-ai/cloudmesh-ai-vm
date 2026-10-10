@@ -10,7 +10,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.option("--range", "vm_range", help="Suspend VMs in a range (e.g. 1-5)")
 @vm_options
 @handle_errors
-def suspend(ctx: click.Context, name: Optional[str] = None, count: Optional[int] = None, vm_range: Optional[str] = None) -> None:
+def suspend(ctx: click.Context, name: Optional[str] = None, count: Optional[int] = None, vm_range: Optional[str] = None, **kwargs)-> None:    
+    
     """
     Suspends one or more VMs.
     

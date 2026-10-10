@@ -25,8 +25,9 @@ class Provider(CloudBaseManager):
     Uses the native chi library for all operations.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config: Any, cloud_name: str, console=None, **kwargs):
+        super().__init__(config, console=console)
+        self.cloud_name = cloud_name
         self._chi_initialized = False
 
     def _setup_chi_context(self):
@@ -300,12 +301,31 @@ class Provider(CloudBaseManager):
 
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Chameleon VMs with their reachable IP addresses."""
+        print("GGGGGGG")
         self._setup_chi_context()
         try:
             servers = chi.server.list_servers()
+            print(f"Found {len(servers)} servers.")
+            from pprint import pprint
+            pprint(servers)
             results = []
+            
             for s in servers:
-                ip = s.addresses[0] if getattr(s, 'addresses', None) else "No IP"
+                pprint(s)
+                
+                # Safely extract the IP address from the addresses dictionary
+                ip = "No IP"
+                addresses = getattr(s, 'addresses', None)
+                if addresses and isinstance(addresses, dict):
+                    for net_name, addr_list in addresses.items():
+                        if addr_list and len(addr_list) > 0:
+                            first_addr = addr_list[0]
+                            if isinstance(first_addr, dict):
+                                ip = first_addr.get('addr', str(first_addr))
+                            else:
+                                ip = str(first_addr)
+                            break  # Grab the first available IP and exit loop
+                
                 results.append({
                     "name": s.name,
                     "id": s.id,
@@ -313,8 +333,9 @@ class Provider(CloudBaseManager):
                     "ip": ip,
                     "image": getattr(s, 'image_name', 'Unknown'),
                     "flavor": getattr(s, 'flavor_name', 'Unknown'),
-                    "networks": s.addresses if getattr(s, 'addresses', None) else []
+                    "networks": addresses if addresses else {}
                 })
+                
             return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger

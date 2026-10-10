@@ -11,7 +11,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.option("--ip", type=click.Choice(['yes', 'no'], case_sensitive=False), default='yes', help="Whether to assign a floating IP (yes/no). Defaults to yes.")
 @vm_options
 @handle_errors
-def start(ctx: click.Context, name: Optional[str] = None, count: Optional[int] = None, vm_range: Optional[str] = None, ip: str = 'yes', cloud: str = None, debug: bool = False, verbose: bool = False) -> None:
+def start(ctx: click.Context, name: Optional[str] = None, count: Optional[int] = None, vm_range: Optional[str] = None, ip: str = 'yes', cloud: str = None, debug: bool = False, verbose: bool = False, **kwargs)-> None:    
+    
     """
     Starts or launches VMs. 
     
