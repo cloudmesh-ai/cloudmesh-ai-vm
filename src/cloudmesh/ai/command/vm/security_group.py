@@ -45,7 +45,7 @@ def resolve_cidr(cidr: str) -> str:
 @click.group(invoke_without_command=True)
 @click.pass_context
 @vm_options
-def security_group(ctx: click.Context):
+def security_group(ctx: click.Context, **kwargs):
     """Manage VM security groups."""
     if ctx.invoked_subcommand is None:
         ctx.invoke(list_sgs)
@@ -90,7 +90,7 @@ def create_sg(ctx: click.Context, name: str, description: str, preset: Optional[
     provider = get_active_provider(ctx)
     if provider.create_security_group(name, description):
         console.print(f"[green]Security group {name} created successfully.[/green]")
-        
+
         if preset:
             preset_name = preset.lower()
             rules = PRESETS.get(preset_name, [])
@@ -129,7 +129,6 @@ def delete_sg(ctx: click.Context, name: str):
         console.print(f"[green]Security group {name} deleted successfully.[/green]")
     else:
         raise VMCommandError(f"Failed to delete security group {name}")
-
 
 @security_group.command(name="add")
 @click.argument("vm_name")
@@ -171,7 +170,6 @@ def list_rules(ctx: click.Context, sg_name: str):
     provider = get_active_provider(ctx)
     rules = provider.list_security_group_rules(sg_name)
     if rules:
-        # Rules in OpenStack are complex, let's simplify for the table
         table_data = []
         for r in rules:
             table_data.append([
@@ -212,7 +210,5 @@ def remove_rule(ctx: click.Context, sg_name: str, rule_id: str):
     else:
         raise VMCommandError(f"Failed to remove rule {rule_id} from {sg_name}")
 
-# Add the rule group to the main security_group command
 security_group.add_command(rule_group)
-
 cmd = security_group

@@ -8,7 +8,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.argument("name", required=False)
 @vm_options
 @handle_errors
-def reset(ctx: click.Context, name: Optional[str] = None) -> None:
+def reset(ctx: click.Context, name: Optional[str] = None, **kwargs)-> None:    
+    
     """
     Resets a VM or the provider service.
     

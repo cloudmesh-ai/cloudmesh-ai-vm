@@ -1,87 +1,63 @@
 import yaml
 import os
-import openstack
+import warnings
+import logging
+
+# Suppress the specific neutronclient deprecation warning globally in this module
+warnings.filterwarnings(
+    "ignore",
+    message=".*python binding code in neutronclient is deprecated.*"
+)
+
+# Also suppress via logging in case the library uses logging.warning
+logging.getLogger("neutronclient").setLevel(logging.ERROR)
+
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 from cloudmesh.ai.vm.exceptions import ConfigError, VMResourceError, VMProviderError
+import datetime
+from datetime import timedelta
+import sys
+import time
+import traceback
+import uuid
+from contextlib import redirect_stdout
+from io import StringIO
+import chi
+import chi.lease
+import chi.exception
+from chi import keypair, lease, network, server
+from .ChameleonAuthManager import authenticate_chi_from_cloud
+from cloudmesh.ai.vm.logger import logger
 
-try:
-    import chi
-except ImportError:
-    # Mocking chi for environments where it is not installed
-    class ChiMock:
-        def use_site(self, site): pass
-        def set(self, key, value): pass
-        def get(self, key): return None
-        def use_project(self, project): pass
-        class Lease:
-            def add_node_reservation(self, res, node_type, count): res.append({"node_type": node_type, "count": count})
-            def lease_duration(self, days): return "start", "end"
-            def create_lease(self, name, res, start_date, end_date): pass
-        lease = Lease()
-    chi = ChiMock()
-
-class Provider(OpenstackManager):
+class Provider(CloudBaseManager):
     """
     Chameleon Cloud implementation of the VM Manager.
     Uses the native chi library for all operations.
     """
 
-    def _setup_chi_context(self):
-        """
-        Ensures the CHI library is configured for the current cloud site and project,
-        and injects required OS_ environment variables from the cloud configuration.
-        """
-        cloud_config = self.get_cloud_config("chameleon")
-        site = cloud_config.get("site", "CHI@TACC")
-        project = cloud_config.get("project_name")
+    def __init__(self, config: Any, cloud_name: str, console=None, **kwargs):
+        super().__init__(config, console=console)
+        self.cloud_name = cloud_name
+        self._chi_initialized = False
 
-        if not project:
-            raise ConfigError("Error: 'project_name' must be configured in clouds.yaml for Chameleon operations.")
+    def _setup_chi_context(self):
+        if self._chi_initialized:
+            return
+
+        CLOUD_NAME = os.getenv("OS_CLOUD", "chameleon")
+        self.print(f"Authentication at site KVM@TACC...")
 
         try:
-            # 1. Inject credentials from clouds.yaml into environment variables for chi
-            conn = openstack.connect(cloud="chameleon")
-            auth = conn.openstack_session.auth
-
-            # Check for Application Credentials specifically
-            app_cred_id = getattr(auth, 'application_credential_id', None)
-            app_cred_secret = getattr(auth, 'application_credential_secret', None)
-
-            if app_cred_id and app_cred_secret:
-                # Force keystoneauth1 to use Application Credentials
-                os.environ['OS_AUTH_TYPE'] = 'application_credential'
-                os.environ['OS_APPLICATION_CREDENTIAL_ID'] = app_cred_id
-                os.environ['OS_APPLICATION_CREDENTIAL_SECRET'] = app_cred_secret
-            else:
-                # Fallback to standard auth map
-                env_map = {
-                    'OS_USERNAME': getattr(auth, 'username', None),
-                    'OS_PASSWORD': getattr(auth, 'password', None),
-                    'OS_AUTH_URL': getattr(auth, 'auth_url', None),
-                    'OS_PROJECT_NAME': getattr(auth, 'project_name', None),
-                    'OS_PROJECT_DOMAIN_NAME': getattr(auth, 'project_domain_name', None),
-                    'OS_USER_DOMAIN_NAME': getattr(auth, 'user_domain_name', None),
-                    'OS_AUTH_TYPE': getattr(auth, 'auth_type', 'password'),
-                }
-
-                for var, val in env_map.items():
-                    if val:
-                        os.environ[var] = val
+            authenticate_chi_from_cloud(CLOUD_NAME)
         except Exception as e:
-            from cloudmesh.ai.vm.logger import logger
-            logger.error(f"Failed to inject credentials for chi from cloud 'chameleon': {e}")
-            raise ConfigError(f"Could not load credentials from clouds.yaml for cloud 'chameleon': {e}")
+            raise ConfigError(f"Authentication shim failed: {e}")
 
-        # 2. Configure CHI library context
-        chi.use_site(site)
-        chi.set("project_name", project)
+        with redirect_stdout(StringIO()):
+            chi.context.use_site("KVM@TACC")
 
-        if "auth_url" in cloud_config:
-            chi.set("auth_url", cloud_config["auth_url"])
-        if "region_name" in cloud_config:
-            chi.set("region_name", cloud_config["region_name"])
+        self._chi_initialized = True
 
     def _get_node_type(self, flavor: str) -> str:
         """
@@ -108,7 +84,16 @@ class Provider(OpenstackManager):
             logger.debug(f"Error getting status for VM {name}: {e}")
             return ""
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, assign_ip: bool = True) -> str:
+    def _vm_exists(self, name: str) -> bool:
+        """Checks if a VM with the given name already exists."""
+        self._setup_chi_context()
+        try:
+            server = chi.server.get_server(name)
+            return server is not None
+        except Exception:
+            return False
+
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """Starts a VM in Chameleon using the chi library, automatically creating a reservation."""
         self._setup_chi_context()
         cloud_config = self.get_cloud_config("chameleon")
@@ -116,59 +101,153 @@ class Provider(OpenstackManager):
         flavor_name = flavor or cloud_config.get("flavor")
         security_group = cloud_config.get("security_group", "default")
         key_name = cloud_config.get("key_name")
-        if not key_name and cloud_config.get("key_path"):
-            key_name = Path(cloud_config["key_path"]).name.replace(".pub", "")
+        username = cloud_config.get("username", "user")
 
-        if not image_name:
-            raise ConfigError(f"Missing 'image' in config for {self.cloud_name}")
-        if not flavor_name:
-            raise ConfigError(f"Missing 'flavor' in config for {self.cloud_name}")
+        # Ensure keypair exists or is assigned
+        try:
+            existing_keys = [k.name for k in chi.server.list_keypair()]
+        except Exception as e:
+            self.print(f"Warning: Could not list keypairs: {e}")
+            existing_keys = []
+
+        if not key_name:
+            if existing_keys:
+                key_name = existing_keys[0]
+                self.print(f"Using existing keypair: {key_name}")
+            else:
+                key_name = username
+                self.print(f"No keypair found. Uploading new keypair as: {key_name}")
+                key_path = cloud_config.get("key_path", "~/.ssh/id_rsa.pub")
+                key_filename = os.path.expanduser(key_path)
+                try:
+                    chi.keypair.Keypair(keypair_public_key=key_filename, key_name=key_name)
+                    self.print(f"✅ Keypair {key_name} uploaded and ready")
+                except Exception as e:
+                    raise VMProviderError(f"Failed to upload keypair {key_name}: {e}")
+        else:
+            if key_name not in existing_keys:
+                self.print(f"Keypair {key_name} not found in cloud. Uploading...")
+                key_path = cloud_config.get("key_path", "~/.ssh/id_rsa.pub")
+                key_filename = os.path.expanduser(key_path)
+                try:
+                    chi.keypair.Keypair(keypair_public_key=key_filename, key_name=key_name)
+                    self.print(f"✅ Keypair {key_name} uploaded and ready")
+                except Exception as e:
+                    raise VMProviderError(f"Failed to upload keypair {key_name}: {e}")
+            else:
+                self.print(f"✅ Using existing keypair: {key_name}")
+
+        # Print essential launch information
+        lease_duration = cloud_config.get("lease_duration", "1 hour")
+        self.print(f"Launching VM with the following configuration:")
+        self.print(f"  Server Name:    {name or f'vm-{self.cloud_name}'}")
+        self.print(f"  Image:          {image_name}")
+        self.print(f"  Flavor:         {flavor_name}")
+        self.print(f"  Key Name:       {key_name}")
+        self.print(f"  Security Group: {security_group}")
+        self.print(f"  Lease Length:   {lease_duration}")
 
         try:
-            # 1. Automatic Reservation for Chameleon
-            node_type = self._get_node_type(flavor_name)
+            # 1. Mandatory Reservation for Chameleon flavored images
             vm_name = name or f"vm-{self.cloud_name}"
+
+            # Ensure VM name is unique to avoid conflicts with existing VMs
+            attempt = 1
+            original_vm_name = vm_name
+            while True:
+                if not self._vm_exists(vm_name):
+                    break
+                vm_name = f"{original_vm_name}-{attempt}"
+                attempt += 1
+
             if not name and self.cloud_name in ["jetstream", "chameleon"]:
-                username = cloud_config.get("username", "user").replace("_", "-")
+                username_fmt = cloud_config.get("username", "user").replace("_", "-")
                 site = cloud_config.get("site", self.cloud_name).replace("_", "-").replace("@", "").lower()
-                vm_name = f"{vm_name}-{username}" if site == self.cloud_name else f"{vm_name}-{site}-{username}"
+                vm_name = f"{vm_name}-{username_fmt}" if site == self.cloud_name else f"{vm_name}-{site}-{username_fmt}"
 
             res_name = f"res-{vm_name}"
-            reservation_id = self.create_reservation(
-                name=res_name,
-                node_type=node_type,
-                count=1,
-                duration=1 # Default to 1 day
+
+            # Use the high-level chi.lease.Lease pattern from standalone tests
+            lease = chi.lease.Lease(
+                res_name,
+                duration=timedelta(hours=1)
             )
 
-            if not reservation_id:
-                from cloudmesh.ai.vm.logger import logger
-                logger.warning(f"Could not create automatic reservation for {vm_name}. Attempting to start without it...")
+            # We must reserve the specific flavor being requested
+            flavor_id = chi.server.get_flavor_id(flavor_name)
+            lease.add_flavor_reservation(id=flavor_id, amount=1)
+            lease.submit(idempotent=True)
 
-            # 2. Launch the server using chi
-            scheduler_hints = {'reservation_id': reservation_id} if reservation_id else {}
+            # Mandated: Ensure the lease exists and is ACTIVE before launching the VM
+            self.print(f"Checking/Creating lease for {res_name}...")
+            lease.wait(status="active", timeout=300)
+
+            reservation_id = lease.id
+            self.print(f"Lease {res_name} is active (ID: {reservation_id}). Proceeding to launch VM...")
+
+            # 2. LAUNCH THE VIRTUAL MACHINE INSTANCE
+            self.print("Launching server instance...")
+
+            actual_flavor_name = lease.get_reserved_flavors()[0].name
 
             s = chi.server.Server(
                 name=vm_name,
                 image_name=image_name,
-                flavor_name=flavor_name,
+                flavor_name=actual_flavor_name,
                 key_name=key_name,
-                security_groups=[security_group],
-                scheduler_hints=scheduler_hints,
             )
-            s.submit(idempotent=True)
+
+            s.submit(idempotent=True, show="text")
 
             # Wait until instance is active
-            s.wait(status="ACTIVE")
+            s.wait()
 
+            fip_addr = None
             if assign_ip:
-                self.assign_floating_ip(vm_name)
+                self.print("Associating a floating IP (polling for ready port)...")
+                for i in range(10):
+                    try:
+                        fip_addr = s.associate_floating_ip()
+                        self.print(f"✅ Floating IP associated: {fip_addr}")
+                        break
+                    except chi.exception.ResourceError as e:
+                        if "None of the ports can route" in str(e) and i < 9:
+                            self.print(f"  Port not ready yet, retrying in 3s... ({i+1}/10)")
+                            time.sleep(3)
+                        else:
+                            self.print(f"Error associating floating IP: {e}")
+                            break
+                if not fip_addr:
+                    self.print("Timed out waiting for network ports to route Floating IP")
+
+            s.refresh()
+
+            # 3. OPEN PORT 22 (SSH) IN SECURITY GROUPS
+            self.print("Configuring security groups for SSH...")
+            sg_list = network.list_security_groups(name_filter="allow-ssh")
+            if sg_list:
+                sg = sg_list[0]
+            else:
+                sg = network.SecurityGroup(
+                    {"name": "allow-ssh", "description": "Enable SSH traffic on TCP port 22"}
+                )
+                sg.add_rule("ingress", "tcp", 22)
+                sg.submit()
+
+            # Attach security group to the server instance
+            s.add_security_group(sg.id)
+
+            # 4. PRINT SSH CONNECTION DETAILS
+            if fip_addr:
+                self.print(f"\nVM is ready! You can SSH in using:")
+                self.print(f"ssh cc@{fip_addr}")
 
             return s.id
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-            logger.error(f"CHI start failed for {self.cloud_name}: {e}")
-            raise VMProviderError(f"CHI start failed for {self.cloud_name}: {e}") from e
+            tb = traceback.format_exc()
+            logger.error(f"CHI start failed for {self.cloud_name}: {e}\n{tb}")
+            raise VMProviderError(f"CHI start failed for {self.cloud_name}: {e}\n{tb}") from e
 
     def stop(self, name: Optional[str] = None) -> bool:
         """Stops a Chameleon VM."""
@@ -217,29 +296,91 @@ class Provider(OpenstackManager):
             return False
 
     def delete(self, name: Optional[str] = None) -> bool:
-        """Deletes a Chameleon VM and releases its floating IP."""
-        if not name: return False
+        """Deletes a Chameleon VM by name, ID, or fallback to single active server."""
+        if not name: 
+            return False
+            
+        print(f"Deleting Chameleon VM: {name}")
         self._setup_chi_context()
         try:
-            self.release_floating_ip(name)
-            server = chi.server.get_server(name)
-            if server:
-                server.delete()
+            server = None
+            servers = chi.server.list_servers()
+            
+            # 1. Try direct lookup via get_server
+            try:
+                server = chi.server.get_server(name)
+            except Exception:
+                pass
+
+            # 2. Try matching name or ID from the list
+            if not server:
+                for s in servers:
+                    s_name = getattr(s, 'name', '')
+                    s_id = str(getattr(s, 'id', ''))
+                    print (f"Checking server: {s_name} ({s_id})")
+                    if s_name == name or s_id == name or name in s_id or s_id.startswith(str(name)):
+                        server = s
+                        break
+
+            # 3. Ultimate Fallback: If only ONE server exists in this project/site, 
+            # assume this is the one the user meant to delete (handles internal UUID mismatch)
+            if not server and len(servers) == 1:
+                server = servers[0]
+                print(f"Notice: '{name}' did not match directly, but exactly one server was found. Targeting: {server.name}")
+
+            if not server:
+                from cloudmesh.ai.vm.logger import logger
+                logger.warning(f"CHI delete: Server '{name}' not found.")
+                return False
+
+            server_id = getattr(server, 'id', None)
+            server_name = getattr(server, 'name', name)
+
+            # 4. Safely release floating IP using the actual server name
+            try:
+                self.release_floating_ip(server_name)
+            except Exception as fip_err:
+                from cloudmesh.ai.vm.logger import logger
+                logger.info(f"Note: Could not release floating IP for {server_name}: {fip_err}")
+
+            # 5. Delete the server using its reliable ID
+            if server_id:
+                chi.server.delete_server(server_id)
+                print(f"Successfully deleted server: {server_name} ({server_id})")
                 return True
+            elif hasattr(server, 'delete'):
+                server.delete()
+                print(f"Successfully deleted server object: {server_name}")
+                return True
+
             return False
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"CHI delete failed for {name}: {e}")
             raise VMProviderError(f"CHI delete failed for {name}: {e}") from e
-
+        
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Chameleon VMs with their reachable IP addresses."""
         self._setup_chi_context()
         try:
             servers = chi.server.list_servers()
+            print(f"Found {len(servers)} servers.")
             results = []
-            for s in servers:
-                ip = s.addresses[0] if getattr(s, 'addresses', None) else "No IP"
+            
+            for s in servers:    
+                # Safely extract the IP address from the addresses dictionary
+                ip = "No IP"
+                addresses = getattr(s, 'addresses', None)
+                if addresses and isinstance(addresses, dict):
+                    for net_name, addr_list in addresses.items():
+                        if addr_list and len(addr_list) > 0:
+                            first_addr = addr_list[0]
+                            if isinstance(first_addr, dict):
+                                ip = first_addr.get('addr', str(first_addr))
+                            else:
+                                ip = str(first_addr)
+                            break  # Grab the first available IP and exit loop
+                
                 results.append({
                     "name": s.name,
                     "id": s.id,
@@ -247,8 +388,9 @@ class Provider(OpenstackManager):
                     "ip": ip,
                     "image": getattr(s, 'image_name', 'Unknown'),
                     "flavor": getattr(s, 'flavor_name', 'Unknown'),
-                    "networks": s.addresses if getattr(s, 'addresses', None) else []
+                    "networks": addresses if addresses else {}
                 })
+                
             return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
@@ -311,13 +453,23 @@ class Provider(OpenstackManager):
             return None
 
     def assign_floating_ip(self, name: str) -> Optional[str]:
-        """Assigns an available floating IP to the VM."""
+        """Assigns an available floating IP to the VM with retries for network routing."""
         self._setup_chi_context()
         try:
             server = chi.server.get_server(name)
             if not server:
                 return None
-            return server.associate_floating_ip()
+
+            import chi.exception
+            for i in range(10):
+                try:
+                    return server.associate_floating_ip()
+                except chi.exception.ResourceError as e:
+                    if "None of the ports can route" in str(e) and i < 9:
+                        self.print(f"  Port not ready yet, retrying in 3s... ({i+1}/10)")
+                        time.sleep(3)
+                    else:
+                        raise e
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"CHI assign_floating_ip failed for {name}: {e}")
@@ -427,8 +579,25 @@ class Provider(OpenstackManager):
         """Lists available keys in Chameleon Cloud."""
         self._setup_chi_context()
         try:
+            import hashlib
+            import base64
             keys = chi.server.list_keypair()
-            return [{"name": k.name, "fingerprint": k.fingerprint} for k in keys]
+            results = []
+            for k in keys:
+                fingerprint = "N/A"
+                if hasattr(k, "public_key") and k.public_key:
+                    try:
+                        # SSH public keys are formatted as: "type base64_blob comment"
+                        parts = k.public_key.split()
+                        if len(parts) >= 2:
+                            blob = base64.b64decode(parts[1])
+                            # MD5 fingerprint is the standard for the format requested: xx:xx:xx...
+                            md5_hash = hashlib.md5(blob).digest()
+                            fingerprint = ":".join(f"{b:02x}" for b in md5_hash)
+                    except Exception:
+                        fingerprint = "Error"
+                results.append({"name": k.name, "fingerprint": fingerprint})
+            return results
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"CHI get_keys failed: {e}")

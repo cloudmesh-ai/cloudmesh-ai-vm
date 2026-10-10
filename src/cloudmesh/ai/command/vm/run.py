@@ -9,7 +9,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.argument("command", required=False)
 @vm_options
 @handle_errors
-def run(ctx: click.Context, name: Optional[str] = None, command: Optional[str] = None) -> None:
+def run(ctx: click.Context, name: Optional[str] = None, command: Optional[str] = None, **kwargs)-> None:    
+    
     """
     Executes a command on a VM.
     

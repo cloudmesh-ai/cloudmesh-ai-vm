@@ -22,7 +22,7 @@ class Provider(LocalBaseManager):
         except Exception:
             raise VMProviderError("limactl not found. Please install Lima (brew install lima) to use this provider.")
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Starts (launches) a Lima VM. Supports built-in templates or custom YAML paths.
         """
@@ -401,10 +401,3 @@ class Provider(LocalBaseManager):
             self.print(f"Error uploading key to {vm_name}: {e}")
             return False
 
-    def delete_key(self, key_name: str, vm_name: Optional[str] = None) -> bool:
-        """
-        Deletes a public key from a Lima VM.
-        Not implemented as per user request.
-        """
-        from cloudmesh.ai.vm.exceptions import ProviderFeatureNotSupported
-        raise ProviderFeatureNotSupported(self.cloud_name, "delete_key")

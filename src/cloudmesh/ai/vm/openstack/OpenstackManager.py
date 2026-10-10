@@ -145,7 +145,7 @@ class OpenstackManager(CloudBaseManager):
 
         return result.stdout
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, assign_ip: bool = True) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """Starts a VM in OpenStack using libcloud."""
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = image or cloud_config.get("image")
@@ -211,7 +211,7 @@ class OpenstackManager(CloudBaseManager):
                 raise VMProviderError(f"VM {vm_name} failed to become ACTIVE. Aborting start.")
 
             # Automatically assign a floating IP to make the VM reachable if requested
-            if assign_ip:
+            if kwargs.get('assign_ip', True):
                 fip = self.assign_floating_ip(vm_name)
                 if fip:
                     from cloudmesh.ai.vm.logger import logger
@@ -898,6 +898,19 @@ class OpenstackManager(CloudBaseManager):
         node = self._find_node(name)
         if node and getattr(node, 'public_ips', None):
             return node.public_ips[0]
+
+        # CLI Fallback
+        try:
+            output = self._run_cli_command(["openstack", "server", "show", name, "-f", "value", "-c", "addresses"])
+            # Output format: "network: a=10.0.0.1,net-id=net1; floating: a=1.2.3.4,net-id=net2"
+            if "floating:" in output:
+                import re
+                match = re.search(r"floating: a=([0-9.]+)", output)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
         return None
 
     def _wait_for_network(self, node, timeout: int = 300) -> bool:

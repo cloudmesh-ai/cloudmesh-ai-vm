@@ -7,7 +7,8 @@ from .._shared.ui import render_table
 @click.pass_context
 @vm_options
 @handle_errors
-def provider_info(ctx: click.Context) -> None:
+def provider_info(ctx: click.Context, **kwargs)-> None:    
+    
     """Display detailed information about the active VM provider."""
     provider = get_active_provider(ctx)
     

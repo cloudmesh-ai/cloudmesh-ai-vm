@@ -6,6 +6,7 @@ from typing import Dict, Type, Any
 def get_provider_classes():
     from cloudmesh.ai.vm.local.MultipassManager import Provider as MultipassProvider
     from cloudmesh.ai.vm.openstack.OpenstackManager import OpenstackManager
+    from cloudmesh.ai.vm.openstack.ChameleonManager import Provider as ChameleonProvider
     from cloudmesh.ai.vm.aws.AwsManager import Provider as AwsProvider
     from cloudmesh.ai.vm.azure.AzureManager import Provider as AzureProvider
     from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
@@ -17,7 +18,7 @@ def get_provider_classes():
         "multipass": MultipassProvider,
         "openstack": OpenstackManager,
         "jetstream": OpenstackManager,
-        "chameleon": OpenstackManager,
+        "chameleon": ChameleonProvider,
         "aws": AwsProvider,
         "azure": AzureProvider,
         "google": GoogleProvider,
@@ -25,6 +26,8 @@ def get_provider_classes():
         "vbox": VBoxProvider,
         "lima": LimaProvider,
     }
+
+PROVIDER_MAP = get_provider_classes()
 
 PROVIDER_METADATA = {
     "multipass": {"lifecycle": "🟢", "remote_exec": "🟢 (Agent)", "status": "Fully Functional"},

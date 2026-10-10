@@ -43,9 +43,9 @@ class CloudBaseManager(BaseVMProvider, ABC):
     # We remove @abstractmethod from methods that are not mandatory for all providers.
     # BaseVMProvider already provides default implementations that raise ProviderFeatureNotSupported.
     
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """Starts a VM."""
-        return super().start(name)
+        return super().start(name, flavor=flavor, image=image, **kwargs)
 
     def stop(self, name: Optional[str] = None) -> bool:
         """Stops a VM."""

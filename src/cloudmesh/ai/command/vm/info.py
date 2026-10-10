@@ -8,7 +8,8 @@ from ._shared.exceptions import handle_errors, VMCommandError
 @click.argument("name")
 @vm_options
 @handle_errors
-def info(ctx: click.Context, name: str) -> None:
+def info(ctx: click.Context, name: str, **kwargs)-> None:    
+    
     """
     Get detailed information about a specific VM.
     """

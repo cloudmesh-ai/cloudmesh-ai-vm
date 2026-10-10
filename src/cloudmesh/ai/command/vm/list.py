@@ -8,6 +8,7 @@ from ._shared.ui import render_table
 @click.pass_context
 @click.option("--all", is_flag=True, help="List VMs from all enabled providers")
 def list_group(ctx: click.Context, all: bool):
+
     """List VM resources."""
     if ctx.obj is None:
         from ._shared.context import VMContext
@@ -17,6 +18,7 @@ def list_group(ctx: click.Context, all: bool):
         ctx.invoke(list_vms)
 
 def _render_vms(cloud_name, vms):
+
     """Helper to render VM list table."""
     if vms:
         table_title = f"VMs on {cloud_name}"
@@ -37,16 +39,16 @@ def _render_vms(cloud_name, vms):
 @click.pass_context
 @vm_options
 @handle_errors
-def list_vms(ctx: click.Context):
-    """List all VMs."""
+def list_vms(ctx: click.Context, **kwargs):
+    """List VMs."""
     all_flag = getattr(ctx.obj, "list_all", False)
     if all_flag:
         from cloudmesh.ai.vm.providers import PROVIDER_MAP, get_provider
         from ._shared.context import state
-        
+
         config = state.config
         configured_clouds = config.clouds if config else {}
-        
+
         any_vms = False
         for cloud_name in sorted(PROVIDER_MAP.keys()):
             cloud_cfg = configured_clouds.get(cloud_name)
@@ -56,10 +58,10 @@ def list_vms(ctx: click.Context):
                     is_enabled = cloud_cfg.enabled
                 elif isinstance(cloud_cfg, dict):
                     is_enabled = cloud_cfg.get('enabled', False)
-            
+
             if not is_enabled:
                 continue
-            
+
             try:
                 provider = get_provider(cloud_name)
                 vms = provider.list()
@@ -67,7 +69,7 @@ def list_vms(ctx: click.Context):
                     any_vms = True
             except Exception as e:
                 console.print(f"Could not list VMs for provider {cloud_name}: {e}")
-        
+
         if not any_vms:
             console.print("No VMs found on any enabled providers.")
         return
@@ -82,8 +84,8 @@ def list_vms(ctx: click.Context):
 @click.pass_context
 @vm_options
 @handle_errors
-def list_regions(ctx: click.Context):
-    """List available regions."""
+def list_regions(ctx: click.Context, **kwargs):
+    """List regions."""
     provider = get_active_provider(ctx)
     # Check if provider has list_regions, otherwise fallback to a generic message
     if hasattr(provider, "list_regions"):

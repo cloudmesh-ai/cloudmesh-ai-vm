@@ -13,7 +13,7 @@ class Provider(LocalBaseManager):
         super().__init__(config, console=console, **kwargs)
         self.cloud_name = "multipass"
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """
         Starts (launches) a Multipass VM with optional resource configurations.
         If the VM already exists, it starts the existing VM.
