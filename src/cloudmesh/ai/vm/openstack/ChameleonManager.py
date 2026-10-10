@@ -284,21 +284,69 @@ class Provider(CloudBaseManager):
             return False
 
     def delete(self, name: Optional[str] = None) -> bool:
-        """Deletes a Chameleon VM and releases its floating IP."""
-        if not name: return False
+        """Deletes a Chameleon VM by name, ID, or fallback to single active server."""
+        if not name: 
+            return False
+            
+        print(f"Deleting Chameleon VM: {name}")
         self._setup_chi_context()
         try:
-            self.release_floating_ip(name)
-            server = chi.server.get_server(name)
-            if server:
-                server.delete()
+            server = None
+            servers = chi.server.list_servers()
+            print(f"Listed servers (Name: ID): {[(s.name, getattr(s, 'id', None)) for s in servers]}")
+
+            # 1. Try direct lookup via get_server
+            try:
+                server = chi.server.get_server(name)
+            except Exception:
+                pass
+
+            # 2. Try matching name or ID from the list
+            if not server:
+                for s in servers:
+                    s_name = getattr(s, 'name', '')
+                    s_id = str(getattr(s, 'id', ''))
+                    if s_name == name or s_id == name or name in s_id or s_id.startswith(str(name)):
+                        server = s
+                        break
+
+            # 3. Ultimate Fallback: If only ONE server exists in this project/site, 
+            # assume this is the one the user meant to delete (handles internal UUID mismatch)
+            if not server and len(servers) == 1:
+                server = servers[0]
+                print(f"Notice: '{name}' did not match directly, but exactly one server was found. Targeting: {server.name}")
+
+            if not server:
+                from cloudmesh.ai.vm.logger import logger
+                logger.warning(f"CHI delete: Server '{name}' not found.")
+                return False
+
+            server_id = getattr(server, 'id', None)
+            server_name = getattr(server, 'name', name)
+
+            # 4. Safely release floating IP using the actual server name
+            try:
+                self.release_floating_ip(server_name)
+            except Exception as fip_err:
+                from cloudmesh.ai.vm.logger import logger
+                logger.info(f"Note: Could not release floating IP for {server_name}: {fip_err}")
+
+            # 5. Delete the server using its reliable ID
+            if server_id:
+                chi.server.delete_server(server_id)
+                print(f"Successfully deleted server: {server_name} ({server_id})")
                 return True
+            elif hasattr(server, 'delete'):
+                server.delete()
+                print(f"Successfully deleted server object: {server_name}")
+                return True
+
             return False
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.error(f"CHI delete failed for {name}: {e}")
             raise VMProviderError(f"CHI delete failed for {name}: {e}") from e
-
+        
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Chameleon VMs with their reachable IP addresses."""
         print("GGGGGGG")
