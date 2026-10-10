@@ -67,39 +67,54 @@ class TestOpenstackDetailed:
     def test_get_floating_ip_success(self, provider):
         """Verify _get_floating_ip correctly parses the 'addresses' output."""
         mock_output = "network: a=10.0.0.1,net-id=net1; floating: a=1.2.3.4,net-id=net2"
-        with patch.object(provider, "_run_cli_command", return_value=mock_output):
+        with patch.object(provider, "_run_cli_command", return_value=mock_output), \
+             patch.object(provider, "_find_node", return_value=MagicMock(public_ips=[])):
             ip = provider._get_floating_ip("test-vm")
             assert ip == "1.2.3.4"
 
     def test_get_floating_ip_none(self, provider):
         """Verify _get_floating_ip returns None when no floating IP is assigned."""
         mock_output = "network: a=10.0.0.1,net-id=net1"
-        with patch.object(provider, "_run_cli_command", return_value=mock_output):
+        with patch.object(provider, "_run_cli_command", return_value=mock_output), \
+             patch.object(provider, "_find_node", return_value=MagicMock(public_ips=[])):
             ip = provider._get_floating_ip("test-vm")
             assert ip is None
 
     def test_assign_floating_ip_success(self, provider):
         """Test assigning a floating IP via CLI."""
-        # Mock list of free IPs
-        provider._run_cli_command = MagicMock(side_effect=[
-            MagicMock(stdout="ip-123\n", returncode=0), # list free IPs
-            MagicMock(stdout="Success", returncode=0),  # associate IP
-            "1.2.3.4"                                   # _get_floating_ip result
-        ])
-        # Note: because _run_cli_command is a mock, we need to handle the return values
-        # But we can just mock the internal calls
-        with patch.object(provider, "_run_cli_command") as mock_run:
-            mock_run.side_effect = ["ip-123", "Success", "network: a=10.0.0.1; floating: a=1.2.3.4,net-id=net1"]
+        # Mock driver objects
+        mock_node = MagicMock()
+        mock_node.name = "test-vm"
+        mock_node.id = "id-123"
+
+        mock_fip = MagicMock()
+        mock_fip.ip = "1.2.3.4"
+
+        provider.driver.ex_create_floating_ip.return_value = mock_fip
+        provider.driver._find_node.return_value = mock_node # Not used by manager, manager uses _find_node
+
+        with patch.object(provider, "_find_node", return_value=mock_node), \
+             patch.object(provider, "wait_for_active", return_value=True), \
+             patch.object(provider, "_wait_for_network", return_value=True):
+
             ip = provider.assign_floating_ip("test-vm")
             assert ip == "1.2.3.4"
-            assert mock_run.call_count == 3
+            provider.driver.ex_attach_floating_ip_to_node.assert_called_once_with(mock_node, mock_fip)
 
     def test_release_floating_ip_success(self, provider):
-        """Test releasing a floating IP via CLI."""
-        with patch.object(provider, "_run_cli_command") as mock_run:
-            # 1. find floating IP
-            mock_run.side_effect = ["network: a=10.0.0.1; floating: a=1.2.3.4,net-id=net2", "Success", "Success"]
+        """Test releasing a floating IP."""
+        # Mock driver objects
+        mock_node = MagicMock()
+        mock_node.name = "test-vm"
+        mock_node.public_ips = ["1.2.3.4"]
 
+        mock_fip = MagicMock()
+        mock_fip.ip = "1.2.3.4"
+
+        provider.driver.ex_get_floating_ip.return_value = mock_fip
+
+        with patch.object(provider, "_find_node", return_value=mock_node):
             result = provider.release_floating_ip("test-vm")
             assert result is True
-            assert mock_run.call_count == 3
+            provider.driver.ex_detach_floating_ip_from_node.assert_called_once_with(mock_node, mock_fip)
+            provider.driver.ex_delete_floating_ip.assert_called_once_with(mock_fip)

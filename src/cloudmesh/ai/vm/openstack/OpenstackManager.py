@@ -898,6 +898,19 @@ class OpenstackManager(CloudBaseManager):
         node = self._find_node(name)
         if node and getattr(node, 'public_ips', None):
             return node.public_ips[0]
+
+        # CLI Fallback
+        try:
+            output = self._run_cli_command(["openstack", "server", "show", name, "-f", "value", "-c", "addresses"])
+            # Output format: "network: a=10.0.0.1,net-id=net1; floating: a=1.2.3.4,net-id=net2"
+            if "floating:" in output:
+                import re
+                match = re.search(r"floating: a=([0-9.]+)", output)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
         return None
 
     def _wait_for_network(self, node, timeout: int = 300) -> bool:
