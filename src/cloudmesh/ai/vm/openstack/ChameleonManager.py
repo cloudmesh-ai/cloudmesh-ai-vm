@@ -93,7 +93,7 @@ class Provider(CloudBaseManager):
         except Exception:
             return False
 
-    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, assign_ip: bool = True) -> str:
+    def start(self, name: Optional[str] = None, flavor: Optional[str] = None, image: Optional[str] = None, **kwargs) -> str:
         """Starts a VM in Chameleon using the chi library, automatically creating a reservation."""
         self._setup_chi_context()
         cloud_config = self.get_cloud_config("chameleon")
