@@ -1,5 +1,17 @@
 import yaml
 import os
+import warnings
+import logging
+
+# Suppress the specific neutronclient deprecation warning globally in this module
+warnings.filterwarnings(
+    "ignore",
+    message=".*python binding code in neutronclient is deprecated.*"
+)
+
+# Also suppress via logging in case the library uses logging.warning
+logging.getLogger("neutronclient").setLevel(logging.ERROR)
+
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
@@ -293,8 +305,7 @@ class Provider(CloudBaseManager):
         try:
             server = None
             servers = chi.server.list_servers()
-            print(f"Listed servers (Name: ID): {[(s.name, getattr(s, 'id', None)) for s in servers]}")
-
+            
             # 1. Try direct lookup via get_server
             try:
                 server = chi.server.get_server(name)
@@ -306,6 +317,7 @@ class Provider(CloudBaseManager):
                 for s in servers:
                     s_name = getattr(s, 'name', '')
                     s_id = str(getattr(s, 'id', ''))
+                    print (f"Checking server: {s_name} ({s_id})")
                     if s_name == name or s_id == name or name in s_id or s_id.startswith(str(name)):
                         server = s
                         break
@@ -349,18 +361,13 @@ class Provider(CloudBaseManager):
         
     def list(self) -> List[Dict[str, Any]]:
         """Lists all Chameleon VMs with their reachable IP addresses."""
-        print("GGGGGGG")
         self._setup_chi_context()
         try:
             servers = chi.server.list_servers()
             print(f"Found {len(servers)} servers.")
-            from pprint import pprint
-            pprint(servers)
             results = []
             
-            for s in servers:
-                pprint(s)
-                
+            for s in servers:    
                 # Safely extract the IP address from the addresses dictionary
                 ip = "No IP"
                 addresses = getattr(s, 'addresses', None)
