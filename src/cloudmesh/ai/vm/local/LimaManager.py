@@ -401,10 +401,3 @@ class Provider(LocalBaseManager):
             self.print(f"Error uploading key to {vm_name}: {e}")
             return False
 
-    def delete_key(self, key_name: str, vm_name: Optional[str] = None) -> bool:
-        """
-        Deletes a public key from a Lima VM.
-        Not implemented as per user request.
-        """
-        from cloudmesh.ai.vm.exceptions import ProviderFeatureNotSupported
-        raise ProviderFeatureNotSupported(self.cloud_name, "delete_key")
