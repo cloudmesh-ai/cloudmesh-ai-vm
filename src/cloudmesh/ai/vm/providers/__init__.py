@@ -4,28 +4,35 @@ from typing import Dict, Type, Any
 # since OpenstackManager imports from .providers_utils which calls register_providers()
 
 def get_provider_classes():
-    from cloudmesh.ai.vm.local.MultipassManager import Provider as MultipassProvider
-    from cloudmesh.ai.vm.openstack.OpenstackManager import OpenstackManager
-    from cloudmesh.ai.vm.openstack.ChameleonManager import Provider as ChameleonProvider
-    from cloudmesh.ai.vm.aws.AwsManager import Provider as AwsProvider
-    from cloudmesh.ai.vm.azure.AzureManager import Provider as AzureProvider
-    from cloudmesh.ai.vm.google.GoogleManager import Provider as GoogleProvider
-    from cloudmesh.ai.vm.local.Wsl2Manager import Provider as Wsl2Provider
-    from cloudmesh.ai.vm.local.VBoxManager import Provider as VBoxProvider
-    from cloudmesh.ai.vm.local.LimaManager import Provider as LimaProvider
+    """
+    Load VM providers independently so optional dependencies belonging to
+    one provider do not prevent other providers from being used.
+    """
+    from importlib import import_module
+    import logging
 
-    return {
-        "multipass": MultipassProvider,
-        "openstack": OpenstackManager,
-        "jetstream": OpenstackManager,
-        "chameleon": ChameleonProvider,
-        "aws": AwsProvider,
-        "azure": AzureProvider,
-        "google": GoogleProvider,
-        "wsl2": Wsl2Provider,
-        "vbox": VBoxProvider,
-        "lima": LimaProvider,
+    providers = {
+        "multipass": ("cloudmesh.ai.vm.local.MultipassManager", "Provider"),
+        "openstack": ("cloudmesh.ai.vm.openstack.OpenstackManager", "OpenstackManager"),
+        "jetstream": ("cloudmesh.ai.vm.openstack.OpenstackManager", "OpenstackManager"),
+        "chameleon": ("cloudmesh.ai.vm.openstack.ChameleonManager", "Provider"),
+        "aws": ("cloudmesh.ai.vm.aws.AwsManager", "Provider"),
+        "azure": ("cloudmesh.ai.vm.azure.AzureManager", "Provider"),
+        "google": ("cloudmesh.ai.vm.google.GoogleManager", "Provider"),
+        "wsl2": ("cloudmesh.ai.vm.local.Wsl2Manager", "Provider"),
+        "vbox": ("cloudmesh.ai.vm.local.VBoxManager", "Provider"),
+        "lima": ("cloudmesh.ai.vm.local.LimaManager", "Provider"),
     }
+
+    classes = {}
+    for name, (module_path, class_name) in providers.items():
+        try:
+            module = import_module(module_path)
+            classes[name] = getattr(module, class_name)
+        except ImportError as exc:
+            logging.warning("Provider %s unavailable: %s", name, exc)
+
+    return classes
 
 PROVIDER_MAP = get_provider_classes()
 
@@ -54,9 +61,13 @@ def get_provider(cloud_name: str):
     """
     from cloudmesh.ai.vm.exceptions import VMProviderError
 
-    provider_map = get_provider_classes()
-    provider_class = provider_map.get(cloud_name.lower())
+    provider_class = PROVIDER_MAP.get(cloud_name.lower())
     if not provider_class:
+        if cloud_name.lower() in PROVIDER_METADATA:
+            raise VMProviderError(
+                f"Provider {cloud_name} is unavailable. "
+                "Check that its optional dependencies are installed."
+            )
         raise VMProviderError(f"Unsupported cloud provider: {cloud_name}")
 
     try:

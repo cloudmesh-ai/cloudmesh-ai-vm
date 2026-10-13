@@ -303,9 +303,12 @@ class Provider(LocalBaseManager):
             return None
 
         try:
-            # Use limactl to get the SSH config
-            # limactl show-ssh-config <name>
-            result = self._run_command(["limactl", "show-ssh-config", name], stream=False)
+            # Request an OpenSSH configuration entry from Lima.
+            # Lima 2.x does not support the old show-ssh-config command.
+            result = self._run_command(
+                ["limactl", "show-ssh", "--format=config", name],
+                stream=False,
+            )
             if result.stdout:
                 return result.stdout.strip()
             return None

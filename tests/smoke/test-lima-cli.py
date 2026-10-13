@@ -4,6 +4,7 @@ from cloudmesh.ai.command import vm
 from rich.text import Text
 from tests.smoke.cli_helper import setup_cli_config
 from tests.smoke.benchmark_helper import save_benchmark
+from cloudmesh.ai.common.stopwatch import StopWatch
 
 @pytest.fixture
 def runner():
@@ -20,6 +21,7 @@ def test_lima_cli_lifecycle(runner, config):
     """
     Smoke test for Lima CLI lifecycle.
     """
+    StopWatch.clear()
     env = {"OS_CLOUD": "lima"}
     # 1. providers
     result = runner.invoke(vm.vm_group, ["provider", "list"], env=env)
@@ -31,34 +33,35 @@ def test_lima_cli_lifecycle(runner, config):
     assert result.exit_code == 0
 
     # 3. start (without name - test auto-naming)
-    result = runner.invoke(vm.vm_group, ["start"], env=env)
-    if result.exit_code != 0:
-        pytest.skip(f"Lima start failed: {result.output}")
-
+    with StopWatch.timer("lima_cli_start"):
+        result = runner.invoke(vm.vm_group, ["start"], env=env)
     output = Text.from_ansi(result.output).plain
-    assert "Generating VM name" in output
 
-    # Extract the generated VM name
+    # Capture the generated name even if startup fails.
     import re
-    match = re.search(r"Successfully started VM ([\w-]+)", output)
-    if match:
-        vm_name = match.group(1)
-    else:
-        # Fallback for different output formats
-        vm_name = "smoke-lima-vm"
+    match = re.search(r"Generating VM name:\s*([\w-]+)", output)
+    assert match, f"Could not determine generated VM name: {output}"
+    vm_name = match.group(1)
 
     try:
+        if result.exit_code != 0:
+            pytest.fail(f"Lima start failed: {result.output}")
+
+        assert f"Successfully started VM {vm_name}" in output
         # 4. list
-        result = runner.invoke(vm.vm_group, ["list"], env=env)
+        with StopWatch.timer("lima_cli_list"):
+            result = runner.invoke(vm.vm_group, ["list"], env=env)
         assert result.exit_code == 0
         assert vm_name in Text.from_ansi(result.output).plain
 
         # 5. stop
-        result = runner.invoke(vm.vm_group, ["stop", vm_name], env=env)
+        with StopWatch.timer("lima_cli_stop"):
+            result = runner.invoke(vm.vm_group, ["stop", vm_name], env=env)
         assert result.exit_code == 0
 
         # 6. delete
-        result = runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+        with StopWatch.timer("lima_cli_delete"):
+            result = runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
         assert result.exit_code == 0
 
         # 7. images
@@ -78,8 +81,11 @@ def test_lima_cli_lifecycle(runner, config):
         assert result.exit_code == 0
 
         # 11. ssh_config
-        runner.invoke(vm.vm_group, ["start", vm_name], env=env)
-        result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
+        with StopWatch.timer("lima_cli_restart"):
+            result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
+        assert result.exit_code == 0, f"Lima restart failed: {result.output}"
+        with StopWatch.timer("lima_cli_ssh_config"):
+            result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
         assert result.exit_code == 0
         assert "Host" in result.output
 
@@ -93,11 +99,14 @@ def test_lima_cli_start_with_name(runner, config):
     Test starting a Lima VM with a specific name.
     """
     vm_name = "test-named-lima-vm"
-    runner.invoke(vm.vm_group, ["delete", vm_name])
+    env = {"OS_CLOUD": "lima"}
+    runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
 
-    result = runner.invoke(vm.vm_group, ["start", vm_name])
-    if result.exit_code != 0:
-        pytest.skip("Lima start failed")
+    try:
+        result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
+        if result.exit_code != 0:
+            pytest.fail(f"Lima named VM start failed: {result.output}")
 
-    assert f"Successfully started VM {vm_name}" in Text.from_ansi(result.output).plain
-    runner.invoke(vm.vm_group, ["delete", vm_name])
+        assert f"Successfully started VM {vm_name}" in Text.from_ansi(result.output).plain
+    finally:
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
