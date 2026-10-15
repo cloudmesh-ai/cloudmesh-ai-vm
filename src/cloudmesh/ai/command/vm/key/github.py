@@ -41,8 +41,16 @@ def list(as_json: bool):
         console.print(json.dumps(keys, indent=2))
         return
 
-    rows = [[k["name"], k["fingerprint"], k["type"]] for k in keys]
-    render_table("GitHub SSH Keys", ["Name", "Fingerprint", "Type"], rows)
+    rows = []
+    for key in keys:
+        public_key = key.get("key", "")
+        key_type = public_key.split()[0] if public_key else "N/A"
+        rows.append([
+            key.get("title", "N/A"),
+            key_type,
+            key.get("id", "N/A"),
+        ])
+    render_table("GitHub SSH Keys", ["Title", "Key Type", "GitHub ID"], rows)
 
 @github.command()
 @click.option("--json", "as_json", is_flag=True, help="Output in JSON format")
