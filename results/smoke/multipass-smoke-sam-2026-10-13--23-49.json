@@ -1,0 +1,138 @@
+{
+    "experiment": {
+        "benchmark": "multipass-smoke",
+        "date": "2026-10-13T23:49:36.053710",
+        "user": "sam",
+        "branch": "fix/blazarclient-dependency-name",
+        "commit": "828b6e0bdf43c3e55b4ec89e5eeb86ebec0810af"
+    },
+    "system": {
+        "platform": {
+            "system": "Darwin",
+            "release": "25.6.0",
+            "version": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:11:03 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8132",
+            "machine": "arm64",
+            "processor": "arm",
+            "node": "SamComputer.local",
+            "platform_version": "26.6.2",
+            "sys_platform": "darwin",
+            "python": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+            "python_version": "3.14.8",
+            "python_pip": null
+        }
+    },
+    "timers": [
+        {
+            "name": "multipass_check_reqs",
+            "status": "ok",
+            "time": 0.0001,
+            "sum": 0.0001,
+            "msg": null
+        },
+        {
+            "name": "multipass_get_images",
+            "status": "ok",
+            "time": 0.0663,
+            "sum": 0.0663,
+            "msg": null
+        },
+        {
+            "name": "multipass_get_flavors",
+            "status": "ok",
+            "time": 0.0,
+            "sum": 0.0,
+            "msg": null
+        },
+        {
+            "name": "multipass_start",
+            "status": "ok",
+            "time": 30.7309,
+            "sum": 30.7309,
+            "msg": null
+        },
+        {
+            "name": "multipass_wait_running",
+            "status": "ok",
+            "time": 0.0712,
+            "sum": 0.0712,
+            "msg": null
+        },
+        {
+            "name": "multipass_connectivity",
+            "status": "ok",
+            "time": 0.1281,
+            "sum": 0.1281,
+            "msg": null
+        },
+        {
+            "name": "multipass_upload_key",
+            "status": "ok",
+            "time": 0.0788,
+            "sum": 0.0788,
+            "msg": null
+        },
+        {
+            "name": "multipass_verify_key",
+            "status": "ok",
+            "time": 0.0794,
+            "sum": 0.0794,
+            "msg": null
+        },
+        {
+            "name": "multipass_delete_key",
+            "status": "ok",
+            "time": 0.0617,
+            "sum": 0.0617,
+            "msg": null
+        },
+        {
+            "name": "multipass_verify_key_deleted",
+            "status": "ok",
+            "time": 0.0612,
+            "sum": 0.0612,
+            "msg": null
+        },
+        {
+            "name": "multipass_shelve",
+            "status": "ok",
+            "time": 3.8118,
+            "sum": 3.8118,
+            "msg": null
+        },
+        {
+            "name": "multipass_unshelve",
+            "status": "ok",
+            "time": 17.743,
+            "sum": 17.743,
+            "msg": null
+        },
+        {
+            "name": "multipass_info",
+            "status": "ok",
+            "time": 0.1339,
+            "sum": 0.1339,
+            "msg": null
+        },
+        {
+            "name": "multipass_list",
+            "status": "ok",
+            "time": 0.0454,
+            "sum": 0.0454,
+            "msg": null
+        },
+        {
+            "name": "multipass_stop",
+            "status": "ok",
+            "time": 3.725,
+            "sum": 3.725,
+            "msg": null
+        },
+        {
+            "name": "multipass_delete",
+            "status": "ok",
+            "time": 0.0862,
+            "sum": 0.0862,
+            "msg": null
+        }
+    ]
+}

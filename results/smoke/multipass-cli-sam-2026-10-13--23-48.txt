@@ -1,0 +1,56 @@
+Benchmark: Multipass CLI
+Date: 2026-10-13 23:48:09
+User: sam
+Branch: fix/blazarclient-dependency-name
+Commit: 828b6e0bdf43c3e55b4ec89e5eeb86ebec0810af
+----------------------------------------
+container.present: false
+cpu: Apple M4
+cpu.temp: null
+cpu_cores: 10
+cpu_count: 10
+cpu_threads: 10
+date: '2026-10-13 23:48:09.508404'
+frequency: 4
+gpu.note: Unified Memory
+gpu.present: true
+gpu.total_vram: 16.0 GiB
+gpu.vendor: Apple
+mem.active: 2.1 GiB
+mem.available: 3.5 GiB
+mem.free: 1.4 GiB
+mem.inactive: 2.0 GiB
+mem.percent: 78.4%
+mem.total: 16.0 GiB
+mem.used: 5.1 GiB
+mem.wired: 3.1 GiB
+net.high_speed: false
+net.interfaces: []
+numa.present: false
+platform.version: 26.6.2
+python: 3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]
+python.pip: 26.2.1
+python.version: 3.14.8
+sys.platform: darwin
+thermal.present: false
+uname.machine: arm64
+uname.node: SamComputer.local
+uname.processor: arm
+uname.release: 25.6.0
+uname.system: Darwin
+uname.version: 'Darwin Kernel Version 25.6.0: Fri Jul 31 19:11:03 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8132'
+user: sam
+
+
+--- Benchmark Results (Current Thread) ---
+Timer                          Status     Time (s)   Sum (s)    Msg
+----------------------------------------------------------------------
+multipass_start                ok         168.824    168.824    
+multipass_list                 ok         0.147      0.147      
+multipass_run                  ok         0.199      0.199      
+multipass_stop                 ok         3.703      3.703      
+multipass_delete               ok         0.071      0.071      
+multipass_images               ok         0.051      0.051      
+multipass_flavors              ok         0.001      0.001      
+multipass_keys                 ok         0.001      0.001      
+
