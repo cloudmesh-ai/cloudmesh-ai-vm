@@ -1,0 +1,82 @@
+{
+    "experiment": {
+        "benchmark": "Multipass CLI",
+        "date": "2026-10-13T23:48:09.564074",
+        "user": "sam",
+        "branch": "fix/blazarclient-dependency-name",
+        "commit": "828b6e0bdf43c3e55b4ec89e5eeb86ebec0810af"
+    },
+    "system": {
+        "platform": {
+            "system": "Darwin",
+            "release": "25.6.0",
+            "version": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:11:03 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8132",
+            "machine": "arm64",
+            "processor": "arm",
+            "node": "SamComputer.local",
+            "platform_version": "26.6.2",
+            "sys_platform": "darwin",
+            "python": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+            "python_version": "3.14.8",
+            "python_pip": null
+        }
+    },
+    "timers": [
+        {
+            "name": "multipass_start",
+            "status": "ok",
+            "time": 168.8237,
+            "sum": 168.8237,
+            "msg": null
+        },
+        {
+            "name": "multipass_list",
+            "status": "ok",
+            "time": 0.147,
+            "sum": 0.147,
+            "msg": null
+        },
+        {
+            "name": "multipass_run",
+            "status": "ok",
+            "time": 0.1991,
+            "sum": 0.1991,
+            "msg": null
+        },
+        {
+            "name": "multipass_stop",
+            "status": "ok",
+            "time": 3.7029,
+            "sum": 3.7029,
+            "msg": null
+        },
+        {
+            "name": "multipass_delete",
+            "status": "ok",
+            "time": 0.0709,
+            "sum": 0.0709,
+            "msg": null
+        },
+        {
+            "name": "multipass_images",
+            "status": "ok",
+            "time": 0.051,
+            "sum": 0.051,
+            "msg": null
+        },
+        {
+            "name": "multipass_flavors",
+            "status": "ok",
+            "time": 0.0011,
+            "sum": 0.0011,
+            "msg": null
+        },
+        {
+            "name": "multipass_keys",
+            "status": "ok",
+            "time": 0.0005,
+            "sum": 0.0005,
+            "msg": null
+        }
+    ]
+}
