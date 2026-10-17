@@ -723,16 +723,22 @@ class OpenstackManager(CloudBaseManager):
 
         return None
 
+    def _get_floating_ip(self, name: str) -> Optional[str]:
         """
         Internal helper to retrieve the floating IP address of a VM.
         """
         try:
-            conn = self._get_sdk_conn()
-            server = conn.compute.find_server(name)
-            if server and getattr(server, 'addresses', None):
-                addresses = server.addresses
-                if 'floating' in addresses and addresses['floating']:
-                    return addresses['floating'][0].get('addr')
+            server = self._find_node(name)
+            if not server:
+                return None
+
+            addresses = getattr(server, "addresses", {}) or {}
+
+            for network_addresses in addresses.values():
+                for address in network_addresses or []:
+                    if address.get("OS-EXT-IPS:type") == "floating":
+                        return address.get("addr")
+
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
             logger.debug(f"Error retrieving floating IP for {name}: {e}")
