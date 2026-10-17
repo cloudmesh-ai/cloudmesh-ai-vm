@@ -7,6 +7,9 @@ import hashlib
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
+from paramiko import PKey
+from paramiko.ssh_exception import PasswordRequiredException
+
 logger = logging.getLogger("cloudmesh.ai.vm")
 
 class KeyManager:
@@ -206,21 +209,34 @@ class KeyManager:
 
     def _has_passphrase(self, key_path: Path) -> bool:
         """
-        Checks if a private key is protected by a passphrase.
+        Checks whether a private key is protected by a passphrase
+        without triggering an interactive prompt.
         """
         try:
-            result = subprocess.run(
-                ["ssh-keygen", "-y", "-f", str(key_path)],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                stdin=subprocess.DEVNULL
-            )
-            if result.returncode != 0:
-                return True
+            PKey.from_path(key_path)
             return False
+
+        except PasswordRequiredException:
+            return True
+
+        except TypeError as e:
+            message = str(e).lower()
+
+            if (
+                "password-protected" in message
+                or "password was not provided" in message
+            ):
+                return True
+
+            logger.debug(
+                f"Error checking passphrase for {key_path}: {e}"
+            )
+            return False
+
         except Exception as e:
-            logger.debug(f"Error checking passphrase for {key_path}: {e}")
+            logger.debug(
+                f"Error checking passphrase for {key_path}: {e}"
+            )
             return False
 
     def get_github_keys(self) -> List[Dict[str, Any]]:
