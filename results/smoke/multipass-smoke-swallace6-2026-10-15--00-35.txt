@@ -1,0 +1,63 @@
+Benchmark: multipass-smoke
+Date: 2026-10-15 00:35:08
+User: swallace6
+Branch: test/week7-multipass-dev2
+Commit: 5b69a8a1dda7275c268d388a9b4ce309067f9208
+----------------------------------------
+container.present: false
+cpu: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel
+cpu.temp: null
+cpu_cores: 2
+cpu_count: 4
+cpu_threads: 4
+date: '2026-10-15 00:35:08.495274'
+frequency: 2701.0
+gpu.present: false
+mem.available: 2.7 GiB
+mem.free: 2.7 GiB
+mem.percent: 65.0%
+mem.total: 7.9 GiB
+mem.used: 5.1 GiB
+net.high_speed: false
+net.interfaces: []
+numa.present: false
+platform.version: !!python/tuple
+- '10'
+- 10.0.19045
+- SP0
+- Multiprocessor Free
+python: 3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929
+  64 bit (AMD64)]
+python.pip: '25.1'
+python.version: 3.13.5
+sys.platform: win32
+thermal.present: false
+uname.machine: AMD64
+uname.node: Anie-Wallace
+uname.processor: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel
+uname.release: '10'
+uname.system: Windows
+uname.version: 10.0.19045
+user: swallace6
+
+
+--- Benchmark Results (Current Thread) ---
+Timer                          Status     Time (s)   Sum (s)    Msg
+----------------------------------------------------------------------
+multipass_check_reqs           ok         0.009      0.009      
+multipass_get_images           ok         0.418      0.418      
+multipass_get_flavors          ok         0.0        0.0        
+multipass_start                ok         85.651     85.651     
+multipass_wait_running         ok         0.389      0.389      
+multipass_connectivity         ok         0.36       0.36       
+multipass_upload_key           ok         0.34       0.34       
+multipass_verify_key           ok         0.321      0.321      
+multipass_delete_key           ok         0.343      0.343      
+multipass_verify_key_deleted   ok         0.353      0.353      
+multipass_shelve               ok         4.833      4.833      
+multipass_unshelve             ok         51.859     51.859     
+multipass_info                 ok         0.349      0.349      
+multipass_list                 ok         0.132      0.132      
+multipass_stop                 ok         4.584      4.584      
+multipass_delete               ok         1.022      1.022      
+

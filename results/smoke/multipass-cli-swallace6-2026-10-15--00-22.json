@@ -1,0 +1,82 @@
+{
+    "experiment": {
+        "benchmark": "Multipass CLI",
+        "date": "2026-10-15T00:22:08.056054",
+        "user": "swallace6",
+        "branch": "test/week7-multipass-dev2",
+        "commit": "5b69a8a1dda7275c268d388a9b4ce309067f9208"
+    },
+    "system": {
+        "platform": {
+            "system": "Windows",
+            "release": "10",
+            "version": "10.0.19045",
+            "machine": "AMD64",
+            "processor": "Intel64 Family 6 Model 142 Stepping 9, GenuineIntel",
+            "node": "Anie-Wallace",
+            "platform_version": "10.0.19045",
+            "sys_platform": "win32",
+            "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
+            "python_version": "3.13.5",
+            "python_pip": null
+        }
+    },
+    "timers": [
+        {
+            "name": "multipass_provider_list",
+            "status": "ok",
+            "time": 0.0409,
+            "sum": 0.0409,
+            "msg": null
+        },
+        {
+            "name": "multipass_provider_set",
+            "status": "ok",
+            "time": 0.0169,
+            "sum": 0.0169,
+            "msg": null
+        },
+        {
+            "name": "multipass_start",
+            "status": "ok",
+            "time": 90.7053,
+            "sum": 90.7053,
+            "msg": null
+        },
+        {
+            "name": "multipass_list",
+            "status": "ok",
+            "time": 0.3487,
+            "sum": 0.3487,
+            "msg": null
+        },
+        {
+            "name": "multipass_stop",
+            "status": "ok",
+            "time": 4.786,
+            "sum": 4.786,
+            "msg": null
+        },
+        {
+            "name": "multipass_delete",
+            "status": "ok",
+            "time": 1.0903,
+            "sum": 1.0903,
+            "msg": null
+        },
+        {
+            "name": "multipass_images",
+            "status": "ok",
+            "time": 0.1695,
+            "sum": 0.1695,
+            "msg": null
+        },
+        {
+            "name": "multipass_flavors",
+            "status": "ok",
+            "time": 0.0073,
+            "sum": 0.0073,
+            "msg": null
+        }
+    ]
+}
