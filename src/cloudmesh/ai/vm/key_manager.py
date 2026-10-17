@@ -225,7 +225,7 @@ class KeyManager:
 
     def get_github_keys(self) -> List[Dict[str, Any]]:
         """
-        Fetches the list of SSH keys from GitHub using the API.
+        Fetches and normalizes the list of SSH keys from GitHub using the API.
         """
         try:
             result = subprocess.run(
@@ -234,7 +234,31 @@ class KeyManager:
                 text=True,
                 check=True
             )
-            return json.loads(result.stdout)
+
+            keys = json.loads(result.stdout)
+
+            for key in keys:
+                public_key = key.get("key", "")
+                parts = public_key.split()
+
+                key["name"] = key.get(
+                    "title",
+                    f"github-key-{key.get('id', 'unknown')}"
+                )
+
+                key["type"] = parts[0] if parts else "unknown"
+
+                if len(parts) >= 2:
+                    key_blob = base64.b64decode(parts[1])
+                    digest = hashlib.sha256(key_blob).digest()
+                    key["fingerprint"] = base64.b64encode(
+                        digest
+                    ).decode().rstrip("=")
+                else:
+                    key["fingerprint"] = "unknown"
+
+            return keys
+
         except Exception as e:
             logger.error(f"Failed to fetch GitHub keys via API: {e}")
             return []
