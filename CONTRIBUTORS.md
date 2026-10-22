@@ -8,3 +8,4 @@ Thank you to everyone who has contributed to the `cloudmesh-ai-vm` project! Your
 - **AnieWall**
 - **V. Rideaux**
 - **Shabbir04**
+- **Alessandra Vellucci**
