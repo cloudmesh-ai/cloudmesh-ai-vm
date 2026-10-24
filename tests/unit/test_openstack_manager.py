@@ -49,7 +49,7 @@ def test_start_uses_configured_key_and_security_group(provider, mock_driver):
     ):
         result = provider.start(name="test-vm")
 
-    assert result == "vm-123"
+    assert result == "test-vm"
 
     mock_driver.create_server.assert_called_once_with(
         name="test-vm",
@@ -117,8 +117,7 @@ def test_start_prefers_explicit_key_name(provider, mock_driver):
         patch.object(provider, "wait_for_login", return_value=True),
     ):
         result = provider.start(name="test-vm")
-
-    assert result == "vm-123"
+    assert result == "test-vm"
 
 
 def test_get_provider_info_uses_supported_configuration_fields(provider, mock_driver):

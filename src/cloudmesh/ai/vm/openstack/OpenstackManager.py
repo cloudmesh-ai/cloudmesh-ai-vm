@@ -205,7 +205,7 @@ class OpenstackManager(CloudBaseManager):
                         f"Requested floating IP for {vm_name} but none could be assigned."
                     )
 
-            return server.id
+            return server.name
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
