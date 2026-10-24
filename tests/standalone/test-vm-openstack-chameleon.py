@@ -271,7 +271,7 @@ def create_server(
     network,
     security_group,
     keypair_name: str,
-    reservation_id: str = None,
+    reservation_id: str | None = None,
     wait_seconds: int = 600,
 ):
     print(f"🚀 Booting VM '{name}'...")
@@ -347,7 +347,7 @@ def test_ssh_connection(
     start_time = time.time()
     last_err = ""
     while time.time() - start_time < timeout:
-        res = subprocess.run(ssh_cmd, capture_output=True, text=True)
+        res = subprocess.run(ssh_cmd, check=False, capture_output=True, text=True)
         if res.returncode == 0:
             print(f"✅ SSH login successful! Command output:\n{res.stdout.strip()}")
             return True
@@ -455,7 +455,7 @@ def main():
             lease_id = lease_data.get("id")
 
             # Verify reservation is active
-            active_lease, reservation_id = wait_for_reservation_active(
+            _active_lease, reservation_id = wait_for_reservation_active(
                 conn=conn,
                 blazar_url=blazar_url,
                 lease_id=lease_id,

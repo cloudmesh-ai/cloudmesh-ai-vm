@@ -154,7 +154,7 @@ def test_ssh_connection(
     start_time = time.time()
     last_err = ""
     while time.time() - start_time < timeout:
-        res = subprocess.run(ssh_cmd, capture_output=True, text=True)
+        res = subprocess.run(ssh_cmd, check=False, capture_output=True, text=True)
         if res.returncode == 0:
             print(f"✅ SSH login successful! Command output:\n{res.stdout.strip()}")
             return True

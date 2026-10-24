@@ -105,7 +105,7 @@ class TestMultipassReset(unittest.TestCase):
         # sudo -n fails, but TTY is available
         def run_cmd(cmd, **kwargs):
             if "-n" in cmd:
-                raise Exception("Password required")
+                raise RuntimeError("Password required")
             return True
 
         self.mgr._run_command.side_effect = run_cmd
