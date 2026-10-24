@@ -2,7 +2,7 @@ import getpass
 import inspect
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from cloudmesh.ai.vm.base import BaseVMProvider
 from cloudmesh.ai.vm.exceptions import ProviderFeatureNotSupported
@@ -15,7 +15,7 @@ class MatrixTestBase:
     """
 
     # Master list of capabilities from BaseVMProvider
-    CAPABILITIES = [
+    CAPABILITIES: ClassVar[list[str]] = [
         "start",
         "stop",
         "restart",
