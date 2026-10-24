@@ -1072,8 +1072,14 @@ class OpenstackManager(CloudBaseManager):
             fip = conn.network.find_floating_ip(fip_address)
 
             if fip:
-                # Remove from server
-                conn.compute.remove_floating_ip_from_server(node, fip)
+                try:
+                    # Attempt to remove from server first, but ignore 404/failures
+                    # because some environments (like Chameleon TACC) fail the detach call.
+                    conn.compute.remove_floating_ip_from_server(node, fip)
+                except Exception as detach_e:
+                    from cloudmesh.ai.vm.logger import logger
+                    logger.debug(f"Detach failed (expected on some clouds): {detach_e}")
+
                 # Delete the IP
                 conn.network.delete_floating_ip(fip)
                 return True
