@@ -270,15 +270,9 @@ def test_provider_lifecycle(provider_cfg, tmp_path, ssh_key):
 
     # VM Name generation
     cloud_config = provider.get_cloud_config(provider_cfg.name)
-    image_name = cloud_config.get("image", "")
-
-    if image_name.startswith("CC"):
-        raw_username = "cc"
-    else:
-        raw_username = cloud_config.get("username", "user")
-
+    raw_username = cloud_config.get("username", "user")
     username = raw_username.replace("_", "-")
-    vm_name = f"smoke-lifecycle-{username}-{uuid.uuid4().hex[:6]}"
+    vm_name = f"test-{username}-smoke-{uuid.uuid4().hex[:6]}"
 
     try:
         # 0. Cleanup
