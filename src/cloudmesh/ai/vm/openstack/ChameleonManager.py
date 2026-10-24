@@ -909,10 +909,15 @@ class Provider(CloudBaseManager):
 
         try:
             if isinstance(end_date, datetime):
-                # Handle timezone awareness automatically
-                now = (
-                    datetime.now(end_date.tzinfo) if end_date.tzinfo else datetime.now()
-                )
+                # Ensure we are comparing UTC to UTC
+                # If end_date is naive, assume it is UTC (standard for cloud APIs)
+                # If end_date is aware, convert it to UTC
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=datetime.timezone.utc)
+                else:
+                    end_date = end_date.astimezone(datetime.timezone.utc)
+
+                now = datetime.now(datetime.timezone.utc)
                 ttl = end_date - now
 
                 if ttl.total_seconds() < 0:
