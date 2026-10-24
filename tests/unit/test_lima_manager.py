@@ -29,7 +29,7 @@ def test_init_success():
     with patch.object(Provider, "_run_command") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
         config = {"clouds": {}}
-        p = Provider(config)
+        Provider(config)
         mock_run.assert_called_once_with(["limactl", "--version"])
 
 

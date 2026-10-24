@@ -126,7 +126,7 @@ def test_security_group_current_ip_lookup_failure(runner):
             "cloudmesh.ai.command.vm.security_group.requests.get",
             side_effect=Exception("network unavailable"),
         ),
-        pytest.raises(Exception),
+        pytest.raises(RuntimeError),
     ):
         resolve_cidr("CURRENT_IP")
 

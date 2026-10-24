@@ -23,7 +23,7 @@ assert "lima" in get_provider_classes()
 """
     result = subprocess.run(
         [sys.executable, "-c", script],
-        capture_output=True,
+        check=False, capture_output=True,
         text=True,
         timeout=30,
     )

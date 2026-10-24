@@ -13,17 +13,10 @@ def mock_driver():
 
 @pytest.fixture
 def provider(mock_driver):
-    config = {
-        "clouds": {
-            "test-openstack": {
-                "image": "test-image",
-                "flavor": "test-flavor",
-                "key_path": "~/.ssh/id_rsa",
-                "security_group": "ssh-access",
-                "network": "test-network",
-            }
-        }
-    }
+    return OpenstackManager(
+        {"clouds": {"test-openstack": {}}},
+        cloud_name="test-openstack",
+    )
 
 
 def test_start_uses_configured_key_and_security_group(provider, mock_driver):
@@ -123,7 +116,7 @@ def test_start_prefers_explicit_key_name(provider, mock_driver):
         patch.object(provider, "assign_floating_ip", return_value="1.2.3.4"),
         patch.object(provider, "wait_for_login", return_value=True),
     ):
-        provider.start(name="test-vm")
+        result = provider.start(name="test-vm")
 
     assert result == "vm-123"
 
