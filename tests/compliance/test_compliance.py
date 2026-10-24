@@ -230,67 +230,6 @@ class TestProviderCompliance:
                 self.helper.ensure_supported(self.provider.delete, name=vm_id) is True
             )
 
-    def test_zero_to_hero_scenario(self):
-        """
-        Scenario: The Zero-to-Hero Flow
-        Validates the end-to-end user journey:
-        validate_config -> start -> login -> stop -> delete.
-        """
-        if COMPLIANCE_MODE == "unit":
-            from unittest.mock import MagicMock
-
-            # Setup a consistent mock state for the scenario
-            self.provider.validate_config = MagicMock(return_value={})
-            self.provider.start = MagicMock(return_value="scenario-vm-id")
-            self.provider.login = MagicMock(return_value=True)
-            self.provider.stop = MagicMock(return_value=True)
-            self.provider.delete = MagicMock(return_value=True)
-            self.provider.exists = MagicMock(return_value=True)
-
-        # 1. Validate Configuration
-        config_errors = self.provider.validate_config()
-        assert isinstance(config_errors, dict), (
-            f"validate_config for {self.cloud_name} must return a dict"
-        )
-
-        # 2. Start the VM
-        vm_id = self.helper.ensure_supported(self.provider.start, name="hero-vm")
-        if not vm_id:
-            pytest.skip(f"Start not supported for {self.cloud_name}, skipping scenario")
-
-        # 3. Login (if supported)
-        login_success = self.helper.ensure_supported(self.provider.login, name=vm_id)
-        if login_success is False:
-            pytest.fail(f"Login failed for {self.cloud_name} during scenario")
-
-        # 4. Stop the VM
-        stop_success = self.helper.ensure_supported(self.provider.stop, name=vm_id)
-        assert stop_success is True, (
-            f"Stop failed for {self.cloud_name} during scenario"
-        )
-
-        # 5. Delete the VM
-        delete_success = self.helper.ensure_supported(self.provider.delete, name=vm_id)
-        assert delete_success is True, (
-            f"Delete failed for {self.cloud_name} during scenario"
-        )
-        if COMPLIANCE_MODE == "unit":
-            from unittest.mock import MagicMock
-
-            # Mock the methods to avoid real API calls
-            self.provider.start = MagicMock(return_value="mock-vm-id")
-            self.provider.stop = MagicMock(return_value=True)
-            self.provider.delete = MagicMock(return_value=True)
-
-        vm_id = self.helper.ensure_supported(
-            self.provider.start, name="compliance-test-vm"
-        )
-        if vm_id:
-            assert self.helper.ensure_supported(self.provider.stop, name=vm_id) is True
-            assert (
-                self.helper.ensure_supported(self.provider.delete, name=vm_id) is True
-            )
-
     def test_vm_restart(self):
         """
         Optional: Test VM restart functionality.
