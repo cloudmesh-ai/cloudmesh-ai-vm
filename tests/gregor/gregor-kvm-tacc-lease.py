@@ -120,7 +120,7 @@ for i in range(10):
             print(f"  Port not ready yet, retrying in 3s... ({i + 1}/10)")
             time.sleep(3)
         else:
-            raise e
+            raise
 else:
     raise chi.exception.ResourceError(
         "Timed out waiting for network ports to route Floating IP"

@@ -3,6 +3,8 @@ import os
 
 import openstack
 
+logger = logging.getLogger(__name__)
+
 
 def authenticate_chi_from_cloud(cloud_name: str):
     """
@@ -60,7 +62,7 @@ def authenticate_chi_from_cloud(cloud_name: str):
         )
 
     except Exception as e:
-        logging.error(f"Failed to authenticate using cloud '{cloud_name}': {e}")
+        logger.error(f"Failed to authenticate using cloud '{cloud_name}': {e}")
         raise RuntimeError(
             f"Could not load credentials from clouds.yaml for cloud '{cloud_name}'"
         ) from e

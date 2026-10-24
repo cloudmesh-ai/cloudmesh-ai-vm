@@ -1,3 +1,5 @@
+import sys
+
 from chi import lease
 
 from cloudmesh.ai.vm.providers import get_provider
@@ -9,7 +11,7 @@ try:
     provider._setup_chi_context()
 except Exception as e:
     print(f"Error initializing Chameleon provider: {e}")
-    exit(1)
+    sys.exit(1)
 
 
 def inspect_reservation_details(reservation_id):
