@@ -29,7 +29,7 @@ def test_aws_lifecycle(get_provider):
         assert provider.stop(vm_id) is True
 
         # 4. Delete VM
-        print(f"Deleting AWS VM {vm_ // C_vm_name}...")
+        print(f"Deleting AWS VM {vm_name}...")
         assert provider.delete(vm_id) is True
 
     finally:
