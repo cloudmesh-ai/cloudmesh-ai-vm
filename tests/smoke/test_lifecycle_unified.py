@@ -147,7 +147,10 @@ PROVIDER_CONFIGS = [
     ProviderTestConfig(
         name="jetstream",
         provider_class=OpenstackManager,
-        cloud_config={"image": "Featured-Ubuntu22", "flavor": "m1.small"},
+        cloud_config={
+            "image": "Featured-Ubuntu22",
+            "flavor": config.clouds.jetstream.flavor,
+        },
         running_status="active",
         stopped_status="Stopped",
         connectivity_strategy="run_command",
