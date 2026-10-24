@@ -59,7 +59,7 @@ def get_results_username(config_path: str | None = None) -> str:
 def create_benchmark_payload(benchmark_name: str, user: str = "gregor") -> dict:
 
     # Git info
-    git_info, git_data = get_git_info()
+    _git_info, git_data = get_git_info()
 
     # Example usage:
     # payload = create_benchmark_payload("lima-smoke",
@@ -158,7 +158,7 @@ def save_benchmark(tag, config_path):
 
     # Git info
     git_info, git_data = get_git_info()
-    branch = git_data.get("branch", "unknown-branch")
+    git_data.get("branch", "unknown-branch")
 
     # Date and Time
     now = datetime.now()
@@ -179,7 +179,7 @@ def save_benchmark(tag, config_path):
 
     # Use a timestamp to ensure unique files, but place it before the username/date
     # to ensure the filename ends with -<username>-<date>
-    timestamp = now.strftime("%H%M%S")
+    now.strftime("%H%M%S")
 
     # Format: <safe_tag>-<username>-<date>--<time>
     # This ensures it ends with -<username>-<date>--<time> as requested

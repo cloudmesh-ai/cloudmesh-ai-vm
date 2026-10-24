@@ -1,5 +1,6 @@
 import json
 import re
+import uuid
 
 import pytest
 from click.testing import CliRunner
@@ -28,11 +29,42 @@ def config(tmp_path, runner):
     setup_cli_config(tmp_path, "lima", provider_config)
 
 
-def test_lima_cli_lifecycle(runner, config):
+@pytest.fixture(scope="module")
+def lima_vm_name():
+    """
+    Generates a consistent VM name for the test module to prevent leaking VMs.
+    Format: cloudmesh-lima-<username>-<uuid5>
+    """
+    import yaml
+    import os
+    import uuid
+
+    # Read username from ~/.config/cloudmesh/clouds.yaml under the 'lima' section
+    config_path = os.path.expanduser("~/.config/cloudmesh/clouds.yaml")
+    username = "smoke-user"
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                data = yaml.safe_load(f)
+                # Look for clouds -> lima -> username
+                username = data.get("clouds", {}).get("lima", {}).get("username", "smoke-user")
+    except Exception:
+        pass
+
+    # Use a consistent short UUID for the session
+    short_uuid = str(uuid.uuid4())[:5]
+    return f"cloudmesh-lima-{username}-{short_uuid}"
+
+
+def test_lima_cli_lifecycle(runner, config, lima_vm_name):
     """
     Smoke test for Lima CLI lifecycle.
     """
     env = {"OS_CLOUD": "lima"}
+    vm_name = lima_vm_name
+
+    # Pre-cleanup: Ensure no stale VM exists with this name
+    runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
 
     # 1. providers
     with StopWatch.timer("lima_provider_list"):
@@ -47,16 +79,11 @@ def test_lima_cli_lifecycle(runner, config):
     StopWatch.status("lima_provider_set", result.exit_code == 0)
     assert result.exit_code == 0
 
-    # 3. start (without name - test auto-naming)
+    # 3. start (with specific name to prevent leaks)
     with StopWatch.timer("lima_start"):
-        result = runner.invoke(vm.vm_group, ["start"], env=env)
+        result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
     StopWatch.status("lima_start", result.exit_code == 0)
     output = Text.from_ansi(result.output).plain
-
-    # Identify the generated VM without guessing a fallback name.
-    match = re.search(r"Generating VM name:\s*([\w-]+)", output)
-    assert match, f"Could not determine generated VM name: {output}"
-    vm_name = match.group(1)
 
     try:
         assert result.exit_code == 0, f"Lima start failed: {output}"
@@ -68,7 +95,7 @@ def test_lima_cli_lifecycle(runner, config):
         StopWatch.status("lima_list", result.exit_code == 0)
         assert result.exit_code == 0
         plain_output = Text.from_ansi(result.output).plain
-        assert vm_name[:12] in plain_output or "smoke-test-" in plain_output
+        assert vm_name in plain_output
 
         # 5. run
         with StopWatch.timer("lima_run"):
