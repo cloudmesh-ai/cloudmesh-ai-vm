@@ -35,6 +35,12 @@ pip install -e .
 
 Configure your credentials in `~/.config/cloudmesh/clouds.yaml`. See the [Configuration Guide](docs/configuration.md) for details.
 
+- **Container Management**: Full architectural symmetry with VM management for Docker containers.
+    - **Lifecycle**: Start, stop, restart, suspend (pause), resume (unpause), and delete containers.
+    - **Image Management**: Pull Docker images and list available images.
+    - **Networking**: Retrieve and list IP addresses for all running containers.
+    - **Direct Execution**: Run custom commands directly inside containers during startup.
+
 ### 3. Basic Usage
 
 ```bash
@@ -64,6 +70,7 @@ cmx vm start --cloud aws
 
 # List all VMs for current cloud
 cmx vm list
+\n# Docker Container Management\n\n```bash\n# Run a container with a custom command (to keep it alive)\ncmx container run --name my-cont --image alpine sleep 3600\n\n# List running containers\ncmx container list\n\n# Get container info\ncmx container info my-cont\n\n# List IPs of all running containers\ncmx container ip list\n\n# Lifecycle management\ncmx container restart my-cont\ncmx container suspend pause my-cont\ncmx container suspend resume my-cont\n\n# Image management\ncmx container image pull alpine:latest\ncmx container image list\n\n# Stop and delete\ncmx container stop my-cont\ncmx container delete my-cont\n```\n
 
 # Manage SSH keys (Scan local, verify GitHub, or upload to GitHub)
 cmx key scan
