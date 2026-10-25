@@ -181,6 +181,13 @@ class OpenstackManager(CloudBaseManager):
 
             # Wait for the VM to actually be ACTIVE before proceeding to IP assignment
             if not self.wait_for_active(vm_name):
+                try:
+                    conn.compute.delete_server(server)
+                except Exception:
+                    logger.error(
+                        "Failed to clean up VM %s after activation failure.",
+                        vm_name,
+                    )
                 raise VMProviderError(
                     f"VM {vm_name} failed to become ACTIVE. Aborting start."
                 )
@@ -206,14 +213,16 @@ class OpenstackManager(CloudBaseManager):
                     )
 
             return server.name
+        except VMProviderError:
+            raise
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
             logger.error(
-                f"SDK start failed for {self.cloud_name} with key_name '{key_name}': {e}"
+                "SDK start failed for cloud %s.", self.cloud_name
             )
             raise VMProviderError(
-                f"SDK start failed for {self.cloud_name} (key_name: {key_name}): {e}"
+                f"SDK start failed for cloud {self.cloud_name}."
             ) from e
 
     def wait_for_active(self, name: str, timeout: int = 300) -> bool:
@@ -327,8 +336,10 @@ class OpenstackManager(CloudBaseManager):
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
-            logger.error(f"SDK stop failed for {name}: {e}")
-            raise VMProviderError(f"SDK stop failed for {name}: {e}") from e
+            logger.error("SDK stop failed for VM %s.", name)
+            raise VMProviderError(
+                f"SDK stop failed for VM {name}."
+            ) from e
 
     def shelve(self, name: str | None = None) -> bool:
         """Shelves an OpenStack VM (preserves disk, releases compute resources)."""
@@ -372,8 +383,26 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"VM {name} not found in {self.cloud_name}")
             return False
         try:
-            # Release floating IP before deleting the VM
-            self.release_floating_ip(name)
+            # Attempt floating-IP cleanup, but do not let an exception
+            # prevent deletion of the VM itself.
+            try:
+                released = self.release_floating_ip(name)
+                if not released:
+                    from cloudmesh.ai.vm.logger import logger
+
+                    logger.warning(
+                        "Floating IP was not released for VM %s "
+                        "(it may have no floating IP); continuing with deletion.",
+                        name,
+                    )
+            except Exception:
+                from cloudmesh.ai.vm.logger import logger
+
+                logger.error(
+                    "Floating IP cleanup failed for VM %s; "
+                    "continuing with server deletion.",
+                    name,
+                )
 
             conn = self._get_sdk_conn()
             server = self._find_node(name)
@@ -384,8 +413,10 @@ class OpenstackManager(CloudBaseManager):
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
-            logger.error(f"SDK delete failed for {name}: {e}")
-            raise VMProviderError(f"SDK delete failed for {name}: {e}") from e
+            logger.error("SDK delete failed for VM %s.", name)
+            raise VMProviderError(
+                f"SDK delete failed for VM {name}."
+            ) from e
 
     def list(self) -> list[dict[str, Any]]:
         """Lists all OpenStack VMs with their reachable IP addresses using the SDK."""
@@ -819,10 +850,13 @@ class OpenstackManager(CloudBaseManager):
             conn = self._get_sdk_conn()
             conn.compute.create_keypair(name=key_name, public_key=pub_key)
             return True
-        except Exception as e:
+        except Exception:
             from cloudmesh.ai.vm.logger import logger
 
-            logger.error(f"Error uploading key {key_name}: {e}")
+            logger.error(
+                "Failed to upload SSH key %s to OpenStack.",
+                key_name,
+            )
             return False
 
     def delete_key(self, key_name: str, vm_name: str | None = None) -> bool:
@@ -833,10 +867,13 @@ class OpenstackManager(CloudBaseManager):
             conn = self._get_sdk_conn()
             conn.compute.delete_keypair(key_name)
             return True
-        except Exception as e:
+        except Exception:
             from cloudmesh.ai.vm.logger import logger
 
-            logger.error(f"Error deleting key {key_name}: {e}")
+            logger.error(
+                "Failed to delete SSH key %s from OpenStack.",
+                key_name,
+            )
             return False
 
     def _get_default_network(self) -> str | None:
@@ -1078,7 +1115,7 @@ class OpenstackManager(CloudBaseManager):
                     conn.compute.remove_floating_ip_from_server(node, fip)
                 except Exception as detach_e:
                     from cloudmesh.ai.vm.logger import logger
-                    logger.debug(f"Detach failed (expected on some clouds): {detach_e}")
+                    logger.debug("Floating IP detach failed (expected on some clouds).")
 
                 # Delete the IP
                 conn.network.delete_floating_ip(fip)
@@ -1088,7 +1125,7 @@ class OpenstackManager(CloudBaseManager):
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
-            logger.error(f"Error releasing floating IP for {name}: {e}")
+            logger.error("Error releasing floating IP for VM %s.", name)
             return False
 
     def run_command(self, name: str, cmd: str) -> str:
@@ -1124,12 +1161,12 @@ class OpenstackManager(CloudBaseManager):
             result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
 
             if result.returncode != 0:
-                return f"SSH Error (code {result.returncode}): {result.stderr}"
+                return f"SSH Error (code {result.returncode}): Command execution failed."
 
             return result.stdout.strip()
 
-        except Exception as e:
-            return f"Unexpected error executing command: {e}"
+        except Exception:
+            return "SSH Error: Unable to execute command."
 
     def validate_config(self) -> dict[str, builtins.list[str]]:
         """
