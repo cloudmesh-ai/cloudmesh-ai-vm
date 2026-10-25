@@ -17,36 +17,40 @@ from tests.smoke.cli_helper import setup_cli_config
 def runner():
     return CliRunner()
 
-
-#
-# THIS FIXTURE IS WRONG IT should be read from
-# ~/.config/cloudmesh/clouds.yaml
-# authis read from ~/.config/openstack/clouds.yaml
-#
 @pytest.fixture
 def config(tmp_path, runner):
-    provider_config = {
-        "image": "CC-Ubuntu24.04",
-        "flavor": "m1.small",
-        "key_path": "~/.ssh/id_rsa",
-    }
-    setup_cli_config(tmp_path, "jetstream", provider_config)
-
-    # Read username from clouds.yaml
+    # Read the actual user configuration
     config_path = os.path.expanduser("~/.config/cloudmesh/clouds.yaml")
     try:
         with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-            username = config.get("username", "user").replace("_", "-")
+            full_config = yaml.safe_load(f)
+            # Extract jetstream specific config
+            provider_config = full_config.get("clouds", {}).get("jetstream", {})
+            username = full_config.get("username", "smoke-user").replace("_", "-")
     except Exception:
-        username = "smoke-test-user"
+        # Fallback defaults if file is missing or corrupted
+        provider_config = {
+            "image": "ubuntu-22.04",
+            "flavor": "m1.small",
+        }
+        username = "smoke-user"
 
-    # Construct vm_name matching the requested pattern
+    # Ensure we have a key_path for the test
+    if "key_path" not in provider_config:
+        provider_config["key_path"] = "~/.ssh/id_rsa"
+
+    # Create a temporary config for the test that mirrors the real one
+    setup_cli_config(tmp_path, "jetstream", provider_config)
+
+    # Add username to provider_config so it's available in tests
+    provider_config["username"] = username
+
+    # Construct a unique vm_name based on the actual username
     vm_name = f"{username}-{uuid.uuid4().hex[:4]}"
     provider_config["vm_name"] = vm_name
 
     pprint(provider_config)
-
+    return provider_config
 
 def test_jetstream_cli_lifecycle(runner, config):
     """
@@ -72,23 +76,20 @@ def test_jetstream_cli_lifecycle(runner, config):
     assert "Generating VM name" in output
 
     # Extract the generated VM name
-    match = re.search(r"Successfully started VM ([\w-]+)", result.output)
+    # The output can be "Generating VM name: name" or "Successfully started VM name"
+    match = re.search(r"(?:Generating VM name: |Successfully started VM )([\w-]+)", result.output)
     if match:
         vm_name = match.group(1)
     else:
-        # Fallback for different output formats
-        vm_name = "smoke-jetstream-vm"
+        pytest.fail(f"Could not extract VM name from output: {result.output}")
 
     try:
-        # 4. list
         # 4. list
         result = runner.invoke(vm.vm_group, ["list"])
         assert result.exit_code == 0
 
-        # Extract the base prefix (e.g., 'smoke-chameleon-vm' or whatever your prefix is)
-        # to avoid truncation issues entirely.
-        base_prefix = vm_name.rsplit("-", 1)[0]
-        assert base_prefix in result.output
+        # Check if the actual started VM name is in the list
+        assert vm_name in result.output
 
         # 5. stop
         result = runner.invoke(vm.vm_group, ["stop", vm_name])
@@ -149,7 +150,9 @@ def test_jetstream_cli_start_with_name(runner, config):
     """
     Test starting a Jetstream VM with a specific name.
     """
-    vm_name = "test-named-jetstream-vm"
+    # Use the username from config to make the named VM unique to the user
+    username = config.get("username", "smoke-user")
+    vm_name = f"test-named-{username}-jetstream-vm"
     runner.invoke(vm.vm_group, ["delete", vm_name])
 
     result = runner.invoke(vm.vm_group, ["start", vm_name])

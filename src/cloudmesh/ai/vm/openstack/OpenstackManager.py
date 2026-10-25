@@ -1003,7 +1003,7 @@ class OpenstackManager(CloudBaseManager):
             if not fip:
                 # 2. Fallback: Try to find an existing FREE floating IP
                 logger.debug("Attempting to find an existing FREE floating IP...")
-                all_fips = conn.network.floating_ips()
+                all_fips = list(conn.network.ips())
                 # In SDK, a floating IP is free if it's not associated with a port (fixed_ip is None/missing)
                 free_fips = [f for f in all_fips if not getattr(f, "fixed_ip", None)]
                 if free_fips:
