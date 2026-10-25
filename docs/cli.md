@@ -8,6 +8,8 @@ The `cmx` tool provides a consistent interface for managing VMs across all suppo
 cmx vm <command> [options]
 cmx key <command> [options]
 ```
+cmx container <command> [options]
+
 
 ## Global Options
 
@@ -249,3 +251,4 @@ Manage the VM CLI configuration stored in `~/.config/cloudmesh/clouds.yaml`.
 - **Examples**:
   - `cmx vm config list`
   - `cmx vm config set default_cloud multipass`
+\n## Container Management\n\nThe `container` group provides architectural symmetry with the `vm` group, allowing for the management of Docker containers using a consistent interface.\n\n### 1. Lifecycle\n\n#### `run`\n\nCreates and starts a new Docker container.\n\n- **Options**:\n  - `--name <name>`: (Optional) Custom name for the container.\n  - `--image <image>`: (Optional) Docker image to use. Defaults to `ubuntu:latest` or the value in `clouds.yaml`.\n  - `--dockerfile <path>`: (Optional) Path to a Dockerfile to build the image from.\n  - `--network <network>`: (Optional) Docker network to attach the container to.\n  - `[CMD]`: (Optional) Command to run inside the container.\n- **Examples**:\n  - Default: `cmx container run`\n  - Custom Image & Command: `cmx container run --name my-app --image alpine sleep 3600`\n\n#### `stop`\n\nStops a running container.\n\n- **Usage**: `cmx container stop <name>`\n- **Example**: `cmx container stop my-app`\n\n#### `restart`\n\nRestarts a container.\n\n- **Usage**: `cmx container restart <name>`\n- **Example**: `cmx container restart my-app`\n\n#### `suspend`\n\nManages the pause/resume state of a container.\n\n- **Subcommands**:\n  - `pause <name>`: Pauses the container.\n  - `resume <name>`: Resumes a paused container.\n- **Examples**:\n  - `cmx container suspend pause my-app`\n  - `cmx container suspend resume my-app`\n\n#### `delete`\n\nPermanently removes a container.\n\n- **Usage**: `cmx container delete <name>`\n- **Example**: `cmx container delete my-app`\n\n### 2. Inspection & Image Management\n\n#### `list`\n\nLists all Docker containers (running and stopped).\n\n- **Usage**: `cmx container list`\n\n#### `info`\n\nDisplays detailed information about a specific container.\n\n- **Usage**: `cmx container info <name>`\n\n#### `ip`\n\nManages and retrieves IP addresses for containers.\n\n- **Subcommands**:\n  - `list`: Lists IP addresses for all running containers.\n- **Example**: `cmx container ip list`\n\n#### `image`\n\nManage Docker images.\n\n- **Subcommands**:\n  - `pull <image>`: Pulls an image from a registry.\n  - `list`: Lists all local Docker images.\n- **Examples**:\n  - `cmx container image pull alpine:latest`\n  - `cmx container image list`\n\n### 3. Access\n\n#### `login`\n\nProvides access to the container (implementation varies by manager).\n\n- **Usage**: `cmx container login <name>`\n
