@@ -250,3 +250,4 @@ release_*.log
 cache-username.yaml
 .DS_Storetests/standalone/python-chi/
 a.txt
+results/
