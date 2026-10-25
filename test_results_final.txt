@@ -1,0 +1,137 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /Users/grey/work/cloudmesh-ai-vm/ENVX/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/grey/work/cloudmesh-ai-vm
+configfile: pyproject.toml
+plugins: platformdirs-4.13.0, anyio-4.15.1
+collecting ... collected 2 items
+
+tests/smoke/test-lima-cli.py::test_lima_cli_lifecycle Benchmark saved to /Users/grey/work/cloudmesh-ai-vm/results/smoke/lima-cli-gregor-2026-10-24--23-02.txt and /Users/grey/work/cloudmesh-ai-vm/results/smoke/lima-cli-gregor-2026-10-24--23-02.json
+{
+  "experiment": {
+    "benchmark": "Lima CLI",
+    "date": "2026-10-24T23:02:50.194020",
+    "user": "gregor",
+    "branch": "main",
+    "commit": "ae4a7d9f2f9a1aba95be04a9e6295f0d1a9f3d2e"
+  },
+  "system": {
+    "platform": {
+      "system": "Darwin",
+      "release": "25.6.0",
+      "version": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000",
+      "machine": "arm64",
+      "processor": "arm",
+      "node": "MacBookPro",
+      "platform_version": "26.6.2",
+      "sys_platform": "darwin",
+      "python": "3.14.4 (main, Apr 14 2026, 14:46:33) [Clang 22.1.3 ]",
+      "python_version": "3.14.4",
+      "python_pip": null
+    }
+  },
+  "timers": [
+    {
+      "name": "lima_provider_list",
+      "status": "ok",
+      "time": 0.0052,
+      "sum": 0.0052,
+      "msg": null
+    },
+    {
+      "name": "lima_provider_set",
+      "status": "ok",
+      "time": 0.0028,
+      "sum": 0.0028,
+      "msg": null
+    },
+    {
+      "name": "lima_start",
+      "status": "failed",
+      "time": 0.085,
+      "sum": 0.085,
+      "msg": null
+    }
+  ]
+}
+FAILED
+tests/smoke/test-lima-cli.py::test_lima_cli_start_with_name FAILED
+
+=================================== FAILURES ===================================
+___________________________ test_lima_cli_lifecycle ____________________________
+
+runner = <click.testing.CliRunner object at 0x10e4e5160>, config = None
+lima_vm_name = 'cloudmesh-lima-lima-gregor-e784f'
+
+    def test_lima_cli_lifecycle(runner, config, lima_vm_name):
+        """
+        Smoke test for Lima CLI lifecycle.
+        """
+        env = {"OS_CLOUD": "lima"}
+        vm_name = lima_vm_name
+    
+        # Pre-cleanup: Ensure no stale VM exists with this name
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+    
+        # 1. providers
+        with StopWatch.timer("lima_provider_list"):
+            result = runner.invoke(vm.vm_group, ["provider", "list"], env=env)
+        StopWatch.status("lima_provider_list", result.exit_code == 0)
+        assert result.exit_code == 0
+        assert "lima" in result.output.lower()
+    
+        # 2. set
+        with StopWatch.timer("lima_provider_set"):
+            result = runner.invoke(vm.vm_group, ["provider", "set", "lima"], env=env)
+        StopWatch.status("lima_provider_set", result.exit_code == 0)
+        assert result.exit_code == 0
+    
+        # 3. start (with specific name to prevent leaks)
+        with StopWatch.timer("lima_start"):
+            result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
+        StopWatch.status("lima_start", result.exit_code == 0)
+        output = Text.from_ansi(result.output).plain
+    
+        try:
+>           assert result.exit_code == 0, f"Lima start failed: {output}"
+E           AssertionError: Lima start failed: Running on cloud: lima
+E             Unexpected Error: string indices must be integers, not 'str'
+E             Aborted!
+E             
+E           assert 1 == 0
+E            +  where 1 = <Result SystemExit(1)>.exit_code
+
+tests/smoke/test-lima-cli.py:89: AssertionError
+________________________ test_lima_cli_start_with_name _________________________
+
+runner = <click.testing.CliRunner object at 0x10e5c1e50>, config = None
+
+    def test_lima_cli_start_with_name(runner, config):
+        """
+        Test starting a Lima VM with a specific name.
+        """
+        vm_name = "test-named-lima-vm"
+        env = {"OS_CLOUD": "lima"}
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+    
+        try:
+            result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
+>           assert result.exit_code == 0, f"Lima named VM start failed: {result.output}"
+E           AssertionError: Lima named VM start failed: Running on cloud: lima
+E             Unexpected Error: string indices must be integers, not 'str'
+E             Aborted!
+E             
+E           assert 1 == 0
+E            +  where 1 = <Result SystemExit(1)>.exit_code
+
+tests/smoke/test-lima-cli.py:182: AssertionError
+=============================== warnings summary ===============================
+ENVX/lib/python3.14/site-packages/bqscales/traits.py:56
+  /Users/grey/work/cloudmesh-ai-vm/ENVX/lib/python3.14/site-packages/bqscales/traits.py:56: DeprecationWarning: metadata {'args': (None,)} was set from the constructor. With traitlets 4.1, metadata should be set using the .tag() method, e.g., Int().tag(key1='value1', key2='value2')
+    super(Date, self).__init__(args=args, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/smoke/test-lima-cli.py::test_lima_cli_lifecycle - AssertionError...
+FAILED tests/smoke/test-lima-cli.py::test_lima_cli_start_with_name - Assertio...
+========================= 2 failed, 1 warning in 1.75s =========================

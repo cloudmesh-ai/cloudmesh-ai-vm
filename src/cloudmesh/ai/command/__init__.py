@@ -71,6 +71,7 @@ def cmx() -> None:
 def init_cmx():
     from .key import key_group
     from .vm import vm_group
+    from .container import container_group\n    cmx.add_command(container_group, name="container")\n
 
     cmx.add_command(vm_group, name="vm")
     cmx.add_command(key_group, name="key")
