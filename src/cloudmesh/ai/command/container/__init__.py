@@ -40,11 +40,17 @@ def container_group(ctx: click.Context) -> None:
 
 # Commands will be loaded here
 def load_container_commands():
-    from . import delete, info, list, run, stop
+    from . import delete, info, list, run, stop, security_group, login, image, ip, restart, suspend
     container_group.add_command(list.list_containers, name="list")
     container_group.add_command(run.run_container, name="run")
     container_group.add_command(stop.stop_container, name="stop")
     container_group.add_command(delete.delete_container, name="delete")
     container_group.add_command(info.info_container, name="info")
+    container_group.add_command(security_group.security_group, name="security-group")
+    container_group.add_command(login.login_container, name="login")
+    container_group.add_command(image.image, name="image")
+    container_group.add_command(ip.ip, name="ip")
+    container_group.add_command(restart.restart_container, name="restart")
+    container_group.add_command(suspend.suspend, name="suspend")
 
 load_container_commands()
