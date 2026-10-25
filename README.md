@@ -158,10 +158,29 @@ The project uses a tiered testing strategy to ensure stability across multiple c
 - `tests/unit`: **Unit Tests**. High-isolation tests that use mocks to verify internal logic and CLI behavior without requiring external infrastructure.
 - `tests/integration`: **Integration Tests**. End-to-end tests that perform real operations against actual cloud infrastructure.
 - `tests/compliance`: **Compliance Suite**. Ensures every provider implements a consistent interface and meets the minimum functional baseline. Includes "Scenario Tests" for end-to-end user flows.
-- `tests/smoke`: **Smoke Tests**. Quick, high-level checks to verify that the CLI and providers load and execute basic commands without crashing.
-- `tests/bin`: Utility scripts and helper binaries used by the test suite.
+### Running Smoke Tests
 
-### Running Compliance Tests
+Smoke tests are quick, high-level checks to verify that the CLI and providers load and execute basic commands without crashing.
+
+```bash
+# Run all smoke tests
+PYTHONPATH=. pytest tests/smoke
+```
+
+#### Benchmark Results
+Smoke tests automatically capture performance benchmarks (timers) and system information. These results are stored in a centralized repository for tracking improvements across different environments and users.
+
+**Requirements:**
+To save results, you must have the results repository cloned locally at the project root's sibling directory:
+```bash
+git clone git@github.com:cloudmesh/cloudmesh-ai-vm-results.git ..
+```
+
+**Storage Path:**
+Results are saved as `.txt` and `.json` files in the following structure:
+`../cloudmesh-ai-vm-results/<username>/smoke/`
+
+The `username` is retrieved from your `~/.config/cloudmesh/clouds.yaml` configuration file.
 
 Tests can be run in two modes:
 
