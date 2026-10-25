@@ -76,12 +76,13 @@ def test_jetstream_cli_lifecycle(runner, config):
     assert "Generating VM name" in output
 
     # Extract the generated VM name
-    # The output can be "Generating VM name: name" or "Successfully started VM name"
-    match = re.search(r"(?:Generating VM name: |Successfully started VM )([\w-]+)", result.output)
+    # The output contains ANSI escape codes, so we search in the plain text version
+    plain_output = Text.from_ansi(result.output).plain
+    match = re.search(r"(?:Generating VM name: |Successfully started VM )([\w-]+)", plain_output)
     if match:
         vm_name = match.group(1)
     else:
-        pytest.fail(f"Could not extract VM name from output: {result.output}")
+        pytest.fail(f"Could not extract VM name from output: {plain_output}")
 
     try:
         # 4. list
