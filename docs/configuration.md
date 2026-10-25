@@ -30,6 +30,10 @@ clouds:
     memory: 2048
     cpus: 1
 
+  docker:
+    image: ubuntu:latest  # Default image for 'cmx container run'
+    network: bridge       # Default network to attach containers to
+
   # --- OpenStack Providers ---
   jetstream:
     flavour: m1.small
@@ -70,6 +74,10 @@ clouds:
 ## Field Descriptions
 
 ### Global Fields
+
+- `docker`: Local Docker container management.
+    - `image`: The default Docker image to use when running `cmx container run` without specifying an image.
+    - `network`: The default Docker network to attach containers to.
 
 - `username`: Used as a prefix for automatically generated VM names (e.g., `gregor-0`). Underscores in the username are automatically replaced with hyphens to ensure compatibility with cloud providers.
 - `counter`: Tracks the number of VMs started. Incremented automatically on every `cmx vm start` without a name.
