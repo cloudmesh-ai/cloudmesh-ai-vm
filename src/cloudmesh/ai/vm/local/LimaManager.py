@@ -1,6 +1,6 @@
 import builtins
 import os
-import re
+import subprocess
 from typing import Any
 
 from cloudmesh.ai.vm.exceptions import (
@@ -26,7 +26,7 @@ class Provider(LocalBaseManager):
         """Ensure limactl is installed on the system."""
         try:
             self._run_command(["limactl", "--version"])
-        except Exception:
+        except (subprocess.CalledProcessError, OSError):
             raise VMProviderError(
                 "limactl not found. Please install Lima (brew install lima) to use this provider."
             )
@@ -76,7 +76,7 @@ class Provider(LocalBaseManager):
 
         try:
             self._run_command(command, stream=True)
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError) as e:
             raise VMProviderError(f"Failed to start Lima VM {vm_name}: {e}")
         return vm_name
 
@@ -88,14 +88,40 @@ class Provider(LocalBaseManager):
         try:
             self._run_command(["limactl", "stop", name])
             return True
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError) as e:
             raise VMProviderError(f"Failed to stop Lima VM {name}: {e}")
+
+    def login(self, name: str | None = None) -> bool:
+        """Open a shell in a Lima VM."""
+        if not name or not self.exists(name):
+            self.print(f"Error: VM {name} not found.")
+            return False
+
+        try:
+            self._run_command(["limactl", "shell", name])
+            return True
+        except (subprocess.CalledProcessError, OSError) as e:
+            self.print(f"Error logging into Lima VM {name}: {e}")
+            return False
+
+    def restart(self, name: str | None = None) -> bool:
+        """Restart a Lima VM."""
+        if not name or not self.exists(name):
+            return False
+
+        try:
+            self.stop(name)
+            self._run_command(["limactl", "start", name])
+            return True
+        except (subprocess.CalledProcessError, OSError, VMProviderError) as e:
+            self.print(f"Error restarting Lima VM {name}: {e}")
+            return False
 
     def delete(self, name: str | None = None) -> bool:
         """Deletes a Lima VM."""
         if not name:
             raise VMResourceError("No VM name provided for deletion.")
-        
+
         if not self.exists(name):
             # Silently return True if the VM doesn't exist to make pre-cleanup idempotent
             return True
@@ -104,20 +130,60 @@ class Provider(LocalBaseManager):
             # limactl delete usually requires confirmation, use -f for force
             self._run_command(["limactl", "delete", "-f", name], stream=True)
             return True
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError) as e:
             raise VMProviderError(f"Failed to delete Lima VM {name}: {e}")
 
     def list(self) -> list[dict[str, Any]]:
-        """Lists Lima VMs."""
+        """List Lima VMs, supporting JSON and legacy table output."""
+        import json
+
         try:
-            result = self._run_command(["limactl", "list", "-f", "json"], stream=False)
-            import json
-            data = json.loads(result.stdout)
-            # limactl list -f json returns a list of dicts. Ensure it's a list.
+            result = self._run_command(
+                ["limactl", "list", "-f", "json"],
+                stream=False,
+            )
+            output = result.stdout.strip()
+            if not output:
+                return []
+
+            try:
+                data = json.loads(output)
+            except json.JSONDecodeError:
+                # Fall back to the standard table output when JSON is
+                # unavailable or a command wrapper returns non-JSON output.
+                result = self._run_command(["limactl", "list"], stream=False)
+                output = result.stdout.strip()
+                if not output:
+                    return []
+                try:
+                    data = json.loads(output)
+                except json.JSONDecodeError:
+                    data = None
+
             if isinstance(data, list):
-                return data
-            return [data] if data else []
-        except Exception:
+                return [vm for vm in data if isinstance(vm, dict)]
+            if isinstance(data, dict):
+                return [data] if data else []
+
+            # Compatibility with table output used by older Lima versions
+            # and existing tests.
+            lines = output.splitlines()
+            if not lines:
+                return []
+
+            header = lines[0].split()
+            if not header or header[0].upper() != "NAME":
+                return []
+
+            vms = []
+            for line in lines[1:]:
+                fields = line.split(None, len(header) - 1)
+                if len(fields) != len(header):
+                    continue
+                vm = dict(zip((key.lower() for key in header), fields))
+                vms.append(vm)
+            return vms
+        except (subprocess.CalledProcessError, OSError):
             return []
 
     def exists(self, name: str) -> bool:
@@ -132,10 +198,41 @@ class Provider(LocalBaseManager):
     def run(self, name: str, command: str, **kwargs) -> str:
         """Runs a command in a Lima VM."""
         try:
-            result = self._run_command(["limactl", "shell", name, command], stream=False)
+            result = self._run_command(
+                ["limactl", "shell", name, command], stream=False
+            )
             return result.stdout
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError) as e:
             raise VMProviderError(f"Failed to run command in Lima VM {name}: {e}")
+
+    def run_command(self, name: str, cmd: str) -> str:
+        """Execute a command inside a Lima VM."""
+        return self.run(name, cmd)
+
+    def get_images(self, **kwargs) -> list[dict[str, Any]]:
+        """List available Lima templates as VM image choices."""
+        try:
+            result = self._run_command(
+                ["limactl", "create", "--list-templates"],
+                stream=False,
+            )
+            return [
+                {"name": name, "id": f"template:{name}"}
+                for name in result.stdout.splitlines()
+                if name.strip()
+            ]
+        except (subprocess.CalledProcessError, OSError) as e:
+            raise VMProviderError(f"Failed to list Lima templates: {e}") from e
+
+    def get_flavors(self, **kwargs) -> list[dict[str, Any]]:
+        """Describe Lima's configurable VM resource profile."""
+        return [
+            {
+                "name": "default",
+                "cpu": "Configurable",
+                "ram": "Configurable",
+            }
+        ]
 
     def get_ssh_config(self, name: str) -> str | None:
         """Generates the SSH config for a Lima VM using limactl show-ssh."""
@@ -155,8 +252,93 @@ class Provider(LocalBaseManager):
                     return result.stdout.strip()
                 time.sleep(5)
             return None
-        except Exception:
+        except (subprocess.CalledProcessError, OSError):
             return None
+
+    def upload_key(
+        self, key_path: str, key_name: str, vm_name: str | None = None
+    ) -> bool:
+        """Upload a public SSH key to a Lima VM's authorized_keys."""
+        if not vm_name:
+            self.print("Error: upload_key requires a vm_name for Lima.")
+            return False
+
+        try:
+            key_file = os.path.expanduser(key_path)
+            if not os.path.isfile(key_file):
+                self.print(f"Error: Key file not found: {key_file}")
+                return False
+
+            with open(key_file, encoding="utf-8") as file:
+                public_key = file.read().strip()
+
+            if not public_key or "\n" in public_key or "\r" in public_key:
+                self.print("Error: Invalid public key file.")
+                return False
+
+            import shlex
+
+            entry = f"{public_key} # {key_name}"
+            script = (
+                "mkdir -p ~/.ssh && chmod 700 ~/.ssh && "
+                "touch ~/.ssh/authorized_keys && "
+                f"printf '%s\\n' {shlex.quote(entry)} "
+                ">> ~/.ssh/authorized_keys && "
+                "chmod 600 ~/.ssh/authorized_keys"
+            )
+            self._run_command(
+                ["limactl", "shell", vm_name, "sh", "-c", script],
+                stream=False,
+            )
+            self.print(f"Successfully uploaded key {key_name} to VM {vm_name}")
+            return True
+        except (subprocess.CalledProcessError, OSError) as e:
+            self.print(f"Error uploading key to {vm_name}: {e}")
+            return False
+
+    def delete_key(self, key_name: str, vm_name: str | None = None) -> bool:
+        """Delete a named public SSH key from a Lima VM."""
+        if not vm_name:
+            self.print("Error: delete_key requires a vm_name for Lima.")
+            return False
+
+        if not key_name or "\n" in key_name or "\r" in key_name:
+            self.print("Error: Invalid SSH key name.")
+            return False
+
+        try:
+            import shlex
+
+            suffix = f" # {key_name}"
+            script = (
+                "if [ -f ~/.ssh/authorized_keys ]; then "
+                "tmp=$(mktemp) || exit 1; "
+                "awk -v suffix="
+                f"{shlex.quote(suffix)} "
+                "'{ if (length($0) < length(suffix) || "
+                "substr($0, length($0)-length(suffix)+1) != suffix) "
+                'print }\' ~/.ssh/authorized_keys > "$tmp" && '
+                'cat "$tmp" > ~/.ssh/authorized_keys; '
+                'result=$?; rm -f "$tmp"; exit "$result"; '
+                "fi"
+            )
+            self._run_command(
+                ["limactl", "shell", vm_name, "sh", "-c", script],
+                stream=False,
+            )
+            self.print(f"Successfully deleted key {key_name} from VM {vm_name}")
+            return True
+        except (subprocess.CalledProcessError, OSError) as e:
+            self.print(f"Error deleting key from {vm_name}: {e}")
+            return False
+
+    def get_keys(self) -> list[dict[str, Any]]:
+        """Return Lima's SSH key metadata."""
+        return [{"name": "lima-ssh-key", "path": "~/.ssh/id_rsa"}]
+
+    def get_security_groups(self) -> list[dict[str, Any]]:
+        """Return Lima's local networking metadata."""
+        return [{"name": "default", "description": "Local port forwarding"}]
 
     def check_requirements(self) -> bool:
         """
@@ -232,7 +414,9 @@ class Provider(LocalBaseManager):
 
         while time.time() - start_time < timeout:
             vms = self.list()
-            vm = next((v for v in vms if isinstance(v, dict) and v.get("name") == name), None)
+            vm = next(
+                (v for v in vms if isinstance(v, dict) and v.get("name") == name), None
+            )
             if vm:
                 # Lima's list() returns lower-case keys. We normalize status.
                 current_status = vm.get("status", "").lower()

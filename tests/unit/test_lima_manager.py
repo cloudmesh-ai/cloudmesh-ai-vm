@@ -35,7 +35,7 @@ def test_init_success():
 
 def test_init_failure():
     with patch.object(Provider, "_run_command") as mock_run:
-        mock_run.side_effect = Exception("limactl not found")
+        mock_run.side_effect = FileNotFoundError("limactl not found")
         config = {"clouds": {}}
         with pytest.raises(VMProviderError, match="limactl not found"):
             Provider(config)
@@ -153,3 +153,97 @@ def test_getters(provider):
     sgs = provider.get_security_groups()
     assert len(sgs) == 1
     assert sgs[0]["name"] == "default"
+
+
+def test_run_command(provider):
+    """Verify CLI remote execution delegates to Lima correctly."""
+    provider._run_command.return_value = MagicMock(returncode=0, stdout="test-vm\n")
+
+    result = provider.run_command("test-vm", "hostname")
+
+    assert result == "test-vm\n"
+    provider._run_command.assert_called_once_with(
+        ["limactl", "shell", "test-vm", "hostname"],
+        stream=False,
+    )
+
+
+def test_get_images(provider):
+    """Verify Lima templates are exposed through the image interface."""
+    provider._run_command.return_value = MagicMock(
+        returncode=0,
+        stdout="ubuntu\ndebian-12\nexperimental/ubuntu-26.10\n",
+    )
+
+    images = provider.get_images()
+
+    assert images == [
+        {"name": "ubuntu", "id": "template:ubuntu"},
+        {"name": "debian-12", "id": "template:debian-12"},
+        {
+            "name": "experimental/ubuntu-26.10",
+            "id": "template:experimental/ubuntu-26.10",
+        },
+    ]
+    provider._run_command.assert_called_once_with(
+        ["limactl", "create", "--list-templates"],
+        stream=False,
+    )
+
+
+def test_get_flavors(provider):
+    """Verify Lima exposes its configurable resource profile."""
+    flavors = provider.get_flavors()
+
+    assert flavors == [
+        {
+            "name": "default",
+            "cpu": "Configurable",
+            "ram": "Configurable",
+        }
+    ]
+
+
+def test_upload_key_success(provider, tmp_path):
+    """Upload a public key using a safely quoted shell argument."""
+    key_file = tmp_path / "test.pub"
+    public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey example"
+    key_file.write_text(public_key + "\n", encoding="utf-8")
+
+    assert provider.upload_key(str(key_file), "research-key", "test-vm") is True
+
+    args, kwargs = provider._run_command.call_args
+    assert args[0][:5] == ["limactl", "shell", "test-vm", "sh", "-c"]
+    assert kwargs == {"stream": False}
+    assert "authorized_keys" in args[0][5]
+    assert public_key in args[0][5]
+
+
+def test_delete_key_success(provider):
+    """Delete a named key through the Lima shell command."""
+    assert provider.delete_key("research-key", "test-vm") is True
+
+    args, kwargs = provider._run_command.call_args
+    assert args[0][:5] == ["limactl", "shell", "test-vm", "sh", "-c"]
+    assert kwargs == {"stream": False}
+    assert "awk" in args[0][5]
+    assert "research-key" in args[0][5]
+
+
+def test_delete_key_special_characters(provider):
+    """Special characters in a key name remain safely shell-quoted."""
+    import shlex
+
+    name = "research.*[1]'$(touch /tmp/should-not-run)"
+    assert provider.delete_key(name, "test-vm") is True
+
+    script = provider._run_command.call_args.args[0][5]
+    assert shlex.quote(f" # {name}") in script
+    assert "awk -v suffix=" in script
+
+
+@pytest.mark.parametrize("name", ["", "bad\nname", "bad\rname"])
+def test_delete_key_rejects_invalid_names(provider, name):
+    """Empty or multiline key names must not reach the shell."""
+    assert provider.delete_key(name, "test-vm") is False
+    provider._run_command.assert_not_called()
