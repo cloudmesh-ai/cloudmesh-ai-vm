@@ -167,22 +167,27 @@ def save_benchmark(tag, config_path):
     time_short = now.strftime("%H-%M")
 
     # 3. Write to file
-    # Ensure results are saved to the project root's results/smoke directory
+    # The results repo is expected to be at ../cloudmesh-ai-vm-results relative to project root
     base_dir = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    results_dir = os.path.join(base_dir, "results", "smoke")
+    repo_root = os.path.abspath(os.path.join(base_dir, "..", "cloudmesh-ai-vm-results"))
+
+    if not os.path.exists(repo_root):
+        raise RuntimeError(
+            f"Results repository not found at {repo_root}. "
+            "Please check it out via SSH: "
+            "git clone git@github.com:cloudmesh/cloudmesh-ai-vm-results.git .."
+        )
+
+    # Store results in <repo_root>/<username>/smoke
+    results_dir = os.path.join(repo_root, username, "smoke")
     os.makedirs(results_dir, exist_ok=True)
 
     # Sanitize tag for filename (use - instead of _ to match requested example)
     safe_tag = tag.replace(" ", "-").replace("/", "-").replace(":", "-")
 
-    # Use a timestamp to ensure unique files, but place it before the username/date
-    # to ensure the filename ends with -<username>-<date>
-    now.strftime("%H%M%S")
-
     # Format: <safe_tag>-<username>-<date>--<time>
-    # This ensures it ends with -<username>-<date>--<time> as requested
     filename_base = f"{safe_tag}-{username}-{date_short}--{time_short}".lower()
 
     # Text version
