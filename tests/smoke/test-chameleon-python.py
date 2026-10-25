@@ -106,7 +106,7 @@ def run_smoke_test():
 
     with tempfile.TemporaryDirectory() as temp_dir:
         tmp_path = Path(temp_dir)
-        priv_key_path, pub_key_path = generate_ssh_key(tmp_path)
+        _priv_key_path, pub_key_path = generate_ssh_key(tmp_path)
         temp_config = create_temp_config(tmp_path, config)
 
         state = StateManager(temp_config)
