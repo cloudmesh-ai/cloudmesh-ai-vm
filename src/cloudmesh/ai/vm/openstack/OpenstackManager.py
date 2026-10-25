@@ -817,7 +817,13 @@ class OpenstackManager(CloudBaseManager):
                 pub_key = f.read().strip()
 
             conn = self._get_sdk_conn()
-            conn.compute.create_keypair(name=key_name, public_key=pub_key)
+            try:
+                conn.compute.create_keypair(name=key_name, public_key=pub_key)
+            except Exception as e:
+                # If the key already exists, we consider it a success (idempotency)
+                if "already exists" in str(e).lower():
+                    return True
+                raise e
             return True
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
@@ -1179,6 +1185,39 @@ class OpenstackManager(CloudBaseManager):
     def _get_current_status(self, name: str) -> str:
         """Returns the current status of the OpenStack VM."""
         node = self._find_node(name)
+
+    def get_ssh_config(self, name: str | None = None) -> str | None:
+        """
+        Generates an SSH config entry for the specified VM.
+        """
+        if not name:
+            return "Error: VM name is required for SSH config."
+
+        try:
+            # Find VM and get floating IP
+            node = self._find_node(name)
+            if not node:
+                return f"Error: VM {name} not found."
+
+            floating_ip = getattr(node, "public_ips", [None])[0]
+            if not floating_ip:
+                return f"Error: No floating IP found for VM {name}."
+
+            cloud_config = self.get_cloud_config(self.cloud_name) or {}
+            user = cloud_config.get("user", "ubuntu")
+            key_path = cloud_config.get("key_path", "~/.ssh/id_rsa")
+
+            return (
+                f"Host {name}\n"
+                f"    HostName {floating_ip}\n"
+                f"    User {user}\n"
+                f"    IdentityFile {key_path}\n"
+            )
+        except Exception as e:
+            from cloudmesh.ai.vm.logger import logger
+            logger.error(f"Error generating SSH config for {name}: {e}")
+            return None
+
         return getattr(node, "state", "") if node else ""
 
     def _normalize_status(self, status: str) -> str:
