@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import uuid
@@ -10,7 +11,12 @@ from rich.text import Text
 
 from cloudmesh.ai.command import vm
 from cloudmesh.ai.common.io import banner
-from tests.smoke.benchmark_helper import save_benchmark
+from cloudmesh.ai.common.stopwatch import StopWatch
+from tests.smoke.benchmark_helper import (
+    create_benchmark_payload,
+    get_results_username,
+    save_benchmark,
+)
 from tests.smoke.cli_helper import setup_cli_config
 
 @pytest.fixture
@@ -48,6 +54,8 @@ def config(tmp_path, runner):
     banner("Construct a unique vm_name based on the actual username")
     vm_name = f"{username}-{uuid.uuid4().hex[:4]}"
     print(f"Generated unique VM name for test: {vm_name}")
+    env = {"OS_CLOUD": "jetstream"}
+
     provider_config["vm_name"] = vm_name
 
     pprint(provider_config)
@@ -58,20 +66,28 @@ def test_jetstream_cli_lifecycle(runner, config):
     Smoke test for Jetstream CLI lifecycle.
     """
 
+    env = {"OS_CLOUD": "jetstream"}
+
     banner("1. providers")
-    result = runner.invoke(vm.vm_group, ["provider", "list"])
+    with StopWatch.timer("jetstream_provider_list"):
+        result = runner.invoke(vm.vm_group, ["provider", "list"], env=env)
     print(result.output)
+    StopWatch.status("jetstream_provider_list", result.exit_code == 0)
     assert result.exit_code == 0
     assert "jetstream" in result.output.lower()
 
     banner("2. set")
-    result = runner.invoke(vm.vm_group, ["provider", "set", "jetstream"])
+    with StopWatch.timer("jetstream_provider_set"):
+        result = runner.invoke(vm.vm_group, ["provider", "set", "jetstream"], env=env)
     print(result.output)
+    StopWatch.status("jetstream_provider_set", result.exit_code == 0)
     assert result.exit_code == 0
 
     banner("3. start (without name - test auto-naming)")
-    result = runner.invoke(vm.vm_group, ["start"])
-    print(result.output)
+    with StopWatch.timer("jetstream_start"):
+        result = runner.invoke(vm.vm_group, ["start"], env=env)
+        print(result.output)
+    StopWatch.status("jetstream_start", result.exit_code == 0)
     if result.exit_code != 0:
         pytest.skip(
             f"Jetstream start failed (expected without real credentials): {result.output}"
@@ -92,7 +108,116 @@ def test_jetstream_cli_lifecycle(runner, config):
 
     try:
         banner("4. list")
-        result = runner.invoke(vm.vm_group, ["list"])
+        with StopWatch.timer("jetstream_list"):
+            result = runner.invoke(vm.vm_group, ["list"], env=env)
+        print(result.output)    
+        StopWatch.status("jetstream_list", result.exit_code == 0)
+        assert result.exit_code == 0
+
+        # Check if the actual started VM name is in the 
+        # output of the list command
+        plain_output = Text.from_ansi(result.output).plain
+        assert vm_name in plain_output
+
+        banner("5. run")
+        with StopWatch.timer("jetstream_run"):
+            result = runner.invoke(vm.vm_group, ["run", vm_name, "hostname"], env=env)
+        print(result.output)
+        StopWatch.status("jetstream_run", result.exit_code == 0)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream run failed")
+
+        banner("6. stop")
+        with StopWatch.timer("jetstream_stop"):
+            result = runner.invoke(vm.vm_group, ["stop", vm_name], env=env)
+        print(result.output)
+        StopWatch.status("jetstream_stop", result.exit_code == 0)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream stop failed")
+
+        banner("13. security-groups")
+        with StopWatch.timer("security-group"):                
+            result = runner.invoke(vm.vm_group, ["security-group"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream security-group failed")
+
+        banner("14. ssh-config")
+        with StopWatch.timer("ssh-config"):
+            result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
+        print(result.output)    
+        assert result.exit_code == 0
+
+        banner("6. delete")
+        with StopWatch.timer("jetstream_delete"):
+            result = runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream delete failed")
+
+        banner("7. image")
+        with StopWatch.timer("jetstream_image"):
+            result = runner.invoke(vm.vm_group, ["image"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream images failed")
+
+        banner("8. flavors")
+        with StopWatch.timer("jetstream_flavor"):
+            result = runner.invoke(vm.vm_group, ["flavor"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream flavors failed")
+
+        banner("9. keys list")
+        with StopWatch.timer("jetstream_key_list"):
+            result = runner.invoke(vm.vm_group, ["key", "list"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream key list failed")
+
+        banner("10. keys list --all")
+        with StopWatch.timer("jetstream_key_list_all"):
+            result = runner.invoke(vm.vm_group, ["key", "list", "--all"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream key list --all failed")
+
+        banner("11. keys upload")
+        with StopWatch.timer("jetstream_key_upload"):
+            result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream key upload failed")
+            
+        banner("12. keys delete")
+        with StopWatch.timer("jetstream_key_delete"):
+            result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"], env=env)
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream key delete failed")
+
+    finally:
+        # Always attempt to remove the test VM using the Jetstream provider.
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+
+        # Save standard benchmark text/json files
+        save_benchmark(tag="Jetstream CLI", config_path=None)
+
+        # Retrieve the results username dynamically
+        try:
+            username = config.get("username", "smoke_test_user")
+        except Exception:
+            username = "smoke_test_user"
+
+        # Create and print/save the structured JSON payload
+        payload = create_benchmark_payload(benchmark_name="Jetstream CLI", user=username)
+
+        print(json.dumps(payload, indent=2))
+
+    try:
+        banner("4. list")
+        result = runner.invoke(vm.vm_group, ["list"], env=env)
         print(result.output)    
         assert result.exit_code == 0
 
@@ -100,71 +225,101 @@ def test_jetstream_cli_lifecycle(runner, config):
         assert vm_name in result.output
 
         banner("5. stop")
-        result = runner.invoke(vm.vm_group, ["stop", vm_name])
+        with StopWatch.timer("jetstream_stop"):
+            result = runner.invoke(vm.vm_group, ["stop", vm_name])
         print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream stop failed")
-
-
+            
+            
         banner("13. security-groups")
-        result = runner.invoke(vm.vm_group, ["security-group"])
+        with StopWatch.timer("security-group"):                
+            result = runner.invoke(vm.vm_group, ["security-group"])
         print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream security-group failed")
 
         banner("14. ssh-config")
-        result = runner.invoke(vm.vm_group, ["ssh-config"])
+        with StopWatch.timer("jetstream_ssh_config"):
+            result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
         print(result.output)    
+        StopWatch.status("jetstream_ssh_config", result.exit_code == 0)
         assert result.exit_code == 0
 
         banner("6. delete")
-        result = runner.invoke(vm.vm_group, ["delete", vm_name])
+        with StopWatch.timer("jetstream_delete"):
+            result = runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
         print(result.output)
+        StopWatch.status("jetstream_delete", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream delete failed")
 
         banner("7. image")
-        result = runner.invoke(vm.vm_group, ["image"])
+        with StopWatch.timer("jetstream_image"):
+            result = runner.invoke(vm.vm_group, ["image"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_image", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream images failed")
 
         banner("8. flavors")
-        result = runner.invoke(vm.vm_group, ["flavor"])
+        with StopWatch.timer("jetstream_flavor"):
+            result = runner.invoke(vm.vm_group, ["flavor"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_flavor", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream flavors failed")
 
         banner("9. keys list")
-        result = runner.invoke(vm.vm_group, ["key", "list"])
+        with StopWatch.timer("jetstream_key_list"):
+            result = runner.invoke(vm.vm_group, ["key", "list"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_key_list", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream key list failed")
 
         banner("10. keys list --all")
-        result = runner.invoke(vm.vm_group, ["key", "list", "--all"])
+        with StopWatch.timer("jetstream_key_list_all"):
+            result = runner.invoke(vm.vm_group, ["key", "list", "--all"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_key_list_all", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream key list --all failed")
 
         banner("11. keys upload")
-        result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"])
+        with StopWatch.timer("jetstream_key_upload"):
+            result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_key_upload", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream key upload failed")
-
+            
         banner("12. keys delete")
-        result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
+        with StopWatch.timer("jetstream_key_delete"):
+            result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"], env=env)
         print(result.output)
+        StopWatch.status("jetstream_key_delete", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip("Jetstream key delete failed")
-
-
+            
+            
     finally:
-        # Cleanup
-        banner(f"Cleaning up VM {vm_name} if it exists...")
-        runner.invoke(vm.vm_group, ["delete", vm_name])
+        # Always attempt to remove the test VM using the Jetstream provider.
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
+
+        # Save standard benchmark text/json files
         save_benchmark(tag="Jetstream CLI", config_path=None)
+
+        # Retrieve the results username dynamically
+        try:
+            username = config.get("username", "smoke_test_user")
+        except Exception:
+            username = "smoke_test_user"
+
+        # Create and print/save the structured JSON payload
+        payload = create_benchmark_payload(benchmark_name="Jetstream CLI", user=username)
+
+        print(json.dumps(payload, indent=2))
 
 
 def test_jetstream_cli_start_with_name(runner, config):
@@ -174,11 +329,16 @@ def test_jetstream_cli_start_with_name(runner, config):
     # Use the username from config to make the named VM unique to the user
     username = config.get("username", "smoke-user")
     vm_name = f"test-named-{username}-jetstream-vm"
-    runner.invoke(vm.vm_group, ["delete", vm_name])
+    env = {"OS_CLOUD": "jetstream"}
 
-    result = runner.invoke(vm.vm_group, ["start", vm_name])
-    if result.exit_code != 0:
-        pytest.skip("Jetstream start failed")
+    try:
+        # Pre-cleanup: Ensure no stale VM exists with this name
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
 
-    assert f"Successfully started VM {vm_name}" in Text.from_ansi(result.output).plain
-    runner.invoke(vm.vm_group, ["delete", vm_name])
+        result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream start failed")
+
+        assert f"Successfully started VM {vm_name}" in Text.from_ansi(result.output).plain
+    finally:
+        runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
