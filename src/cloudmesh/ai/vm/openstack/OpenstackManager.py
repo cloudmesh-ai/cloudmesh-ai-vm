@@ -53,27 +53,31 @@ class OpenstackManager(CloudBaseManager):
         # 1. Get config from Cloudmesh State
         cloud_config = self.get_cloud_config(self.cloud_name) or {}
 
-        # 2. Load from standard OpenStack clouds.yaml as a fallback/merge
-        os_clouds_path = os.path.expanduser("~/.config/openstack/clouds.yaml")
-        if os.path.exists(os_clouds_path):
-            try:
-                with open(os_clouds_path, "r") as f:
-                    os_full_config = yaml.safe_load(f) or {}
-                    os_clouds = os_full_config.get("clouds", {})
-                    os_cloud_cfg = os_clouds.get(self.cloud_name, {})
+        # 2. Load from standard OpenStack/Cloudmesh clouds.yaml as fallback/merge
+        cloud_paths = [
+            os.path.expanduser("~/.config/openstack/clouds.yaml"),
+            os.path.expanduser("~/.config/cloudmesh/clouds.yaml"),
+        ]
+        for path in cloud_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, "r") as f:
+                        file_config = yaml.safe_load(f) or {}
+                        clouds = file_config.get("clouds", {})
+                        os_cloud_cfg = clouds.get(self.cloud_name, {})
 
-                    # Merge: OS config takes priority for auth credentials
-                    os_auth = os_cloud_cfg.get("auth", {})
-                    cm_auth = cloud_config.get("auth", {})
-                    merged_auth = {**cm_auth, **os_auth}
+                        # Merge: file config takes priority for auth credentials
+                        os_auth = os_cloud_cfg.get("auth", {})
+                        cm_auth = cloud_config.get("auth", {})
+                        merged_auth = {**cm_auth, **os_auth}
 
-                    cloud_config = {**cloud_config, **os_cloud_cfg}
-                    cloud_config["auth"] = merged_auth
-                    logger.debug(
-                        f"Merged configuration for '{self.cloud_name}' from {os_clouds_path}"
-                    )
-            except Exception as e:
-                logger.warning(f"Could not parse {os_clouds_path}: {e}")
+                        cloud_config = {**cloud_config, **os_cloud_cfg}
+                        cloud_config["auth"] = merged_auth
+                        logger.debug(
+                            f"Merged configuration for '{self.cloud_name}' from {path}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Could not parse {path}: {e}")
 
         try:
             # OpenStack SDK connect can take a config dict via the 'cloud' param
@@ -941,118 +945,72 @@ class OpenstackManager(CloudBaseManager):
         """
         Assigns an available floating IP to the VM.
         Tries to create a new one, falling back to available pools or existing free IPs.
-        Handles the case where the instance network is not ready yet by probing.
         """
         try:
             import time
-
             from cloudmesh.ai.vm.logger import logger
 
-            node = self._find_node(name)
+            # 1. Establish the connection and find the server by name
+            conn = self._get_sdk_conn()
+            node = conn.compute.find_server(name)
             if not node:
                 logger.error(f"VM {name} not found.")
                 return None
 
-            # Ensure the VM is active and network is ready before assigning FIP
+            # Ensure the VM is active and network is ready
             if not self.wait_for_active(name):
-                logger.error(
-                    f"VM {name} failed to become active. Skipping floating IP assignment."
-                )
+                logger.error(f"VM {name} failed to become active. Skipping FIP assignment.")
                 return None
 
-            network_ready = self._wait_for_network(node)
+            # 2. Find the Network Port associated with the VM
+            ports = list(conn.network.ports(device_id=node.id))
+            if not ports:
+                logger.error(f"No network ports found for VM {name}.")
+                return None
+            port = ports[0]
 
+            # 3. Reserve a Floating IP
             fip = None
-            conn = self._get_sdk_conn()
             cloud_config = self.get_cloud_config(self.cloud_name)
-            # Use configured pool, or default to 'public'
             pool_name = cloud_config.get("floating_ip_pool", "public")
 
             try:
-                # 1. Try to create a floating IP using the specified or default pool
-                logger.debug(
-                    f"Attempting to create floating IP from pool '{pool_name}'..."
-                )
-                pool = conn.network.find_network(pool_name)
-                if pool:
-                    fip = conn.network.create_floating_ip(floating_network_id=pool.id)
-                else:
-                    raise Exception(f"Pool '{pool_name}' not found")
+                # Try to find the public network and create an IP
+                network = conn.network.find_network(pool_name)
+                fip = conn.network.create_ip(floating_network_id=network.id if network else None)
             except Exception as e:
-                err_msg = str(e)
-                if "pool not found" in err_msg.lower() or "404" in err_msg:
-                    logger.debug(
-                        f"Pool '{pool_name}' not found, trying to find any available pools..."
-                    )
-                    pools = conn.network.floating_ip_pools()
-                    if pools:
-                        try:
-                            # Try the first available pool found by the SDK
-                            fallback_pool = pools[0]
-                            logger.debug(
-                                f"Trying fallback pool '{fallback_pool.name}'..."
-                            )
-                            fip = conn.network.create_floating_ip(
-                                floating_network_id=fallback_pool.id
-                            )
-                        except Exception as pool_e:
-                            logger.warning(
-                                f"Failed to create FIP from fallback pool {fallback_pool.name}: {pool_e}"
-                            )
-                    else:
-                        logger.warning("No floating IP pools found on this cloud.")
-                else:
-                    logger.debug(
-                        f"Creation failed with error: {err_msg}. Trying fallback to existing IPs..."
-                    )
+                logger.debug(f"Direct FIP creation failed: {e}. Trying fallback to existing free IPs...")
+                try:
+                    all_fips = list(conn.network.ips())
+                    free_fips = [f for f in all_fips if not getattr(f, "fixed_ip", None)]
+                    if free_fips:
+                        fip = free_fips[0]
+                except Exception:
+                    pass
 
             if not fip:
-                # 2. Fallback: Try to find an existing FREE floating IP
-                logger.debug("Attempting to find an existing FREE floating IP...")
-                all_fips = list(conn.network.ips())
-                # In SDK, a floating IP is free if it's not associated with a port (fixed_ip is None/missing)
-                free_fips = [f for f in all_fips if not getattr(f, "fixed_ip", None)]
-                if free_fips:
-                    fip = free_fips[0]
-                else:
-                    logger.warning(
-                        "No free floating IPs available and could not create a new one."
-                    )
+                logger.error("No floating IP could be reserved or found.")
+                return None
 
-            if fip:
-                # Attempt to attach the floating IP.
-                max_retries = 3
-                for i in range(max_retries):
-                    try:
-                        conn.compute.add_floating_ip_to_server(node, fip.floating_ip_address)
-                        return fip.floating_ip_address
-                    except Exception as e:
-                        err_msg = str(e)
-                        if "Instance network is not ready yet" in err_msg:
-                            if not network_ready and i == max_retries - 1:
-                                logger.error(
-                                    f"Network never became ready for {name}, and final attach attempt failed: {e}"
-                                )
-                            elif i < max_retries - 1:
-                                logger.warning(
-                                    f"Network still not ready for {name}, retrying in 5s... ({i + 1}/{max_retries})"
-                                )
-                                time.sleep(5)
-                                continue
-                        raise e
-
-            return None
+            # 4. Associate the Floating IP with the Port
+            # We use update_ip (Neutron API) as it is the only reliable method on Jetstream
+            try:
+                conn.network.update_ip(fip.id, port_id=port.id)
+                logger.info(f"Successfully assigned FIP {fip.floating_ip_address} to {name} via Network API.")
+                return fip.floating_ip_address
+            except Exception as e:
+                # Final attempt: Try the Compute API if Network API fails
+                try:
+                    conn.compute.add_floating_ip_to_server(node, fip.floating_ip_address)
+                    logger.info(f"Successfully assigned FIP {fip.floating_ip_address} to {name} via Compute API.")
+                    return fip.floating_ip_address
+                except Exception as e2:
+                    logger.error(f"Both Network and Compute API failed to assign FIP: {e2}")
+                    return None
 
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
-
-            err_msg = str(e)
-            if "quota" in err_msg.lower():
-                logger.error(
-                    f"Floating IP quota reached for cloud '{self.cloud_name}'."
-                )
-            else:
-                logger.error(f"Error assigning floating IP to {name}: {e}")
+            logger.error(f"Unexpected error assigning floating IP to {name}: {e}")
             return None
 
     def release_floating_ip(self, name: str) -> bool:

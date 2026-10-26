@@ -36,7 +36,7 @@ dependencies = [
     "paramiko",
     "fabric",
     "chameleon-blazarclient @ git+https://github.com/ChameleonCloud/python-blazarclient.git",
-    "python-zunclient @ git+https://github.com/chameleoncloud/python-zunclient.git",
+    "chameleon-zunclient @ git+https://github.com/chameleoncloud/python-zunclient.git",
     "ccauth @ git+https://github.com/ChameleonCloud/ccauth.git",
     "pre-commit",
 ]
@@ -60,6 +60,7 @@ google = "cloudmesh.ai.vm.google.GoogleManager:Provider"
 oracle = "cloudmesh.ai.vm.oracle.OracleManager:Provider"
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 markers = [
     "compliance: mark test as a compliance test",
 ]
