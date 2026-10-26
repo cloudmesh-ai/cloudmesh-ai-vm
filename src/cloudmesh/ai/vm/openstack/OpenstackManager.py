@@ -1024,7 +1024,7 @@ class OpenstackManager(CloudBaseManager):
                 max_retries = 3
                 for i in range(max_retries):
                     try:
-                        conn.compute.add_floating_ip_to_server(node, fip)
+                        conn.compute.add_floating_ip_to_server(node, fip.floating_ip_address)
                         return fip.floating_ip_address
                     except Exception as e:
                         err_msg = str(e)

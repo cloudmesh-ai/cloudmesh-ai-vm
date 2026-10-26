@@ -9,9 +9,9 @@ from click.testing import CliRunner
 from rich.text import Text
 
 from cloudmesh.ai.command import vm
+from cloudmesh.ai.common.io import banner
 from tests.smoke.benchmark_helper import save_benchmark
 from tests.smoke.cli_helper import setup_cli_config
-
 
 @pytest.fixture
 def runner():
@@ -45,8 +45,9 @@ def config(tmp_path, runner):
     # Add username to provider_config so it's available in tests
     provider_config["username"] = username
 
-    # Construct a unique vm_name based on the actual username
+    banner("Construct a unique vm_name based on the actual username")
     vm_name = f"{username}-{uuid.uuid4().hex[:4]}"
+    print(f"Generated unique VM name for test: {vm_name}")
     provider_config["vm_name"] = vm_name
 
     pprint(provider_config)
@@ -56,17 +57,21 @@ def test_jetstream_cli_lifecycle(runner, config):
     """
     Smoke test for Jetstream CLI lifecycle.
     """
-    # 1. providers
+
+    banner("1. providers")
     result = runner.invoke(vm.vm_group, ["provider", "list"])
+    print(result.output)
     assert result.exit_code == 0
     assert "jetstream" in result.output.lower()
 
-    # 2. set
+    banner("2. set")
     result = runner.invoke(vm.vm_group, ["provider", "set", "jetstream"])
+    print(result.output)
     assert result.exit_code == 0
 
-    # 3. start (without name - test auto-naming)
+    banner("3. start (without name - test auto-naming)")
     result = runner.invoke(vm.vm_group, ["start"])
+    print(result.output)
     if result.exit_code != 0:
         pytest.skip(
             f"Jetstream start failed (expected without real credentials): {result.output}"
@@ -78,6 +83,7 @@ def test_jetstream_cli_lifecycle(runner, config):
     # Extract the generated VM name
     # The output contains ANSI escape codes, so we search in the plain text version
     plain_output = Text.from_ansi(result.output).plain
+    print(f"Plain output for VM name extraction:\n{plain_output}")
     match = re.search(r"(?:Generating VM name: |Successfully started VM )([\w-]+)", plain_output)
     if match:
         vm_name = match.group(1)
@@ -85,64 +91,78 @@ def test_jetstream_cli_lifecycle(runner, config):
         pytest.fail(f"Could not extract VM name from output: {plain_output}")
 
     try:
-        # 4. list
+        banner("4. list")
         result = runner.invoke(vm.vm_group, ["list"])
+        print(result.output)    
         assert result.exit_code == 0
 
         # Check if the actual started VM name is in the list
         assert vm_name in result.output
 
-        # 5. stop
+        banner("5. stop")
         result = runner.invoke(vm.vm_group, ["stop", vm_name])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream stop failed")
 
-        # 6. delete
+
+        banner("13. security-groups")
+        result = runner.invoke(vm.vm_group, ["security-group"])
+        print(result.output)
+        if result.exit_code != 0:
+            pytest.skip("Jetstream security-group failed")
+
+        banner("14. ssh-config")
+        result = runner.invoke(vm.vm_group, ["ssh-config"])
+        print(result.output)    
+        assert result.exit_code == 0
+
+        banner("6. delete")
         result = runner.invoke(vm.vm_group, ["delete", vm_name])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream delete failed")
 
-        # 7. images
-        result = runner.invoke(vm.vm_group, ["images"])
+        banner("7. image")
+        result = runner.invoke(vm.vm_group, ["image"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream images failed")
 
-        # 8. flavors
+        banner("8. flavors")
         result = runner.invoke(vm.vm_group, ["flavor"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream flavors failed")
 
-        # 9. keys list
+        banner("9. keys list")
         result = runner.invoke(vm.vm_group, ["key", "list"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key list failed")
 
-        # 10. keys list --all
+        banner("10. keys list --all")
         result = runner.invoke(vm.vm_group, ["key", "list", "--all"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key list --all failed")
 
-        # 11. keys upload
+        banner("11. keys upload")
         result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key upload failed")
 
-        # 12. keys delete
+        banner("12. keys delete")
         result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
+        print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key delete failed")
 
-        # 13. security_groups
-        result = runner.invoke(vm.vm_group, ["security_groups"])
-        if result.exit_code != 0:
-            pytest.skip("Jetstream security_groups failed")
-
-        # 14. ssh_config
-        result = runner.invoke(vm.vm_group, ["ssh_config"])
-        assert result.exit_code == 0
 
     finally:
         # Cleanup
+        banner(f"Cleaning up VM {vm_name} if it exists...")
         runner.invoke(vm.vm_group, ["delete", vm_name])
         save_benchmark(tag="Jetstream CLI", config_path=None)
 
