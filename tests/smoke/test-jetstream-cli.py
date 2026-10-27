@@ -148,7 +148,11 @@ def test_jetstream_cli_lifecycle(runner, config):
             pytest.skip("Jetstream key list --all failed")
 
         banner("11. keys upload")
-        result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"])
+        key_path = os.path.expanduser(config.get("key_path", "~/.ssh/id_rsa"))
+        public_key_path = key_path if key_path.endswith(".pub") else f"{key_path}.pub"
+        result = runner.invoke(
+            vm.vm_group, ["key", "upload", public_key_path, "--name", "smoke-key"]
+        )
         print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key upload failed")
