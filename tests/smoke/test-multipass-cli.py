@@ -40,7 +40,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 1. providers
     with cli_step(
-        "Fetching Provider List", timer_name="multipass_provider_list"
+        "Fetching Provider List", timer_name="provider_list"
     ) as step:
         result = runner.invoke(vm.vm_group, ["provider", "list"])
         step.debug("Provider list output:", result)
@@ -49,7 +49,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 2. set
     with cli_step(
-        "Setting up CLI config for Multipass...", timer_name="multipass_provider_set"
+        "Setting up CLI config for Multipass...", timer_name="provider_set"
     ) as step:
         result = runner.invoke(vm.vm_group, ["provider", "set", "multipass"])
         step.debug("Provider set output:", result)
@@ -57,7 +57,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 3. start
     with cli_step(
-        "Starting a new Multipass VM...", timer_name="multipass_start"
+        "Starting a new Multipass VM...", timer_name="start"
     ) as step:
         vm_name = f"{username}-smoke-multipass-vm-{uuid.uuid4().hex[:6]}"
         result = runner.invoke(vm.vm_group, ["start", vm_name])
@@ -78,7 +78,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 4. list
     with cli_step(
-        f"Checking if VM {vm_name} is in the list...", timer_name="multipass_list"
+        f"Checking if VM {vm_name} is in the list...", timer_name="list"
     ) as step:
         result = runner.invoke(vm.vm_group, ["list"])
         step.debug("Multipass list output:", result)
@@ -86,14 +86,14 @@ def test_multipass_cli_lifecycle(runner, config):
     assert vm_name[:8] in result.output
 
     # 5. stop
-    with cli_step(f"Stopping VM {vm_name}...", timer_name="multipass_stop") as step:
+    with cli_step(f"Stopping VM {vm_name}...", timer_name="stop") as step:
         result = runner.invoke(vm.vm_group, ["stop", vm_name])
         step.debug("Multipass stop output:", result)
     if result.exit_code != 0:
         pytest.skip("Multipass stop failed")
 
     # 6. delete
-    with cli_step(f"Deleting VM {vm_name}...", timer_name="multipass_delete") as step:
+    with cli_step(f"Deleting VM {vm_name}...", timer_name="delete") as step:
         result = runner.invoke(vm.vm_group, ["delete", vm_name])
         step.debug("Multipass delete output:", result)
     if result.exit_code != 0:
@@ -101,7 +101,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 7. images
     with cli_step(
-        "Fetching Multipass images...", timer_name="multipass_images"
+        "Fetching Multipass images...", timer_name="images"
     ) as step:
         result = runner.invoke(vm.vm_group, ["image"])
         step.debug("Multipass images output:", result)
@@ -110,7 +110,7 @@ def test_multipass_cli_lifecycle(runner, config):
 
     # 8. flavors
     with cli_step(
-        "Fetching Multipass flavors...", timer_name="multipass_flavors"
+        "Fetching Multipass flavors...", timer_name="flavors"
     ) as step:
         result = runner.invoke(vm.vm_group, ["flavor"])
         step.debug("Multipass flavors output:", result)
@@ -118,28 +118,28 @@ def test_multipass_cli_lifecycle(runner, config):
         pytest.skip("Multipass flavors failed")
 
     # 9. keys upload (if supported)
-    # with cli_step("Uploading SSH key to Multipass...", timer_name="multipass_key_upload") as step:
+    # with cli_step("Uploading SSH key to Multipass...", timer_name="key_upload") as step:
     #    result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub", "--name", "smoke-key"])
     #    step.debug("Multipass key upload output:", result)
     # if result.exit_code != 0:
     #    pytest.skip("Multipass key upload failed")
 
     # 10. keys delete (if supported)
-    # with cli_step("Deleting SSH key from Multipass...", timer_name="multipass_key_delete") as step:
+    # with cli_step("Deleting SSH key from Multipass...", timer_name="key_delete") as step:
     #    result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
     #    step.debug("Multipass key delete output:", result)
     # if result.exit_code != 0:
     #    pytest.skip("Multipass key delete failed")
 
     # 11. security_groups (likely not supported by Multipass)
-    # with cli_step("Fetching Multipass security groups...", timer_name="multipass_security_groups") as step:
+    # with cli_step("Fetching Multipass security groups...", timer_name="security_groups") as step:
     #    result = runner.invoke(vm.vm_group, ["security-group"])
     #    step.debug("Multipass security_groups output:", result)
     # if result.exit_code != 0:
     #    pytest.skip("Multipass security-group failed")
 
     # 12. ssh_config
-    # with cli_step("Fetching Multipass SSH config...", timer_name="multipass_ssh_config") as step:
+    # with cli_step("Fetching Multipass SSH config...", timer_name="ssh_config") as step:
     #    result = runner.invoke(vm.vm_group, ["ssh-config"])
     #    step.debug("Multipass ssh_config output:", result)
     # assert result.exit_code == 0
