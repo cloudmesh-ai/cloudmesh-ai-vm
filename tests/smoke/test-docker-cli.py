@@ -56,9 +56,9 @@ def test_docker_cli_lifecycle(runner, config, docker_container_name):
     runner.invoke(container.container_group, ["delete", container_name], env=env)
 
     # 1. Run (Create & Start)
-    with StopWatch.timer("docker_run"):
+    with StopWatch.timer("run"):
         result = runner.invoke(container.container_group, ["run", "--name", container_name, "--image", "alpine", "sleep", "3600"], env=env)
-    StopWatch.status("docker_run", result.exit_code == 0)
+    StopWatch.status("run", result.exit_code == 0)
     output = Text.from_ansi(result.output).plain
     
     try:
@@ -66,74 +66,74 @@ def test_docker_cli_lifecycle(runner, config, docker_container_name):
         assert f"Container {container_name} created and started" in output
 
         # 2. List
-        with StopWatch.timer("docker_list"):
+        with StopWatch.timer("list"):
             result = runner.invoke(container.container_group, ["list"], env=env)
-        StopWatch.status("docker_list", result.exit_code == 0)
+        StopWatch.status("list", result.exit_code == 0)
         assert result.exit_code == 0
         plain_output = Text.from_ansi(result.output).plain
         assert container_name in plain_output
 
         # 3. Info
-        with StopWatch.timer("docker_info"):
+        with StopWatch.timer("info"):
             result = runner.invoke(container.container_group, ["info", container_name], env=env)
-        StopWatch.status("docker_info", result.exit_code == 0)
+        StopWatch.status("info", result.exit_code == 0)
         assert result.exit_code == 0
         plain_output = Text.from_ansi(result.output).plain
         assert container_name in plain_output
 
         # 4. IP (New Symmetry Feature)
-        with StopWatch.timer("docker_ip"):
+        with StopWatch.timer("ip"):
             result = runner.invoke(container.container_group, ["ip", "list"], env=env)
-        StopWatch.status("docker_ip", result.exit_code == 0)
+        StopWatch.status("ip", result.exit_code == 0)
         assert result.exit_code == 0
         plain_output = Text.from_ansi(result.output).plain
         assert container_name in plain_output
 
         # 5. Restart (New Symmetry Feature)
-        with StopWatch.timer("docker_restart"):
+        with StopWatch.timer("restart"):
             result = runner.invoke(container.container_group, ["restart", container_name], env=env)
-        StopWatch.status("docker_restart", result.exit_code == 0)
+        StopWatch.status("restart", result.exit_code == 0)
         assert result.exit_code == 0
         assert f"Container {container_name} restarted" in Text.from_ansi(result.output).plain
 
         # 6. Suspend (Pause) (New Symmetry Feature)
-        with StopWatch.timer("docker_suspend"):
+        with StopWatch.timer("suspend"):
             result = runner.invoke(container.container_group, ["suspend", "pause", container_name], env=env)
-        StopWatch.status("docker_suspend", result.exit_code == 0)
+        StopWatch.status("suspend", result.exit_code == 0)
         assert result.exit_code == 0
         assert f"Container {container_name} paused" in Text.from_ansi(result.output).plain
 
         # 7. Resume (Unpause) (New Symmetry Feature)
-        with StopWatch.timer("docker_resume"):
+        with StopWatch.timer("resume"):
             result = runner.invoke(container.container_group, ["suspend", "resume", container_name], env=env)
-        StopWatch.status("docker_resume", result.exit_code == 0)
+        StopWatch.status("resume", result.exit_code == 0)
         assert result.exit_code == 0
         assert f"Container {container_name} resumed" in Text.from_ansi(result.output).plain
 
         # 8. Image Pull (New Symmetry Feature)
-        with StopWatch.timer("docker_image_pull"):
+        with StopWatch.timer("image_pull"):
             result = runner.invoke(container.container_group, ["image", "pull", "alpine"], env=env)
-        StopWatch.status("docker_image_pull", result.exit_code == 0)
+        StopWatch.status("image_pull", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 9. Image List (New Symmetry Feature)
-        with StopWatch.timer("docker_image_list"):
+        with StopWatch.timer("image_list"):
             result = runner.invoke(container.container_group, ["image", "list"], env=env)
-        StopWatch.status("docker_image_list", result.exit_code == 0)
+        StopWatch.status("image_list", result.exit_code == 0)
         assert result.exit_code == 0
         assert "alpine" in Text.from_ansi(result.output).plain
 
         # 10. Stop
-        with StopWatch.timer("docker_stop"):
+        with StopWatch.timer("stop"):
             result = runner.invoke(container.container_group, ["stop", container_name], env=env)
-        StopWatch.status("docker_stop", result.exit_code == 0)
+        StopWatch.status("stop", result.exit_code == 0)
         assert result.exit_code == 0
         assert f"Container {container_name} stopped successfully" in Text.from_ansi(result.output).plain
 
         # 11. Delete
-        with StopWatch.timer("docker_delete"):
+        with StopWatch.timer("delete"):
             result = runner.invoke(container.container_group, ["delete", container_name], env=env)
-        StopWatch.status("docker_delete", result.exit_code == 0)
+        StopWatch.status("delete", result.exit_code == 0)
         assert result.exit_code == 0
         assert f"Container {container_name} deleted successfully" in Text.from_ansi(result.output).plain
 
