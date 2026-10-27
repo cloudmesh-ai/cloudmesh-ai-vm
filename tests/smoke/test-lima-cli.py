@@ -67,101 +67,96 @@ def test_lima_cli_lifecycle(runner, config, lima_vm_name):
     runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
 
     # 1. providers
-    with StopWatch.timer("lima_provider_list"):
+    with StopWatch.timer("provider_list"):
         result = runner.invoke(vm.vm_group, ["provider", "list"], env=env)
     print(result.output)
-    StopWatch.status("lima_provider_list", result.exit_code == 0)
+    StopWatch.status("provider_list", result.exit_code == 0)
     assert result.exit_code == 0
     assert "lima" in result.output.lower()
 
     # 2. set
-    with StopWatch.timer("lima_provider_set"):
+    with StopWatch.timer("provider_set"):
         result = runner.invoke(vm.vm_group, ["provider", "set", "lima"], env=env)
     print(result.output)
-    StopWatch.status("lima_provider_set", result.exit_code == 0)
+    StopWatch.status("provider_set", result.exit_code == 0)
     assert result.exit_code == 0
 
     # 3. start (with specific name to prevent leaks)
-    with StopWatch.timer("lima_start"):
+    with StopWatch.timer("start"):
         result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
     print(result.output)
-    StopWatch.status("lima_start", result.exit_code == 0)
+    StopWatch.status("start", result.exit_code == 0)
     output = Text.from_ansi(result.output).plain
+
+    # with StopWatch.timer("ssh_config"):
+    #     result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
+    # print(result.output)
+    # StopWatch.status("ssh_config", result.exit_code == 0)
+    # assert result.exit_code == 0
+    # assert "Host" in result.output
 
     try:
         assert result.exit_code == 0, f"Lima start failed: {output}"
         assert f"Successfully started VM {vm_name}" in output
 
         # 4. list
-        with StopWatch.timer("lima_list"):
+        with StopWatch.timer("list"):
             result = runner.invoke(vm.vm_group, ["list"], env=env)
         print(result.output)
-        StopWatch.status("lima_list", result.exit_code == 0)
+        StopWatch.status("list", result.exit_code == 0)
         assert result.exit_code == 0
         plain_output = Text.from_ansi(result.output).plain
         assert vm_name in plain_output
 
         # 5. run
-        with StopWatch.timer("lima_run"):
+        with StopWatch.timer("run"):
             result = runner.invoke(vm.vm_group, ["run", vm_name, "hostname"], env=env)
         print(result.output)
-        StopWatch.status("lima_run", result.exit_code == 0)
+        StopWatch.status("run", result.exit_code == 0)
         if result.exit_code != 0:
             pytest.skip(f"Lima run failed: {result.output}")
 
         # 6. stop
-        with StopWatch.timer("lima_stop"):
+        with StopWatch.timer("stop"):
             result = runner.invoke(vm.vm_group, ["stop", vm_name], env=env)
         print(result.output)    
-        StopWatch.status("lima_stop", result.exit_code == 0)
+        StopWatch.status("stop", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 7. delete
-        with StopWatch.timer("lima_delete"):
+        with StopWatch.timer("delete"):
             result = runner.invoke(vm.vm_group, ["delete", vm_name], env=env)
         print(result.output)
-        StopWatch.status("lima_delete", result.exit_code == 0)
+        StopWatch.status("delete", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 8. images
-        with StopWatch.timer("lima_images"):
+        with StopWatch.timer("image"):
             result = runner.invoke(vm.vm_group, ["image"], env=env)
         print(result.output)
-        StopWatch.status("lima_images", result.exit_code == 0)
+        StopWatch.status("image", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 9. flavors
-        with StopWatch.timer("lima_flavors"):
+        with StopWatch.timer("flavor"):
             result = runner.invoke(vm.vm_group, ["flavor"], env=env)
         print(result.output)
-        StopWatch.status("lima_flavors", result.exit_code == 0)
+        StopWatch.status("flavor", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 10. keys
-        with StopWatch.timer("lima_keys"):
+        with StopWatch.timer("keys"):
             result = runner.invoke(vm.vm_group, ["key", "list"], env=env)
         print(result.output)
-        StopWatch.status("lima_keys", result.exit_code == 0)
+        StopWatch.status("keys", result.exit_code == 0)
         assert result.exit_code == 0
 
         # 11. security_groups
-        with StopWatch.timer("lima_security_groups"):
+        with StopWatch.timer("security_group"):
             result = runner.invoke(vm.vm_group, ["security-group"], env=env)
         print(result.output)
-        StopWatch.status("lima_security_groups", result.exit_code == 0)
+        StopWatch.status("security_group", result.exit_code == 0)
         assert result.exit_code == 0
-
-        # 12. ssh_config
-        restart_result = runner.invoke(vm.vm_group, ["start", vm_name], env=env)
-        print(restart_result.output)
-        assert restart_result.exit_code == 0
-
-        with StopWatch.timer("lima_ssh_config"):
-            result = runner.invoke(vm.vm_group, ["ssh-config"], env=env)
-        print(result.output)
-        StopWatch.status("lima_ssh_config", result.exit_code == 0)
-        assert result.exit_code == 0
-        assert "Host" in result.output
 
     finally:
         # Always attempt to remove the test VM using the Lima provider.

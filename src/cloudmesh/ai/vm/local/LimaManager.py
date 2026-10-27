@@ -56,54 +56,141 @@ class Provider(LocalBaseManager):
         if os.path.exists(expanded_template):
             template_arg = expanded_template
         else:
-            # For built-in templates, Lima expects 'template:name' when using --name
+            # For built-in templates, Lima expects 'template:name'
             template_arg = f"template:{template}"
 
         if self.exists(vm_name):
             # VM exists, just start it
-            command = ["limactl", "start", vm_name, "--tty=false"]
+            command = ["limactl", "start", vm_name, "--yes"]
         else:
             # VM doesn't exist, create and start it
-            # Use --tty=false to avoid interactive prompts
+            # The correct syntax for creating a named VM from a template is:
+            # limactl start --name <vm_name> --yes <template_arg>
             command = [
                 "limactl",
                 "start",
                 "--name",
                 vm_name,
-                "--tty=false",
+                "--yes",
                 template_arg,
             ]
-
         try:
-            self._run_command(command, stream=True)
+            print(f"DEBUG: Executing limactl start for {vm_name}...", flush=True)
+            # Use os.system for the start command to avoid potential buffering/hanging 
+            # issues with the internal _run_command wrapper.
+            command_str = " ".join(command)
+            exit_code = os.system(command_str)
+            if exit_code != 0:
+                raise VMProviderError(f"limactl start failed with exit code {exit_code}")
         except Exception as e:
-            raise VMProviderError(f"Failed to start Lima VM {vm_name}: {e}")
+            # Extract error message from the exception or its attributes
+            error_msg = str(e).lower()
+            # Some command runners put the actual output in the exception's stderr attribute
+            if hasattr(e, "stderr") and e.stderr:
+                error_msg += " " + e.stderr.lower()
+            
+            # If it failed because it already exists, we can try to just start it
+            if "already exists" in error_msg:
+                try:
+                    # Try to just start the existing VM
+                    os.system(f"limactl start {vm_name} --yes")
+                except Exception as e2:
+                    raise VMProviderError(f"Failed to start existing Lima VM {vm_name}: {e2}")
+            else:
+                raise VMProviderError(f"Failed to start Lima VM {vm_name}: {e}")
+        
+        # Save the started VM as the default VM so get_ssh_config() can find it
+        self._save_default_vm(vm_name)
+        return vm_name
+        
+        # Wait for the VM to actually reach 'Running' status before returning
+        import time
+        timeout = 300  # 5 minutes
+        start_time = time.time()
+        print(f"Waiting for Lima VM {vm_name} to enter Running state...", flush=True)
+        while True:
+            if time.time() - start_time > timeout:
+                raise VMProviderError(f"Timeout waiting for Lima VM {vm_name} to enter Running state")
+            
+            vms = self.list()
+            for vm in vms:
+                vm_name_found = vm.get("name")
+                vm_status = vm.get("status")
+                if vm_name_found == vm_name:
+                    print(f"Checking status for {vm_name_found}: {vm_status}", flush=True)
+                    if vm_status == "Running":
+                        print(f"VM {vm_name_found} is now Running.", flush=True)
+                        break
+            else:
+                # No matching VM found or not Running yet
+                time.sleep(5)
+                continue
+            break
+
+        # Save the started VM as the default VM so get_ssh_config() can find it
+        self._save_default_vm(vm_name)
         return vm_name
 
     def stop(self, name: str | None = None) -> bool:
         """Stops a Lima VM."""
-        if not name or not self.exists(name):
-            raise VMResourceError(f"VM {name} not found.")
+        if not name:
+            name = self._get_default_vm(self.cloud_name)
+            if not name:
+                raise VMResourceError("No VM name provided and no default VM found.")
 
+        if not self.exists(name):
+            return True # Idempotent
+ 
         try:
             self._run_command(["limactl", "stop", name])
             return True
         except Exception as e:
             raise VMProviderError(f"Failed to stop Lima VM {name}: {e}")
-
+ 
     def delete(self, name: str | None = None) -> bool:
         """Deletes a Lima VM."""
         if not name:
-            raise VMResourceError("No VM name provided for deletion.")
+            name = self._get_default_vm(self.cloud_name)
+            if not name:
+                raise VMResourceError("No VM name provided and no default VM found.")
         
         if not self.exists(name):
             # Silently return True if the VM doesn't exist to make pre-cleanup idempotent
             return True
 
         try:
-            # limactl delete usually requires confirmation, use -f for force
-            self._run_command(["limactl", "delete", "-f", name], stream=True)
+            # Use -f to force deletion without confirmation
+            self._run_command(["limactl", "delete", name, "-f"])
             return True
+        except Exception as e:
+            raise VMProviderError(f"Failed to delete Lima VM {name}: {e}")
+
+    def get_images(self) -> list[dict[str, Any]]:
+        """Lists available Lima templates."""
+        try:
+            # limactl start --list-templates returns a list of templates
+            result = self._run_command(["limactl", "start", "--list-templates"], stream=False)
+            
+            # The output is typically a list of templates, one per line, possibly with descriptions
+            # Example:
+            # ubuntu
+            # alpine
+            # docker
+            
+            images = []
+            for line in result.stdout.strip().splitlines():
+                if not line:
+                    continue
+                # Some versions of Lima might have descriptions, we just want the name
+                template_name = line.split()[0] if line else ""
+                if template_name:
+                    images.append({"name": template_name, "description": line.strip()})
+            
+            return images
+        except Exception as e:
+            self.print(f"Failed to list Lima templates: {e}")
+            return []
+
         except Exception as e:
             raise VMProviderError(f"Failed to delete Lima VM {name}: {e}")
 
@@ -112,24 +199,38 @@ class Provider(LocalBaseManager):
         try:
             result = self._run_command(["limactl", "list", "-f", "json"], stream=False)
             import json
-            data = json.loads(result.stdout)
-            # limactl list -f json returns a list of dicts. Ensure it's a list.
-            if isinstance(data, list):
-                return data
-            return [data] if data else []
-        except Exception:
+            vms = []
+            for line in result.stdout.strip().splitlines():
+                if not line: continue
+                try:
+                    data = json.loads(line)
+                    if isinstance(data, dict):
+                        vms.append({k.lower(): v for k, v in data.items()})
+                    elif isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict):
+                                vms.append({k.lower(): v for k, v in item.items()})
+                except json.JSONDecodeError:
+                    continue
+            return vms
+        except Exception as e:
+            print(f"DEBUG: LimaManager.list - Exception occurred: {e}")
             return []
+
 
     def exists(self, name: str) -> bool:
         """Checks if a Lima VM exists."""
         vms = self.list()
         # Handle case where vms might be a list of dicts
         for vm in vms:
-            if isinstance(vm, dict) and vm.get("name") == name:
-                return True
+            if isinstance(vm, dict):
+                vm_name = vm.get("name")
+                if vm_name and str(vm_name).lower() == name.lower():
+                    return True
+        return False
         return False
 
-    def run(self, name: str, command: str, **kwargs) -> str:
+    def run_command(self, name: str, command: str, **kwargs) -> str:
         """Runs a command in a Lima VM."""
         try:
             result = self._run_command(["limactl", "shell", name, command], stream=False)
@@ -137,9 +238,15 @@ class Provider(LocalBaseManager):
         except Exception as e:
             raise VMProviderError(f"Failed to run command in Lima VM {name}: {e}")
 
-    def get_ssh_config(self, name: str) -> str | None:
+    def get_ssh_config(self, name: str | None = None) -> str | None:
         """Generates the SSH config for a Lima VM using limactl show-ssh."""
         try:
+            if not name:
+                # Try to get the last used VM name from state or config
+                name = self._get_default_vm(self.cloud_name)
+                if not name:
+                    return None
+
             if not self.exists(name):
                 return None
 
@@ -157,6 +264,15 @@ class Provider(LocalBaseManager):
             return None
         except Exception:
             return None
+    def _save_default_vm(self, name: str):
+        """Saves the VM name as the last used VM for this cloud."""
+        from pathlib import Path
+        state_file = Path(
+            os.path.expanduser(f"~/.config/cloudmesh/last_vm.{self.cloud_name}")
+        )
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state_file.write_text(name)
+
 
     def check_requirements(self) -> bool:
         """
