@@ -127,7 +127,7 @@ def test_chameleon_cli_lifecycle(runner):
         "Uploading SSH key to Chameleon...", timer_name="chameleon_key_upload"
     ) as step:
         result = runner.invoke(
-            vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub", "--name", "smoke-key"]
+            vm.vm_group, ["key", "upload", "--name", "smoke-key"]
         )
         step.debug("Chameleon key upload output:", result)
     if result.exit_code != 0:
