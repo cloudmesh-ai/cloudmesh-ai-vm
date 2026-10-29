@@ -43,7 +43,13 @@ def test_init_failure():
 
 def test_start_with_name(provider):
     vm_name = "test-vm"
-    provider._run_command.return_value = MagicMock(returncode=0, stdout="Started")
+
+    def side_effect(command, **kwargs):
+        if command == ["limactl", "list", "-f", "json"]:
+            return MagicMock(returncode=0, stdout="[]")
+        return MagicMock(returncode=0, stdout="Started")
+
+    provider._run_command.side_effect = side_effect
 
     result = provider.start(name=vm_name)
 
@@ -55,7 +61,12 @@ def test_start_with_name(provider):
 
 
 def test_start_default_name(provider):
-    provider._run_command.return_value = MagicMock(returncode=0, stdout="Started")
+    def side_effect(command, **kwargs):
+        if command == ["limactl", "list", "-f", "json"]:
+            return MagicMock(returncode=0, stdout="[]")
+        return MagicMock(returncode=0, stdout="Started")
+
+    provider._run_command.side_effect = side_effect
 
     result = provider.start()
 
@@ -68,9 +79,10 @@ def test_start_default_name(provider):
 
 def test_stop_success(provider):
     def side_effect(command, **kwargs):
-        if command == ["limactl", "list"]:
+        if command == ["limactl", "list", "-f", "json"]:
             return MagicMock(
-                returncode=0, stdout="NAME STATUS IMAGE\ntest-vm Running ubuntu\n"
+                returncode=0,
+                stdout='[{"name": "test-vm", "status": "Running", "image": "ubuntu"}]',
             )
         return MagicMock(returncode=0, stdout="Stopped")
 
@@ -82,9 +94,10 @@ def test_stop_success(provider):
 
 def test_delete_success(provider):
     def side_effect(command, **kwargs):
-        if command == ["limactl", "list"]:
+        if command == ["limactl", "list", "-f", "json"]:
             return MagicMock(
-                returncode=0, stdout="NAME STATUS IMAGE\ntest-vm Running ubuntu\n"
+                returncode=0,
+                stdout='[{"name": "test-vm", "status": "Running", "image": "ubuntu"}]',
             )
         return MagicMock(returncode=0, stdout="Deleted")
 
@@ -98,9 +111,8 @@ def test_delete_success(provider):
 
 def test_list_parsing(provider):
     mock_output = (
-        "NAME              STATUS    IMAGE\n"
-        "vm-1              Running   ubuntu\n"
-        "vm-2              Stopped   fedora\n"
+        '[{"name": "vm-1", "status": "Running", "image": "ubuntu"}, '
+        '{"name": "vm-2", "status": "Stopped", "image": "fedora"}]'
     )
     provider._run_command.return_value = MagicMock(stdout=mock_output, returncode=0)
 
@@ -113,11 +125,28 @@ def test_list_parsing(provider):
     assert vms[1]["status"] == "Stopped"
 
 
+def test_list_invalid_json_does_not_fallback(provider):
+    """Invalid JSON must fail without retrying legacy table output."""
+    provider._run_command.return_value = MagicMock(
+        returncode=0,
+        stdout="NAME STATUS IMAGE\\nvm-1 Running ubuntu\\n",
+    )
+
+    with pytest.raises(VMProviderError, match="Failed to list Lima VMs"):
+        provider.list()
+
+    provider._run_command.assert_called_once_with(
+        ["limactl", "list", "-f", "json"],
+        stream=False,
+    )
+
+
 def test_login(provider):
     def side_effect(command, **kwargs):
-        if command == ["limactl", "list"]:
+        if command == ["limactl", "list", "-f", "json"]:
             return MagicMock(
-                returncode=0, stdout="NAME STATUS IMAGE\ntest-vm Running ubuntu\n"
+                returncode=0,
+                stdout='[{"name": "test-vm", "status": "Running", "image": "ubuntu"}]',
             )
         return MagicMock(returncode=0, stdout="Shell")
 
@@ -128,9 +157,10 @@ def test_login(provider):
 
 def test_restart(provider):
     def side_effect(command, **kwargs):
-        if command == ["limactl", "list"]:
+        if command == ["limactl", "list", "-f", "json"]:
             return MagicMock(
-                returncode=0, stdout="NAME STATUS IMAGE\ntest-vm Running ubuntu\n"
+                returncode=0,
+                stdout='[{"name": "test-vm", "status": "Running", "image": "ubuntu"}]',
             )
         return MagicMock(returncode=0, stdout="Success")
 

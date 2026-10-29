@@ -134,7 +134,7 @@ class Provider(LocalBaseManager):
             raise VMProviderError(f"Failed to delete Lima VM {name}: {e}")
 
     def list(self) -> list[dict[str, Any]]:
-        """List Lima VMs, supporting JSON and legacy table output."""
+        """List Lima VMs using the supported JSON output."""
         import json
 
         try:
@@ -142,49 +142,14 @@ class Provider(LocalBaseManager):
                 ["limactl", "list", "-f", "json"],
                 stream=False,
             )
-            output = result.stdout.strip()
-            if not output:
-                return []
+            data = json.loads(result.stdout)
+        except (subprocess.CalledProcessError, OSError, json.JSONDecodeError) as e:
+            raise VMProviderError(f"Failed to list Lima VMs: {e}") from e
 
-            try:
-                data = json.loads(output)
-            except json.JSONDecodeError:
-                # Fall back to the standard table output when JSON is
-                # unavailable or a command wrapper returns non-JSON output.
-                result = self._run_command(["limactl", "list"], stream=False)
-                output = result.stdout.strip()
-                if not output:
-                    return []
-                try:
-                    data = json.loads(output)
-                except json.JSONDecodeError:
-                    data = None
+        if not isinstance(data, list) or not all(isinstance(vm, dict) for vm in data):
+            raise VMProviderError("Unexpected Lima VM list JSON format")
 
-            if isinstance(data, list):
-                return [vm for vm in data if isinstance(vm, dict)]
-            if isinstance(data, dict):
-                return [data] if data else []
-
-            # Compatibility with table output used by older Lima versions
-            # and existing tests.
-            lines = output.splitlines()
-            if not lines:
-                return []
-
-            header = lines[0].split()
-            if not header or header[0].upper() != "NAME":
-                return []
-
-            vms = []
-            for line in lines[1:]:
-                fields = line.split(None, len(header) - 1)
-                if len(fields) != len(header):
-                    continue
-                vm = dict(zip((key.lower() for key in header), fields))
-                vms.append(vm)
-            return vms
-        except (subprocess.CalledProcessError, OSError):
-            return []
+        return data
 
     def exists(self, name: str) -> bool:
         """Checks if a Lima VM exists."""
