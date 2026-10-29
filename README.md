@@ -167,6 +167,34 @@ Smoke tests are quick, high-level checks to verify that the CLI and providers lo
 PYTHONPATH=. pytest tests/smoke
 ```
 
+#### Configuration Validation Smoke Test
+
+The `tests/smoke/test_config.py` smoke test validates the presence and correctness of both
+Cloudmesh and OpenStack configuration files (`~/.config/cloudmesh/clouds.yaml` and
+`~/.config/openstack/clouds.yaml`). It checks that the YAML files are parsable and that
+required provider sections contain the necessary keys.
+
+Run this test individually with:
+
+```bash
+PYTHONPATH=. pytest tests/smoke/test_config.py
+```
+
+It is also included when running the full smoke suite (`pytest tests/smoke`).
+#### Configuration Validation Smoke Test
+
+The `tests/smoke/test_config.py` smoke test validates the presence and correctness of both
+Cloudmesh and OpenStack configuration files (`~/.config/cloudmesh/clouds.yaml` and
+`~/.config/openstack/clouds.yaml`). It checks that the YAML files are parsable and that
+required provider sections contain the necessary keys.
+
+Run this test individually with:
+
+```bash
+PYTHONPATH=. pytest tests/smoke/test_config.py
+```
+
+It is also included when running the full smoke suite (`pytest tests/smoke`).
 #### Benchmark Results
 Smoke tests automatically capture performance benchmarks (timers) and system information. These results are stored in a centralized repository for tracking improvements across different environments and users.
 
