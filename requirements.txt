@@ -39,7 +39,7 @@ bqscales==0.3.7
     # via bqplot
 ccauth @ git+https://github.com/ChameleonCloud/ccauth.git
     # via cloudmesh-ai-vm (pyproject.toml)
-certifi==2026.10.18
+certifi==2026.10.23
     # via
     #   cloudmesh-ai-vm (pyproject.toml)
     #   oci
@@ -249,7 +249,7 @@ openstacksdk==4.22.0
     #   python-ironicclient
     #   python-neutronclient
     #   python-openstackclient
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via
     #   cloudmesh-ai-vm (pyproject.toml)
     #   fastapi
