@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.0] - 2026-10-31
+
+### Added
+- **VM Start Flag**: Added `--noip` flag to `cmx vm start` to allow starting VMs without allocating a floating IP. This flag overrides the default `--ip` behavior and simplifies resource usage when an external IP is not required.
+- **Documentation**: Updated `README.md`, `docs/cli.md`, and MkDocs navigation (`mkdocs.yml`) to reflect the new `--noip` flag and usage examples.
+
 ## [1.7.0] - 2026-10-14
 
 ### Added
