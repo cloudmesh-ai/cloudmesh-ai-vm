@@ -1197,6 +1197,10 @@ class OpenstackManager(CloudBaseManager):
             #   5. Append a clear suffix (" – floating IP") to make the purpose of the
             #      description obvious when viewing the IP in OpenStack dashboards.
             # -----------------------------------------------------------------
+            # Retrieve the cloud‑specific configuration. ``cloud_config`` was previously
+            # used without being defined, leading to a ``NameError`` when assigning a
+            # floating IP. This line restores the original behaviour and fixes the bug.
+            cloud_config = self.get_cloud_config(self.cloud_name)
             username = cloud_config.get("username")
             if not username:
                 # Try provider‑specific StateManager first (dev2 style)
@@ -1217,6 +1221,11 @@ class OpenstackManager(CloudBaseManager):
                 username = "cloudmesh"
             # Use a suffix to identify the IP as a floating IP allocated by Cloudmesh.
             description = f"{username} – floating IP"
+
+            # Determine the name of the external/network pool to allocate the floating IP from.
+            # Historically this was taken from the ``floating_ip_pool`` entry in the cloud
+            # configuration. If not provided, fall back to the conventional ``public`` pool.
+            pool_name = cloud_config.get("floating_ip_pool", "public")
 
             try:
                 # Try to find the public network and create an IP with description.
@@ -1248,7 +1257,14 @@ class OpenstackManager(CloudBaseManager):
                 return None
 
             # 4. Associate the Floating IP with the Port
-            # We use update_ip (Neutron API) as it is the only reliable method on Jetstream
+            # Find the server's port. Jetstream (OpenStack) requires the port ID to
+            # bind a floating IP via the Neutron ``update_ip`` (or ``update_port``) API.
+            ports = list(conn.network.ports(device_id=node.id))
+            if not ports:
+                logger.error(f"No ports found for VM {name}. Cannot assign floating IP.")
+                return None
+            port = ports[0]
+            # We use ``update_ip`` (Neutron API) as it is the only reliable method on Jetstream
             try:
                 conn.network.update_ip(fip.id, port_id=port.id)
                 logger.info(f"Successfully assigned FIP {fip.floating_ip_address} to {name} via Network API.")
