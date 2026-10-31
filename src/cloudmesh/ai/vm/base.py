@@ -15,8 +15,12 @@ class BaseVMProvider(ABC):
         self.config = config
         self.cloud_name = "base"
 
-    def validate_config(self) -> dict[str, list[str]]:
-        """Validates the provider configuration. Returns a map of config paths to errors."""
+    def validate_config(self) -> dict[str, builtins.list[str]]:
+        """Validates the provider configuration. Returns a map of config paths to errors.
+
+        The return type uses ``builtins.list`` to avoid clashing with any subclass
+        that defines a method named ``list``.
+        """
         return {}
 
     def normalize_vm_info(self, vm_info: dict[str, Any]) -> dict[str, Any]:
@@ -80,12 +84,23 @@ class BaseVMProvider(ABC):
         raise ProviderFeatureNotSupported(self.cloud_name, "unshelve")
 
     # --- Inventory Methods ---
-    def list(self) -> list[dict[str, Any]]:
-        """Lists all VMs in the cloud."""
+    def list(self) -> builtins.list[dict[str, Any]]:
+        """Lists all VMs in the cloud.
+
+        The annotation uses ``builtins.list`` to avoid name‑shadowing when a
+        subclass defines a ``list`` method with the same name, which would
+        otherwise replace the built‑in ``list`` type during annotation
+        evaluation.
+        """
         raise ProviderFeatureNotSupported(self.cloud_name, "list")
 
-    def info(self, name: str, kind: str = "vm") -> dict[str, Any]:
-        """Gets detailed info for a specific VM."""
+    def info(self, name: str | None = None, kind: str = "vm") -> dict[str, Any]:
+        """Gets detailed information about a specific VM.
+
+        The name parameter is optional to maintain backward compatibility with
+        providers that may infer the VM name from context. This aligns the
+        signature with the default implementation provided by ``CloudBaseManager``.
+        """
         raise ProviderFeatureNotSupported(self.cloud_name, "info")
 
     def get_images(self, **kwargs) -> builtins.list[dict[str, Any]]:

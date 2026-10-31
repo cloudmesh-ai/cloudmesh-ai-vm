@@ -250,7 +250,7 @@ class Provider(CloudBaseManager):
             logger.error(f"OCI list failed: {e}")
             return []
 
-    def info(self, name: str, kind: str = "vm") -> dict[str, Any]:
+    def info(self, name: str | None = None, kind: str = "vm") -> dict[str, Any]:
         """Gets detailed info for an Oracle VM."""
         if not self.exists(name):
             raise VMResourceError(f"Oracle VM {name} not found")
@@ -415,3 +415,6 @@ class Provider(CloudBaseManager):
                 "region": cloud_config.get("region"),
             },
         }
+
+# Export an alias matching the historic class name used in matrix tests.
+OracleManager = Provider

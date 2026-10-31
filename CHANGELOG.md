@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0] - 2026-11-01
+
+### Added
+- **Version Bump**: Updated package version to `1.9.0` (see `pyproject.toml`).
+- **Compatibility Aliases**: Added provider aliases (`AwsManager`, `AzureManager`, `GoogleManager`, `OracleManager`, `ChameleonManager`, `JetstreamManager`) to support matrix tests and historic imports.
+- **Floating‑IP Utilities Tests**: Added comprehensive unit tests for the new `cloudmesh.ai.vm.fip_utils` helpers (`list_unassigned_fips`, `lock_and_select_fip`, `allocate_fip_with_retry`, `release_fip`).
+- **CLI `--noip` Flag Test**: Added unit test ensuring the `cmx vm start --noip` flow passes `assign_ip=False` to providers.
+
+### Changed
+- **Changelog**: Added a new entry for the v1.9.0 release.
+
+### Fixed
+- No functional changes beyond the version bump and test additions.
+
 ## [1.8.0] - 2026-10-31
 
 ### Added

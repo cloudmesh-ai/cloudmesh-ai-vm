@@ -81,28 +81,35 @@ def get_active_provider(ctx: click.Context):
 
     register_providers()
 
-    default_cloud = "multipass"
-    if state.config:
-        # Use StateManager.db.get for the default_cloud value
-        default_cloud = state.config.db.get("default_cloud", "multipass") or "multipass"
+    # Determine the active provider name.
+    # Priority order:
+    #   1. CLI ``--cloud`` override.
+    #   2. ``default_cloud`` setting from the user's configuration (StateManager).
+    #   3. ``OS_CLOUD`` environment variable (kept for backward compatibility).
+    #   4. Fallback to ``multipass`` (the historic default).
 
-    cloud = ctx.obj.cloud_override if ctx.obj else None
-    if not cloud:
-        # Priority: Environment variable > Config > Default
-        cloud = os.environ.get("OS_CLOUD")
-    if not cloud:
+    # Resolve the active provider name without returning early.
+    # The function will ultimately return a *provider instance* (not just the name).
+    # Determine the name following the precedence described above.
+    cloud_name = ctx.obj.cloud_override if ctx.obj else None
+    if not cloud_name:
+        # Config default (if a StateManager config is present).
         if state.config:
-            cloud = state.config.db.get("default_cloud", "multipass") or "multipass"
-        else:
-            cloud = "multipass"
+            cloud_name = state.config.db.get("default_cloud", "multipass") or "multipass"
+        # If still not set, fall back to the OS_CLOUD environment variable.
+        if not cloud_name:
+            cloud_name = os.environ.get("OS_CLOUD")
+        # Final fallback.
+        if not cloud_name:
+            cloud_name = "multipass"
 
     try:
         from cloudmesh.ai.vm.providers import get_provider
 
-        return get_provider(cloud)
+        return get_provider(cloud_name)
     except Exception as e:
         raise click.ClickException(
-            f"Unsupported or misconfigured cloud provider: {cloud}. Error: {e}"
+            f"Unsupported or misconfigured cloud provider: {cloud_name}. Error: {e}"
         )
 
 

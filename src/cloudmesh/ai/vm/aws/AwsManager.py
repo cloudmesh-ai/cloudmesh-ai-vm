@@ -197,3 +197,6 @@ class Provider(LibcloudManager):
                 "account_id": account_id,
             },
         }
+
+# Compatibility alias for matrix tests and historic imports.
+AwsManager = Provider

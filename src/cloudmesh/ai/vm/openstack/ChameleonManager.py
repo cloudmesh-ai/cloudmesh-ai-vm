@@ -18,7 +18,7 @@ import builtins
 import time
 import traceback
 from contextlib import redirect_stdout
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import StringIO
 from typing import Any
 
@@ -26,7 +26,7 @@ import chi
 import chi.exception
 import chi.lease
 import humanize
-from chi import network
+from chi import network, server, lease, keypair
 
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 from cloudmesh.ai.vm.exceptions import ConfigError, VMProviderError, VMResourceError
@@ -52,6 +52,8 @@ class Provider(CloudBaseManager):
     def __init__(self, config: Any, cloud_name: str, console=None, **kwargs):
         super().__init__(config, console=console)
         self.cloud_name = cloud_name
+        # ``assign_ip`` flag for API compatibility; defaults to True.
+        self.assign_ip = kwargs.pop("assign_ip", True)
         self._chi_initialized = False
 
     def _json_serial(self, obj):
@@ -195,7 +197,7 @@ class Provider(CloudBaseManager):
 
         self._chi_initialized = True
 
-    def info(self, name: str, kind: str = "vm") -> dict[str, Any]:
+    def info(self, name: str | None = None, kind: str = "vm") -> dict[str, Any]:
         """
         Returns detailed information about a Chameleon VM.
         :param name: Name of the VM.
@@ -393,7 +395,6 @@ class Provider(CloudBaseManager):
         name: str | None = None,
         flavor: str | None = None,
         image: str | None = None,
-        duration: str | None = None,
         **kwargs,
     ) -> str:
         """Starts a VM in Chameleon using the chi library, automatically creating a reservation."""
@@ -404,10 +405,10 @@ class Provider(CloudBaseManager):
         security_group = cloud_config.get("security_group", "default")
 
         username = cloud_config.get("username", "user").replace("_", "-")
-        key_name = cloud_config.get("key_name", username)
-        assign_ip = kwargs.get("assign_ip", True)
-
-        # Parse duration string (e.g., '3h', '1d') to timedelta
+        # ``assign_ip`` determines whether a floating IP should be allocated after VM launch.
+        assign_ip = kwargs.get("assign_ip", self.assign_ip)
+        duration = kwargs.get("duration")
+        # Parse optional lease duration string (e.g., '3h', '1d') to timedelta.
         lease_duration_td = timedelta(hours=1)  # Default
         if duration:
             try:
@@ -417,20 +418,25 @@ class Provider(CloudBaseManager):
                     lease_duration_td = timedelta(hours=value)
                 elif unit == "d":
                     lease_duration_td = timedelta(days=value)
-                elif unit == "m":
-                    lease_duration_td = timedelta(minutes=value)
                 else:
-                    self.print(
-                        f"Warning: Unsupported duration unit '{unit}'. Falling back to 1 hour."
+                    logger.warning(
+                        f"Unsupported duration unit '{unit}' for lease. Using default 1h."
                     )
             except Exception as e:
-                self.print(
-                    f"Warning: Could not parse duration '{duration}': {e}. Falling back to 1 hour."
+                logger.warning(
+                    f"Failed to parse lease duration '{duration}': {e}. Using default 1h."
                 )
 
         # Ensure keypair exists and matches the local key
         key_path = cloud_config.get("key_path", "~/.ssh/id_rsa.pub")
         key_filename = os.path.expanduser(key_path)
+        # Determine the key name to use in the cloud. Prefer explicit config, fall back to filename.
+        key_name = cloud_config.get("key_name")
+        if not key_name:
+            # Derive a default name from the key file name (without .pub)
+            from pathlib import Path
+
+            key_name = Path(key_path).name.replace(".pub", "")
 
         try:
             existing_keys = {k.name: k.public_key for k in chi.server.list_keypair()}
@@ -913,11 +919,12 @@ class Provider(CloudBaseManager):
                 # If end_date is naive, assume it is UTC (standard for cloud APIs)
                 # If end_date is aware, convert it to UTC
                 if end_date.tzinfo is None:
-                    end_date = end_date.replace(tzinfo=datetime.timezone.utc)
+                    # Use timezone.utc from the datetime module
+                    end_date = end_date.replace(tzinfo=timezone.utc)
                 else:
-                    end_date = end_date.astimezone(datetime.timezone.utc)
+                    end_date = end_date.astimezone(timezone.utc)
 
-                now = datetime.now(datetime.timezone.utc)
+                now = datetime.now(timezone.utc)
                 ttl = end_date - now
 
                 if ttl.total_seconds() < 0:
@@ -944,7 +951,7 @@ class Provider(CloudBaseManager):
 
         return str(ttl_str)
 
-    def list(self) -> list[dict[str, Any]]:
+    def list(self) -> builtins.list[dict[str, Any]]:
         """Lists all Chameleon VMs with their reachable IP addresses and TTL."""
         self._setup_chi_context()
         try:
@@ -1693,3 +1700,8 @@ class Provider(CloudBaseManager):
 
             logger.error(f"CHI list_security_group_rules failed for {sg_name}: {e}")
             return []
+
+# Export a compatibility alias for matrix tests that import ``ChameleonManager``
+# directly. The entry point still references ``Provider``, but the test suite
+# expects a class named ``ChameleonManager``.
+ChameleonManager = Provider

@@ -168,3 +168,6 @@ class Provider(LibcloudManager):
         except Exception as e:
             logger.error(f"Error resetting Google VM {name}: {e}")
             return False
+
+# Compatibility alias for matrix tests and historic imports.
+GoogleManager = Provider

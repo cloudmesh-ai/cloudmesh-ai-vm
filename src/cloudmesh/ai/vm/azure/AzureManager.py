@@ -153,3 +153,6 @@ class Provider(LibcloudManager):
         except Exception as e:
             logger.error(f"Error resetting Azure VM {name}: {e}")
             return False
+
+# Compatibility alias for matrix tests and historic imports.
+AzureManager = Provider

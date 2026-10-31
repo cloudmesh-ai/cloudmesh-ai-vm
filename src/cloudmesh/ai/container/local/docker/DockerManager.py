@@ -1,4 +1,5 @@
 import docker
+import builtins
 from typing import Any
 from cloudmesh.ai.vm.CloudBaseManager import CloudBaseManager
 from cloudmesh.ai.vm.exceptions import ProviderFeatureNotSupported
@@ -19,7 +20,7 @@ class DockerManager(CloudBaseManager):
             logger.error(f"Failed to initialize Docker client: {e}")
             self.client = None
 
-    def list(self) -> list[dict[str, Any]]:
+    def list(self) -> builtins.list[dict[str, Any]]:
         """Lists all Docker containers (running and stopped)."""
         if not self.client:
             return []

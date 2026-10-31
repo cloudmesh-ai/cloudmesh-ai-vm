@@ -70,3 +70,6 @@ class Provider(OpenstackManager):
         )
 
         return {"value": total_sus, "unit": "SU", "details": details}
+
+# Compatibility alias for imports expecting ``JetstreamManager``
+JetstreamManager = Provider
