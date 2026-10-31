@@ -47,6 +47,7 @@ nav:
       - Azure VMs: providers/hyperscalers/azure.md
       - Google GCE: providers/hyperscalers/google.md
   - Architecture: architecture.md
+  - Plan Start2: plan-start2.md
   - Contributing: contributing.md
 
 plugins:

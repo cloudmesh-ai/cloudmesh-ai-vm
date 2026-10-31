@@ -22,6 +22,12 @@ from cloudmesh.ai.command._shared.exceptions import VMCommandError, handle_error
     help="Whether to assign a floating IP (yes/no). Defaults to yes.",
 )
 @click.option(
+    "--noip",
+    is_flag=True,
+    default=False,
+    help="Do not allocate a floating IP. This overrides the --ip flag and is equivalent to '--ip no'.",
+)
+@click.option(
     "--duration",
     help="Lease duration for Chameleon (e.g. '3h', '1d'). Only supported for Chameleon provider.",
 )
@@ -33,6 +39,7 @@ def start(
     count: int | None = None,
     vm_range: str | None = None,
     ip: str = "yes",
+    noip: bool = False,
     duration: str | None = None,
     cloud: str = None,
     debug: bool = False,
@@ -106,8 +113,11 @@ def start(
                 )
 
     for vm_name in vms_to_start:
+        # Determine whether we should assign a floating IP.
+        # ``--noip`` overrides the ``--ip`` option. If ``--noip`` is set, we never assign an IP.
+        assign_ip = (not noip) and (ip == "yes")
         result = provider.start(
-            name=vm_name, assign_ip=(ip == "yes"), duration=duration
+            name=vm_name, assign_ip=assign_ip, duration=duration
         )
         if result:
             final_name = result if isinstance(result, str) else vm_name

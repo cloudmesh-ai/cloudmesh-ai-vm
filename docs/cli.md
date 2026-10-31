@@ -51,6 +51,7 @@ Launches a new VM.
   - `<name>`: (Optional) Specify a custom name. If omitted, the tool generates a name based on `<username>-<counter>` (e.g., `gregor-1`). Underscores in usernames are automatically replaced with hyphens to ensure provider compatibility.
   - `--count <int>`: Start a specified number of VMs with automatic naming.
   - `--range <range>`: Start VMs in the specified index range (e.g., `1-5`).
+  - `--noip`: Do not allocate a floating IP for the new VM(s). This flag overrides the default `--ip` behavior and is useful when a floating IP is not required.
 - **Examples**:
   - Default: `cmx vm start`
   - Custom Name: `cmx vm start my-web-server`

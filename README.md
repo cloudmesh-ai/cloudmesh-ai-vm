@@ -49,8 +49,11 @@ cmx vm provider get
 
 # Set your default cloud
 cmx vm provider set multipass
-
-# Start a VM (will be named username-1, username-2, etc.)
+53 | # Start a VM (will be named username-1, username-2, etc.)
+54 | cmx vm start
+55 |
+56 | # Start a VM without allocating a floating IP (useful when you don't need external access)
+57 | cmx vm start --noip
 cmx vm start
 
 # Run a command on the VM
