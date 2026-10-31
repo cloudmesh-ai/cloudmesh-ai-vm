@@ -48,6 +48,7 @@ nav:
       - Google GCE: providers/hyperscalers/google.md
   - Architecture: architecture.md
   - Plan Start2: plan-start2.md
+  - Floating IP Workflow: floating-ip-workflow.md
   - Contributing: contributing.md
 
 plugins:

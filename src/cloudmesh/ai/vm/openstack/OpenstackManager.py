@@ -115,7 +115,24 @@ class OpenstackManager(CloudBaseManager):
         image: str | None = None,
         **kwargs,
     ) -> str:
-        """Starts a VM in OpenStack using the SDK."""
+        """Starts a VM in OpenStack using the SDK.
+
+        The ``assign_ip`` keyword determines whether a floating IP should be
+        allocated and attached.  If ``assign_ip`` is ``True`` we attempt to obtain
+        an existing unassigned floating IP first; if none are available we fall
+        back to allocating a new one with exponential back‑off.  Any allocated
+        IP is released if the VM creation fails.
+        """
+        from cloudmesh.ai.vm.fip_utils import (
+            list_unassigned_fips,
+            lock_and_select_fip,
+            allocate_fip_with_retry,
+            release_fip,
+        )
+        from cloudmesh.ai.vm.logger import logger
+
+        assign_ip = kwargs.get("assign_ip", True)
+
         cloud_config = self.get_cloud_config(self.cloud_name)
         image_name = image or cloud_config.get("image")
         flavor_name = flavor or cloud_config.get("flavor")
@@ -124,8 +141,6 @@ class OpenstackManager(CloudBaseManager):
         if not key_name and cloud_config.get("key_path"):
             key_name = Path(cloud_config["key_path"]).name.replace(".pub", "")
 
-        from cloudmesh.ai.vm.logger import logger
-
         logger.debug(f"Using key_name: {key_name} (derived from config/clouds.yaml)")
 
         if not image_name:
@@ -133,6 +148,35 @@ class OpenstackManager(CloudBaseManager):
         if not flavor_name:
             raise ConfigError(f"Missing 'flavor' in config for {self.cloud_name}")
 
+        # ------------------------------------------------------------------
+        # Pre‑flight floating IP handling (only for providers that support it)
+        # ------------------------------------------------------------------
+        fip_obj = None
+        if assign_ip:
+            try:
+                conn = self._get_sdk_conn()
+                # Try to reuse an existing unassigned floating IP
+                unassigned = list_unassigned_fips(conn)
+                if unassigned:
+                    fip_obj = lock_and_select_fip(unassigned)
+                else:
+                    # Allocate a new floating IP with exponential back‑off
+                    fip_obj = allocate_fip_with_retry(conn)
+                logger.info(
+                    f"Prepared floating IP {getattr(fip_obj, 'floating_ip_address', getattr(fip_obj, 'floating_ip_address', getattr(fip_obj, 'ip', 'unknown')))} for VM "
+                    f"{name or '<generated>'}."
+                )
+            except Exception as ip_err:
+                logger.error(
+                    f"Failed to acquire a floating IP before VM start: {ip_err}"
+                )
+                raise VMProviderError(
+                    f"Could not acquire a floating IP for VM start: {ip_err}"
+                ) from ip_err
+
+        # ------------------------------------------------------------------
+        # VM creation
+        # ------------------------------------------------------------------
         try:
             conn = self._get_sdk_conn()
             # Find image and flavor objects
@@ -157,7 +201,6 @@ class OpenstackManager(CloudBaseManager):
             vm_name = name or f"vm-{self.cloud_name}"
 
             # Append username and site for shared clouds to prevent collisions
-            # ONLY if a name was not explicitly provided by the user.
             if not name and self.cloud_name in ["jetstream", "chameleon"]:
                 username = cloud_config.get("username", "user").replace("_", "-")
                 site = (
@@ -183,36 +226,54 @@ class OpenstackManager(CloudBaseManager):
                 networks=[{"uuid": network_name}] if network_name else [],
             )
 
-            # Wait for the VM to actually be ACTIVE before proceeding to IP assignment
+            # Wait for the VM to actually be ACTIVE before proceeding
             if not self.wait_for_active(vm_name):
                 raise VMProviderError(
                     f"VM {vm_name} failed to become ACTIVE. Aborting start."
                 )
 
-            # Automatically assign a floating IP to make the VM reachable if requested
-            if kwargs.get("assign_ip", True):
-                fip = self.assign_floating_ip(vm_name)
-                if fip:
-                    from cloudmesh.ai.vm.logger import logger
-
+            # ------------------------------------------------------------------
+            # Attach floating IP if requested
+            # ------------------------------------------------------------------
+            if assign_ip and fip_obj:
+                try:
+                    # ``add_floating_ip_to_server`` expects the *address* string
+                    ip_address = getattr(fip_obj, "floating_ip_address", None) or getattr(
+                        fip_obj, "floating_ip_address", None
+                    ) or getattr(fip_obj, "ip", None)
+                    conn.compute.add_floating_ip_to_server(server, ip_address)
                     logger.info(
-                        f"Floating IP {fip} assigned. Verifying SSH connectivity..."
+                        f"Floating IP {ip_address} attached to VM {vm_name}. Verifying SSH..."
                     )
                     if self.wait_for_login(vm_name):
                         logger.info(f"VM {vm_name} is reachable via SSH.")
                     else:
-                        logger.warning(f"VM {vm_name} started but SSH login timed out.")
-                else:
-                    from cloudmesh.ai.vm.logger import logger
-
-                    logger.warning(
-                        f"Requested floating IP for {vm_name} but none could be assigned."
+                        logger.warning(
+                            f"VM {vm_name} started but SSH login timed out after IP attachment."
+                        )
+                except Exception as attach_err:
+                    # Roll back: delete VM and release the allocated IP
+                    logger.error(
+                        f"Failed to attach floating IP {ip_address} to VM {vm_name}: {attach_err}"
                     )
+                    # Attempt to delete the server to avoid orphaned resources
+                    try:
+                        conn.compute.delete_server(server)
+                    finally:
+                        release_fip(conn, fip_obj)
+                    raise VMProviderError(
+                        f"Failed to attach floating IP {ip_address}: {attach_err}"
+                    ) from attach_err
 
+            # If we reach here the VM is up (with or without IP)
             return server.name
         except Exception as e:
-            from cloudmesh.ai.vm.logger import logger
-
+            # Cleanup any reserved floating IP on failure before raising
+            if assign_ip and fip_obj:
+                try:
+                    release_fip(conn, fip_obj)
+                except Exception:
+                    pass
             logger.error(
                 f"SDK start failed for {self.cloud_name} with key_name '{key_name}': {e}"
             )

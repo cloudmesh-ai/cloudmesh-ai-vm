@@ -1,7 +1,5 @@
 # cloudmesh-ai-vm
 
-`cloudmesh-ai-vm` is a unified Python CLI tool (`cmx`) designed to simplify the management of Virtual Machines (VMs) across a diverse set of providers including local virtualization (Multipass, WSL2, VirtualBox) and cloud providers (OpenStack, AWS, Azure, GCP).
-
 ## Key Features
 
 - **Unified Interface**: Manage different cloud providers using a single consistent CLI.
@@ -11,10 +9,13 @@
 - **Provider Flexibility**:
     - **Default Cloud**: Manage your active provider via `cmx vm provider set <cloud>`.
     - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmx vm start --cloud aws`).
+- **Floating IP Control**: The `cmx vm start` command now supports a `--noip` flag to start a VM without allocating a public floating IP, saving scarce IP resources.
 - **Remote Execution**: Execute commands directly on your VMs using `cmx vm run <command>`.
 - **SSH Key Management**: Scan for local SSH keys, verify their GitHub authentication status, and manage keys on GitHub (list and upload) directly from the CLI.
 - **Security Management**: Create, assign, and manage firewall rules for your VMs directly from the CLI (with smart-presets for web and database servers).
 - **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
+- **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
+- **SDK Native**: OpenStack providers (Chameleon, Jetstream) are implemented using the official OpenStack SDK for maximum stability and feature support.
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **SDK Native**: OpenStack providers (Chameleon, Jetstream) are implemented using the official OpenStack SDK for maximum stability and feature support.
  20 |  - **Environment Diagnostics**: Use `cmx vm doctor` to validate provider requirements, configuration, and diagnostic information. Add the `--config` flag to run exhaustive configuration validation (replicates the smoke test).
@@ -39,9 +40,7 @@ Configure your credentials in `~/.config/cloudmesh/clouds.yaml`. See the [Config
     - **Lifecycle**: Start, stop, restart, suspend (pause), resume (unpause), and delete containers.
     - **Image Management**: Pull Docker images and list available images.
     - **Networking**: Retrieve and list IP addresses for all running containers.
-    - **Direct Execution**: Run custom commands directly inside containers during startup.
-
-### 3. Basic Usage
+### 2. Basic Usage
 
 ```bash
 # Check current default cloud
@@ -49,12 +48,12 @@ cmx vm provider get
 
 # Set your default cloud
 cmx vm provider set multipass
-53 | # Start a VM (will be named username-1, username-2, etc.)
-54 | cmx vm start
-55 |
-56 | # Start a VM without allocating a floating IP (useful when you don't need external access)
-57 | cmx vm start --noip
+
+# Start a VM (will be named username-1, username-2, etc.)
 cmx vm start
+
+# Start a VM without allocating a floating IP (useful when you don't need external access)
+cmx vm start --noip
 
 # Run a command on the VM
 cmx vm run "hostname"
@@ -72,6 +71,11 @@ cmx vm stop
 cmx vm start --cloud aws
 
 # List all VMs for current cloud
+cmx vm list
+```
+
+For a detailed description of the floating‑IP workflow, see the documentation page:
+`docs/floating-ip-workflow.md`.
 cmx vm list
 \n# Docker Container Management\n\n```bash\n# Run a container with a custom command (to keep it alive)\ncmx container run --name my-cont --image alpine sleep 3600\n\n# List running containers\ncmx container list\n\n# Get container info\ncmx container info my-cont\n\n# List IPs of all running containers\ncmx container ip list\n\n# Lifecycle management\ncmx container restart my-cont\ncmx container suspend pause my-cont\ncmx container suspend resume my-cont\n\n# Image management\ncmx container image pull alpine:latest\ncmx container image list\n\n# Stop and delete\ncmx container stop my-cont\ncmx container delete my-cont\n```\n
 

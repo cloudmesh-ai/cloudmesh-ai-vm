@@ -14,6 +14,9 @@ from cloudmesh.ai.command._shared.context import (
     verbose_callback,
 )
 from cloudmesh.ai.command._shared.providers_utils import register_providers
+# Re-export the top‑level CLI entry point so that tests can import ``cmx``
+# directly from ``cloudmesh.ai.command.vm``.
+from cloudmesh.ai.command import cmx  # noqa: F401
 
 # Register providers immediately so they are available to all commands
 register_providers()
