@@ -1022,24 +1022,46 @@ class OpenstackManager(CloudBaseManager):
             if not self.wait_for_active(name):
                 logger.error(f"VM {name} failed to become active. Skipping FIP assignment.")
                 return None
-
-            # 2. Find the Network Port associated with the VM
-            ports = list(conn.network.ports(device_id=node.id))
-            if not ports:
-                logger.error(f"No network ports found for VM {name}.")
-                return None
-            port = ports[0]
-
             # 3. Reserve a Floating IP
             fip = None
             cloud_config = self.get_cloud_config(self.cloud_name)
             pool_name = cloud_config.get("floating_ip_pool", "public")
 
+            # Determine the Cloudmesh username to store in the floating IP description.
+            # The username may be defined in the provider-specific config, but more
+            # commonly it resides at the top level of the Cloudmesh configuration
+            # (accessible via the StateManager used for the provider).  We attempt to
+            # retrieve it from the provider config first; if missing, we fallback to the
+            # global configuration via ``self.config.db`` (the StateManager exposes the
+            # underlying YamlDB as ``db``).  If the username is still unavailable, we use
+            # a generic placeholder.
+            username = cloud_config.get("username")
+            if not username:
+                try:
+                    # ``self.config`` is the StateManager instance injected by the
+                    # provider factory.  ``db.get`` reads the top‑level key.
+                    username = self.config.db.get("username")
+                except Exception:
+                    username = None
+            # Ensure the description is a short, non‑empty string.
+            description = username if username and isinstance(username, str) and username.strip() else "cloudmesh"
+
             try:
                 # Try to find the public network and create an IP
                 network = conn.network.find_network(pool_name)
-                fip = conn.network.create_ip(floating_network_id=network.id if network else None)
+                fip = conn.network.create_ip(
+                    floating_network_id=network.id if network else None,
+                    description=description,
+                )
             except Exception as e:
+                logger.debug(f"Direct FIP creation failed: {e}. Trying fallback to existing free IPs...")
+                try:
+                    all_fips = list(conn.network.ips())
+                    free_fips = [f for f in all_fips if not f.port_id]
+                    if free_fips:
+                        fip = free_fips[0]
+                except Exception as e2:
+                    logger.error(f"Failed to retrieve free FIPs: {e2}")
                 logger.debug(f"Direct FIP creation failed: {e}. Trying fallback to existing free IPs...")
                 try:
                     all_fips = list(conn.network.ips())
