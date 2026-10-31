@@ -41,7 +41,8 @@ install:
 	$(PIP) install -e .
 
 requirements:
-	pip-compile --output-file=requirements.txt pyproject.toml
+	# Regenerate the pinned requirements file after updating pyproject.toml
+	ENVX/bin/pip-compile --output-file=requirements.txt pyproject.toml
 
 test:
 	$(PYTHON) -m pytest -v tests/

@@ -39,9 +39,9 @@ dependencies = [
     "chameleon-zunclient @ git+https://github.com/chameleoncloud/python-zunclient.git",
     "ccauth @ git+https://github.com/ChameleonCloud/ccauth.git",
     "pre-commit",
-    # Pin known vulnerable transitive dependencies to fixed versions
-    "certifi>=2026.10.18",
-    "opentelemetry-api>=1.45.1",
+    # Pin known vulnerable transitive dependencies to fixed versions (exact versions so Dependabot can resolve correctly)
+    "certifi==2026.10.18",
+    "opentelemetry-api==1.45.1",
 ]
 
 [project.scripts]
