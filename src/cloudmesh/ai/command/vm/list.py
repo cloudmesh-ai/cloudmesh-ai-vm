@@ -1,3 +1,5 @@
+import json as jsonlib
+
 import click
 
 from cloudmesh.ai.command._shared.context import (
@@ -93,13 +95,13 @@ def list_vms(ctx: click.Context, json: bool = False, **kwargs):
                 if vms:
                     if json:
                         all_vms_data[cloud_name] = vms
-                    if _render_vms(cloud_name, vms):
+                    elif _render_vms(cloud_name, vms):
                         any_vms = True
             except Exception as e:
                 console.print(f"Could not list VMs for provider {cloud_name}: {e}")
 
         if json:
-            console.print(json.dumps(all_vms_data, indent=4))
+            click.echo(jsonlib.dumps(all_vms_data, indent=4))
             return
 
         if not any_vms:
@@ -110,7 +112,7 @@ def list_vms(ctx: click.Context, json: bool = False, **kwargs):
     cloud_name = provider.cloud_name
     vms = provider.list()
     if json:
-        console.print(json.dumps({cloud_name: vms}, indent=4))
+        click.echo(jsonlib.dumps({cloud_name: vms}, indent=4))
         return
 
     if not _render_vms(cloud_name, vms):

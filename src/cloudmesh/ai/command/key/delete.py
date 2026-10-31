@@ -1,7 +1,7 @@
 import click
 
 from cloudmesh.ai.command._shared.context import console, get_active_provider
-from cloudmesh.ai.command._shared.exceptions import handle_errors
+from cloudmesh.ai.command._shared.exceptions import VMCommandError, handle_errors
 
 
 @click.command()

@@ -380,13 +380,13 @@ class Provider(CloudBaseManager):
             return ""
 
     def _vm_exists(self, name: str) -> bool:
-        """Checks if a VM with the given name already exists."""
+        """Check VM existence without hiding cloud API failures."""
         self._setup_chi_context()
-        try:
-            server = chi.server.get_server(name)
-            return server is not None
-        except Exception:
-            return False
+        servers = chi.server.nova().servers.list(limit=-1)
+        return any(
+            getattr(server, "name", None) == name
+            for server in servers
+        )
 
     def start(
         self,
@@ -401,7 +401,9 @@ class Provider(CloudBaseManager):
         cloud_config = self.get_cloud_config("chameleon")
         image_name = image or cloud_config.get("image")
         flavor_name = flavor or cloud_config.get("flavor")
-        security_group = cloud_config.get("security_group", "default")
+        security_group = kwargs.get("security_group") or cloud_config.get(
+            "security_group", "default"
+        )
 
         username = cloud_config.get("username", "user").replace("_", "-")
         key_name = cloud_config.get("key_name", username)
@@ -428,6 +430,27 @@ class Provider(CloudBaseManager):
                     f"Warning: Could not parse duration '{duration}': {e}. Falling back to 1 hour."
                 )
 
+        # Reject explicitly named VM collisions before modifying cloud keys.
+        if name is not None and self._vm_exists(name):
+            raise VMProviderError(
+                f"VM '{name}' already exists; refusing automatic renaming"
+            )
+
+        # A custom security group must be new to avoid modifying shared rules.
+        custom_security_group = kwargs.get("security_group")
+        if custom_security_group:
+            existing_groups = chi.network.list_security_groups(
+                name_filter=custom_security_group
+            )
+            if any(
+                getattr(group, "name", None) == custom_security_group
+                for group in existing_groups
+            ):
+                raise VMProviderError(
+                    f"Security group '{custom_security_group}' already exists; "
+                    "refusing to modify an existing security group"
+                )
+
         # Ensure keypair exists and matches the local key
         key_path = cloud_config.get("key_path", "~/.ssh/id_rsa.pub")
         key_filename = os.path.expanduser(key_path)
@@ -435,8 +458,9 @@ class Provider(CloudBaseManager):
         try:
             existing_keys = {k.name: k.public_key for k in chi.server.list_keypair()}
         except Exception as e:
-            self.print(f"Warning: Could not list keypairs: {e}")
-            existing_keys = {}
+            raise VMProviderError(
+                f"Could not list cloud keypairs; refusing to modify SSH keys: {e}"
+            ) from e
 
         # Read the local public key to verify against the cloud
         try:
@@ -451,14 +475,10 @@ class Provider(CloudBaseManager):
             if existing_keys[key_name] == local_pub_key:
                 self.print(f"✅ Using existing matching keypair: {key_name}")
             else:
-                self.print(
-                    f"Keypair {key_name} exists but does not match local key. Updating..."
+                raise VMProviderError(
+                    f"Cloud keypair '{key_name}' does not match the local public key; "
+                    "refusing to overwrite an existing cloud keypair"
                 )
-                try:
-                    chi.server.update_keypair(key_name, local_pub_key)
-                    self.print(f"✅ Keypair {key_name} updated with local key")
-                except Exception as e:
-                    raise VMProviderError(f"Failed to update keypair {key_name}: {e}")
         else:
             self.print(f"Keypair {key_name} not found in cloud. Uploading...")
             try:
@@ -488,6 +508,10 @@ class Provider(CloudBaseManager):
             while True:
                 if not self._vm_exists(vm_name):
                     break
+                if name is not None:
+                    raise VMProviderError(
+                        f"VM '{vm_name}' already exists; refusing automatic renaming"
+                    )
                 vm_name = f"{original_vm_name}-{attempt}"
                 attempt += 1
 
@@ -567,13 +591,18 @@ class Provider(CloudBaseManager):
 
             # 3. OPEN PORT 22 (SSH) AND ICMP (PING) IN SECURITY GROUPS
             self.print("Configuring security groups for SSH and ICMP...")
-            sg_name = f"{username}-allow-ssh"
+            sg_name = kwargs.get("security_group") or f"{username}-allow-ssh"
             sg_list = network.list_security_groups(name_filter=sg_name)
 
             # Find exact match to avoid partial name collisions
             sg = next((g for g in sg_list if getattr(g, "name", None) == sg_name), None)
 
             if sg:
+                if kwargs.get("security_group"):
+                    raise VMProviderError(
+                        f"Security group '{sg_name}' appeared during startup; "
+                        "refusing to modify an existing custom security group"
+                    )
                 self.print(f"✅ Found existing security group: {sg_name}")
                 sg_id = sg.id
             else:
@@ -713,7 +742,7 @@ class Provider(CloudBaseManager):
             return False
 
     def delete(self, name: str | None = None) -> bool:
-        """Deletes a Chameleon VM by name, ID, or fallback to single active server."""
+        """Deletes a Chameleon VM by exact name or server ID."""
         if not name:
             return False
 
@@ -726,8 +755,18 @@ class Provider(CloudBaseManager):
             # 1. Try direct lookup via get_server
             try:
                 server = chi.server.get_server(name)
+                if server is not None:
+                    server_name = getattr(server, "name", None)
+                    server_id = getattr(server, "id", None)
+                    if server_name != name and str(server_id) != name:
+                        logger.warning(
+                            "CHI delete: Direct lookup returned a different "
+                            "server for '%s'; ignoring it.",
+                            name,
+                        )
+                        server = None
             except Exception:
-                pass
+                server = None
 
             # 2. Try matching name or ID from the list
             if not server:
@@ -735,22 +774,9 @@ class Provider(CloudBaseManager):
                     s_name = getattr(s, "name", "")
                     s_id = str(getattr(s, "id", ""))
                     print(f"Checking server: {s_name} ({s_id})")
-                    if (
-                        s_name == name
-                        or s_id == name
-                        or name in s_id
-                        or s_id.startswith(str(name))
-                    ):
+                    if s_name == name or s_id == name:
                         server = s
                         break
-
-            # 3. Ultimate Fallback: If only ONE server exists in this project/site,
-            # assume this is the one the user meant to delete (handles internal UUID mismatch)
-            if not server and len(servers) == 1:
-                server = servers[0]
-                print(
-                    f"Notice: '{name}' did not match directly, but exactly one server was found. Targeting: {server.name}"
-                )
 
             if not server:
                 from cloudmesh.ai.vm.logger import logger
@@ -940,7 +966,7 @@ class Provider(CloudBaseManager):
             # print("TMP: " + tmp_name)
 
         except Exception as e:
-            print(f"Error calculating TTL: {e}")
+            logger.warning("Error calculating TTL: %s", e)
 
         return str(ttl_str)
 
@@ -966,7 +992,7 @@ class Provider(CloudBaseManager):
                         ttl_str = self.ttl_humanize(end_date)
                         ttl_data[ttl_name] = ttl_str
                     except Exception as e:
-                        print(f"Error calculating TTL: {e}")
+                        logger.warning("Error calculating TTL: %s", e)
 
                     end_date = (
                         getattr(l, "end_date", None)
@@ -1032,7 +1058,6 @@ class Provider(CloudBaseManager):
             except Exception as e:
                 logger.debug(f"Could not fetch flavor map: {e}")
 
-            print(f"Found {len(servers)} servers.")
             results = []
 
             for s in servers:
@@ -1103,7 +1128,7 @@ class Provider(CloudBaseManager):
                         "image": getattr(s, "image_name", "Unknown"),
                         "flavor": flavor_name,
                         "networks": self._format_networks(addresses),
-                        "ttl": ttl_data[s.name],
+                        "ttl": ttl_data.get(s.name, "N/A"),
                     }
                 )
 
@@ -1112,7 +1137,7 @@ class Provider(CloudBaseManager):
             from cloudmesh.ai.vm.logger import logger
 
             logger.warning(f"CHI list failed: {e}")
-            return []
+            raise
 
     def _get_flavor_info(self, server) -> tuple[str, str, str]:
         """

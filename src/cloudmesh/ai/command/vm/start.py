@@ -25,6 +25,11 @@ from cloudmesh.ai.command._shared.exceptions import VMCommandError, handle_error
     "--duration",
     help="Lease duration for Chameleon (e.g. '3h', '1d'). Only supported for Chameleon provider.",
 )
+@click.option(
+    "--security-group",
+    default=None,
+    help="Security group to configure and attach (Chameleon only).",
+)
 @vm_options
 @handle_errors
 def start(
@@ -34,6 +39,7 @@ def start(
     vm_range: str | None = None,
     ip: str = "yes",
     duration: str | None = None,
+    security_group: str | None = None,
     cloud: str = None,
     debug: bool = False,
     verbose: bool = False,
@@ -106,9 +112,19 @@ def start(
                 )
 
     for vm_name in vms_to_start:
-        result = provider.start(
-            name=vm_name, assign_ip=(ip == "yes"), duration=duration
-        )
+        start_kwargs = {
+            "name": vm_name,
+            "assign_ip": (ip == "yes"),
+            "duration": duration,
+        }
+        if security_group is not None:
+            if provider.cloud_name != "chameleon":
+                raise click.ClickException(
+                    "--security-group is supported only for Chameleon"
+                )
+            start_kwargs["security_group"] = security_group
+
+        result = provider.start(**start_kwargs)
         if result:
             final_name = result if isinstance(result, str) else vm_name
             started_vms.append(final_name)

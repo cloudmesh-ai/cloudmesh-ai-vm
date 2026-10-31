@@ -1,5 +1,6 @@
 import json
 import uuid
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -11,6 +12,14 @@ from tests.smoke.benchmark_helper import (
     save_benchmark,
 )
 from tests.smoke.cli_helper import cli_step
+from tests.smoke.chameleon_cleanup import (
+    cleanup_smoke_key,
+    cleanup_smoke_resources,
+    cleanup_smoke_security_group,
+    verify_key_absent,
+    verify_resources_absent,
+    verify_security_group_absent,
+)
 
 
 @pytest.fixture
@@ -30,7 +39,7 @@ def test_chameleon_cli_lifecycle(runner):
     # 1. providers
 
     with cli_step(
-        "Fetching Provider List", timer_name="provider_list"
+        "Fetching Provider List", timer_name="chameleon_provider_list"
     ) as step:
         result = runner.invoke(vm.vm_group, ["provider", "list"])
         step.debug("Provider list output:", result)
@@ -40,63 +49,106 @@ def test_chameleon_cli_lifecycle(runner):
 
     # 2. set
     with cli_step(
-        "Setting up CLI config for Chameleon...", timer_name="provider_set"
+        "Setting up CLI config for Chameleon...", timer_name="chameleon_provider_set"
     ) as step:
         result = runner.invoke(vm.vm_group, ["provider", "set", "chameleon"])
         step.debug("Provider set output:", result)
     assert result.exit_code == 0
 
-    # 3. start
-    with cli_step(
-        "Starting a new Chameleon VM...", timer_name="start"
-    ) as step:
-        vm_name = f"{username}-smoke-chameleon-vm-{uuid.uuid4().hex[:6]}"
-        result = runner.invoke(vm.vm_group, ["start", vm_name])
-        step.debug("Chameleon start output:", result)
-    if result.exit_code != 0:
-        pytest.skip(f"Chameleon start failed: {result.output}")
+    # 3. Verify that this test's unique resource names are unused.
+    vm_name = f"{username}-smoke-chameleon-vm-{uuid.uuid4().hex[:6]}"
+    verify_resources_absent(vm_name)
 
-    # Capture the actual VM name (which now includes site and username)
-    import re
+    sg_name = f"{vm_name}-sg"
+    # Match the username normalization used by ChameleonManager.start().
+    from cloudmesh.ai.vm.providers import get_provider
 
-    match = re.search(r"VM ([\w-]+) started", result.output)
-    if match:
-        vm_name = match.group(1)
-    else:
-        # Fallback: try to find any name that looks like the requested one
-        for word in result.output.split():
-            if "smoke-chameleon-vm" in word and "-" in word:
-                vm_name = word.strip(".,!")
-                break
+    chameleon_provider = get_provider("chameleon")
+    cloud_config = chameleon_provider.get_cloud_config("chameleon")
+    if not isinstance(cloud_config, dict):
+        raise AssertionError("Chameleon provider configuration is invalid")
 
-    # 4. list
-    with cli_step(
-        f"Checking if VM {vm_name} is in the list...", timer_name="list"
-    ) as step:
-        result = runner.invoke(vm.vm_group, ["list"])
-        step.debug("Chameleon list output:", result)
-    assert result.exit_code == 0
-    # The output is a rich table and may be truncated (e.g., 'gregor-s…')
-    # We check if the start of the VM name is present.
-    assert vm_name[:8] in result.output
+    provider_username = cloud_config.get("username", "user")
+    if not isinstance(provider_username, str) or not provider_username.strip():
+        raise AssertionError("Chameleon provider username is invalid")
+    provider_username = provider_username.replace("_", "-")
+    sg_description = f"Enable SSH and ICMP traffic for {provider_username}"
+    verify_security_group_absent(sg_name)
 
-    # 5. stop
-    with cli_step(f"Stopping VM {vm_name}...", timer_name="stop") as step:
-        result = runner.invoke(vm.vm_group, ["stop", vm_name])
-        step.debug("Chameleon stop output:", result)
-    if result.exit_code != 0:
-        pytest.skip("Chameleon stop failed")
+    # 4. Start the VM. Cleanup covers partial startup failures too.
+    try:
+        with cli_step(
+            "Starting a new Chameleon VM...", timer_name="chameleon_start"
+        ) as step:
+            result = runner.invoke(
+                vm.vm_group,
+                ["start", vm_name, "--security-group", sg_name],
+            )
+            step.debug("Chameleon start output:", result)
 
-    # 6. delete
-    with cli_step(f"Deleting VM {vm_name}...", timer_name="delete") as step:
-        result = runner.invoke(vm.vm_group, ["delete", vm_name])
-        step.debug("Chameleon delete output:", result)
-    if result.exit_code != 0:
-        pytest.skip("Chameleon delete failed")
+        assert result.exit_code == 0, (
+            f"Chameleon start failed: {result.output}"
+        )
+
+        import re
+
+        match = re.search(
+            r"Successfully started VM ([\w-]+)\.",
+            result.output,
+        )
+        assert match is not None, (
+            f"Could not identify the created VM: {result.output}"
+        )
+        assert match.group(1) == vm_name, (
+            f"Unexpected VM name: {match.group(1)}"
+        )
+
+        # 5. List
+        with cli_step(
+            f"Checking if VM {vm_name} is in the list...",
+            timer_name="chameleon_list",
+        ) as step:
+            result = runner.invoke(vm.vm_group, ["list", "vms", "--json"])
+            step.debug("Chameleon list output:", result)
+
+        assert result.exit_code == 0, (
+            f"Chameleon list failed: {result.output}"
+        )
+        vm_data = json.loads(result.output)
+        assert vm_name in {
+            entry["name"] for entry in vm_data["chameleon"]
+        }, f"VM {vm_name} not found in Chameleon VM list"
+
+        # 6. Stop
+        with cli_step(
+            f"Stopping VM {vm_name}...",
+            timer_name="chameleon_stop",
+        ) as step:
+            result = runner.invoke(vm.vm_group, ["stop", vm_name])
+            step.debug("Chameleon stop output:", result)
+
+        assert result.exit_code == 0, (
+            f"Chameleon stop failed: {result.output}"
+        )
+
+    finally:
+        # Preflight succeeded before entering this block.
+        # Clean up the exact original name, including its reservation.
+        with cli_step(
+            f"Cleaning up Chameleon resources for {vm_name}...",
+            timer_name="chameleon_delete",
+        ):
+            try:
+                cleanup_smoke_resources(vm_name)
+            except Exception:
+                # Never delete the security group while VM cleanup is uncertain.
+                raise
+            else:
+                cleanup_smoke_security_group(sg_name, sg_description)
 
     # 7. images
     with cli_step(
-        "Fetching Chameleon images...", timer_name="images"
+        "Fetching Chameleon images...", timer_name="chameleon_images"
     ) as step:
         result = runner.invoke(vm.vm_group, ["image"])
         step.debug("Chameleon images output:", result)
@@ -105,7 +157,7 @@ def test_chameleon_cli_lifecycle(runner):
 
     # 8. flavors
     with cli_step(
-        "Fetching Chameleon flavors...", timer_name="flavors"
+        "Fetching Chameleon flavors...", timer_name="chameleon_flavors"
     ) as step:
         result = runner.invoke(vm.vm_group, ["flavor"])
         step.debug("Chameleon flavors output:", result)
@@ -122,29 +174,44 @@ def test_chameleon_cli_lifecycle(runner):
     # if result.exit_code != 0:
     #    pytest.skip("Chameleon key list --all failed")
 
-    # 11. keys upload
-    with cli_step(
-        "Uploading SSH key to Chameleon...", timer_name="key_upload"
-    ) as step:
-        result = runner.invoke(
-            vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub", "--name", "smoke-key"]
-        )
-        step.debug("Chameleon key upload output:", result)
-    if result.exit_code != 0:
-        pytest.skip("Chameleon key upload failed")
+    # 11–12. Upload and safely clean up a uniquely named SSH key.
+    key_path = Path.home() / ".ssh" / "id_ed25519.pub"
+    if not key_path.is_file():
+        pytest.skip("Ed25519 SSH public key is unavailable")
 
-    # 12. keys delete
-    with cli_step(
-        "Deleting SSH key from Chameleon...", timer_name="key_delete"
-    ) as step:
-        result = runner.invoke(vm.vm_group, ["key", "delete", "smoke-key"])
-        step.debug("Chameleon key delete output:", result)
-    if result.exit_code != 0:
-        pytest.skip("Chameleon key delete failed")
+    expected_public_key = key_path.read_text().strip()
+    if not expected_public_key:
+        pytest.fail("SSH public key is empty")
+
+    key_name = f"smoke-key-{uuid.uuid4().hex[:12]}"
+    verify_key_absent(key_name)
+
+    try:
+        with cli_step(
+            "Uploading SSH key to Chameleon...",
+            timer_name="chameleon_key_upload",
+        ) as step:
+            result = runner.invoke(
+                vm.vm_group,
+                ["key", "upload", str(key_path), "--name", key_name],
+            )
+            step.debug("Chameleon key upload output:", result)
+
+        assert result.exit_code == 0, (
+            f"Chameleon key upload failed: {result.output}"
+        )
+    finally:
+        # Preflight succeeded. Handle partially successful uploads too.
+        # Never delete a key whose public-key content differs.
+        with cli_step(
+            "Cleaning up Chameleon smoke-test SSH key...",
+            timer_name="chameleon_key_delete",
+        ):
+            cleanup_smoke_key(key_name, expected_public_key)
 
     # 13. security_groups
     with cli_step(
-        "Fetching Chameleon security groups...", timer_name="security_groups"
+        "Fetching Chameleon security groups...", timer_name="chameleon_security_groups"
     ) as step:
         result = runner.invoke(vm.vm_group, ["security-group"])
         step.debug("Chameleon security_groups output:", result)
@@ -153,7 +220,7 @@ def test_chameleon_cli_lifecycle(runner):
 
     # 14. ssh_config
     with cli_step(
-        "Fetching Chameleon SSH config...", timer_name="ssh_config"
+        "Fetching Chameleon SSH config...", timer_name="chameleon_ssh_config"
     ) as step:
         result = runner.invoke(vm.vm_group, ["ssh-config"])
         step.debug("Chameleon ssh_config output:", result)
@@ -161,7 +228,7 @@ def test_chameleon_cli_lifecycle(runner):
 
     # 15. reservation
     # Try to create a reservation
-    # with cli_step("Creating a Chameleon reservation...", timer_name="reservation") as step:
+    # with cli_step("Creating a Chameleon reservation...", timer_name="chameleon_reservation") as step:
     #    res_name = f"{username}-smoke-res-{uuid.uuid4().hex[:6]}"
     #    print(f"Attempting to create reservation {res_name}...")
     #    result = runner.invoke(vm.vm_group, ["reservation", "duration", res_name, "--count", "1"])
