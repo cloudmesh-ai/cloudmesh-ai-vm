@@ -2,7 +2,6 @@
 /diagnose_*.py
 /inspect_*.py
 /verify_*.py
-tests/standalone/python-chi
 junk
 .report.html
 .cloudmesh
@@ -248,12 +247,14 @@ __marimo__/
 .release_state.json
 release_*.log
 cache-username.yaml
-.DS_Storetests/standalone/python-chi/
-a.txt
-<<<<<<< HEAD
-=======
-a.txt
-a.txt
-a.txt
->>>>>>> main
-results/
+ .DS_Store
+ tests/standalone/python-chi/
+ # Ignore ad-hoc development scripts and temporary test artifacts
+ a.sh
+ a.sh~
+ debug_fip.py
+ set_fip.py
+ tests/smoke/test-jetstream-cli.py.1
+ tests/test_output.txt
+ # Other generated files
+ results/
