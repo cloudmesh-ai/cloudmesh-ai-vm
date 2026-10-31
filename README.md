@@ -9,7 +9,8 @@
 - **Provider Flexibility**:
     - **Default Cloud**: Manage your active provider via `cmx vm provider set <cloud>`.
     - **Cloud Override**: Use the `--cloud` flag to temporarily use a different provider (e.g., `cmx vm start --cloud aws`).
-- **Floating IP Control**: The `cmx vm start` command now supports a `--noip` flag to start a VM without allocating a public floating IP, saving scarce IP resources.
+ - **Floating IP Control**: The `cmx vm start` command now supports a `--noip` flag to start a VM without allocating a public floating IP, saving scarce IP resources.
+ - **Floating IP Descriptions**: When a floating IP is allocated, its ``description`` field is set to the Cloudmesh username (or a generic placeholder) to aid in resource tracking and billing.
 - **Remote Execution**: Execute commands directly on your VMs using `cmx vm run <command>`.
 - **SSH Key Management**: Scan for local SSH keys, verify their GitHub authentication status, and manage keys on GitHub (list and upload) directly from the CLI.
 - **Security Management**: Create, assign, and manage firewall rules for your VMs directly from the CLI (with smart-presets for web and database servers).

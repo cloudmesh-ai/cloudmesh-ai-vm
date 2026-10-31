@@ -1,4 +1,4 @@
-# Floating IP Workflow
+ou # Floating IP Workflow
 
 This document describes the **floating IP (FIP) workflow** that is used when a
 VM is started via the `cmx vm start` command.  The workflow is currently
@@ -27,8 +27,12 @@ OpenStack) and follows the design outlined in `plan-start2.md`.
 
 * When no unassigned IPs exist, the provider attempts to allocate a new one with
   :func:`cloudmesh.ai.vm.fip_utils.allocate_fip_with_retry`.
-* This helper retries the allocation up to **4** times, using exponential
-  back‑off (2 s, 4 s, 8 s, …) and a small jitter to reduce contention.
+ * This helper retries the allocation up to **4** times, using exponential
+   back‑off (2 s, 4 s, 8 s, …) and a small jitter to reduce contention.
+ * When a new floating IP is allocated, the provider sets its ``description``
+   field to the Cloudmesh username (or a generic placeholder). This makes it
+   easier to identify which user owns the IP in the OpenStack dashboard and
+   for billing purposes.
 
 ## 4. VM creation
 

@@ -1184,31 +1184,38 @@ class OpenstackManager(CloudBaseManager):
             # Ensure the VM is active and network is ready
             if not self.wait_for_active(name):
                 logger.error(f"VM {name} failed to become active. Skipping FIP assignment.")
-                return None
-
-            # 2. Find the Network Port associated with the VM
-            ports = list(conn.network.ports(device_id=node.id))
-            if not ports:
-                logger.error(f"No network ports found for VM {name}.")
-                return None
-            port = ports[0]
-
-            # 3. Reserve a Floating IP
-            fip = None
-            cloud_config = self.get_cloud_config(self.cloud_name)
-            pool_name = cloud_config.get("floating_ip_pool", "public")
-
-            # Determine the description for the floating IP using the Cloudmesh username.
-            # Prefer the explicit username from the cloud configuration; fall back to the
-            # global state configuration if necessary.
+            # -----------------------------------------------------------------
+            # Determine a reliable Cloudmesh username for the floating IP description.
+            # The logic combines the best aspects of the two diverging branches:
+            #   1. Prefer the explicit ``username`` entry from the provider‑specific
+            #      ``cloud_config``.
+            #   2. If not defined, attempt to read the top‑level username from the
+            #      provider's ``StateManager`` via ``self.config.db`` (dev2 style).
+            #   3. As a final fallback, import ``cloudmesh.common.State`` and read the
+            #      global configuration (main style).
+            #   4. Ensure the result is a non‑empty string, defaulting to "cloudmesh".
+            #   5. Append a clear suffix (" – floating IP") to make the purpose of the
+            #      description obvious when viewing the IP in OpenStack dashboards.
+            # -----------------------------------------------------------------
             username = cloud_config.get("username")
             if not username:
+                # Try provider‑specific StateManager first (dev2 style)
+                try:
+                    username = self.config.db.get("username")
+                except Exception:
+                    username = None
+            if not username:
+                # Fallback to the global State configuration (main style)
                 try:
                     from cloudmesh.common.State import State
                     state = State()
                     username = state.config.db.get("username", "cloudmesh")
                 except Exception:
-                    username = "cloudmesh"
+                    username = None
+            # Guard against empty or non‑string values
+            if not username or not isinstance(username, str) or not username.strip():
+                username = "cloudmesh"
+            # Use a suffix to identify the IP as a floating IP allocated by Cloudmesh.
             description = f"{username} – floating IP"
 
             try:
@@ -1219,6 +1226,14 @@ class OpenstackManager(CloudBaseManager):
                     description=description,
                 )
             except Exception as e:
+                logger.debug(f"Direct FIP creation failed: {e}. Trying fallback to existing free IPs...")
+                try:
+                    all_fips = list(conn.network.ips())
+                    free_fips = [f for f in all_fips if not f.port_id]
+                    if free_fips:
+                        fip = free_fips[0]
+                except Exception as e2:
+                    logger.error(f"Failed to retrieve free FIPs: {e2}")
                 logger.debug(f"Direct FIP creation failed: {e}. Trying fallback to existing free IPs...")
                 try:
                     all_fips = list(conn.network.ips())
