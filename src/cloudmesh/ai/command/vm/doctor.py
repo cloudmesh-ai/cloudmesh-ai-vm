@@ -7,6 +7,8 @@ from cloudmesh.ai.command._shared.context import (
 )
 from cloudmesh.ai.command._shared.exceptions import handle_errors
 from cloudmesh.ai.command._shared.ui import render_table
+# Import the new configuration validation helper
+from cloudmesh.ai.vm.diagnostics.config_validator import run_all_config_checks
 
 
 def _format_validation_result(result):
@@ -79,9 +81,19 @@ def _status_label(status):
     is_flag=True,
     help="Exit with a non-zero status when a doctor check fails.",
 )
+@click.option(
+    "--config",
+    is_flag=True,
+    help="Run exhaustive configuration validation (replicates smoke test).",
+)
 @click.pass_context
 @vm_options
-def doctor(ctx: click.Context, strict: bool = False, **kwargs) -> None:
+def doctor(
+    ctx: click.Context,
+    strict: bool = False,
+    config: bool = False,
+    **kwargs,
+) -> None:
     """
     Diagnose the active VM provider without modifying any VM resources.
 
@@ -237,6 +249,21 @@ def doctor(ctx: click.Context, strict: bool = False, **kwargs) -> None:
                 "Provider does not implement get_provider_info().",
             ]
         )
+
+    # -------------------------------------------------------------------
+    # Optional exhaustive configuration validation (full_config flag).
+    # -------------------------------------------------------------------
+    if config:
+        all_checks = run_all_config_checks()
+        for section, checks in all_checks.items():
+            for check_name, (status, details) in checks.items():
+                # Row label combines the section and the individual check name
+                row_label = f"{section}: {check_name}"
+                rows.append([row_label, _status_label(status), details])
+                if status == "FAIL":
+                    failures += 1
+                elif status == "WARN":
+                    warnings += 1
 
     render_table(
         f"VM Doctor: {cloud_name}",

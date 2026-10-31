@@ -17,7 +17,7 @@
 - **SSH Integration**: Generate suggested SSH configuration entries for existing VMs to enable seamless access via `ssh <hostname>`.
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **SDK Native**: OpenStack providers (Chameleon, Jetstream) are implemented using the official OpenStack SDK for maximum stability and feature support.
-- **Environment Diagnostics**: Use `cmx vm doctor` to validate provider requirements, configuration, and diagnostic information before running VM operations.
+ 20 |  - **Environment Diagnostics**: Use `cmx vm doctor` to validate provider requirements, configuration, and diagnostic information. Add the `--config` flag to run exhaustive configuration validation (replicates the smoke test).
 
 The full documentation is available at: <https://cloudmesh-ai.github.io/cloudmesh-ai-vm/>
 
