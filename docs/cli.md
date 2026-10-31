@@ -234,8 +234,30 @@ Opens the OpenStack Horizon dashboard in your default web browser for the active
 
 Restarts the cloud provider service or resets the local environment. For Multipass on macOS, this restarts the `multipassd` daemon.
 
-- **Usage**: `cmx vm reset`
-- **Example**: `cmx vm reset`
+-- **Usage**: `cmx vm reset`
+-- **Example**: `cmx vm reset`
+
+#### `doctor`
+
+Diagnoses the active VM provider without modifying any VM resources. It performs checks for:
+
+* Provider resolution
+* Local tool requirements
+* Provider configuration validation
+* Provider information retrieval
+
+**Options**
+
+* `--strict` – Exit with a non‑zero status when any check fails.
+ * `--config` – Run exhaustive configuration validation (replicates the smoke test checks for both Cloudmesh and OpenStack configuration files).
+
+**Examples**
+
+```bash
+cmx vm doctor               # Basic health‑check
+ cmx vm doctor --config # Full configuration validation
+cmx vm doctor --strict      # Fail with non‑zero exit code on any error
+```
 
 ### 6. Configuration
 

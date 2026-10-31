@@ -22,6 +22,26 @@ class Provider(LocalBaseManager):
         self.cloud_name = "lima"
         self._verify_installation()
 
+    @property
+    def version(self) -> builtins.list[str]:
+        """Returns the version string of the Lima provider (limactl).
+
+        The method runs ``limactl --version`` and returns the first line of
+        output as a one‑element list. If the command fails, an empty list is
+        returned to keep the behaviour consistent with other providers that
+        return ``[]`` on failure.
+        """
+        try:
+            result = self._run_command(["limactl", "--version"])
+            if result.stdout:
+                # Return the first line of the version output.
+                first_line = result.stdout.strip().splitlines()[0]
+                return [first_line]
+        except Exception:
+            # If the version command fails, ignore the error and return empty.
+            pass
+        return []
+
     def _verify_installation(self):
         """Ensure limactl is installed on the system."""
         try:

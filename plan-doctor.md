@@ -39,7 +39,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 ## 2. High‑Level Objectives
 1. **Add a reusable validation library** (`cloudmesh/ai/vm/diagnostics/config_validator.py`) that implements the same checks as `tests/smoke/test_config.py` but returns structured results (PASS/FAIL/WARN + details).
 2. **Extend the `doctor` CLI** (`src/cloudmesh/ai/command/vm/doctor.py`) to invoke this library and display its results as additional rows in the existing table.
-3. **Expose a flag** (`--full-config` or `--config-check`) to enable the extended checks (default behaviour stays lightweight for backward compatibility).
+3. **Expose a flag** (`--config`) to enable the extended checks (default behaviour stays lightweight for backward compatibility).
 4. **Update documentation** (README, docs/cli.md, docs/readme.md) to describe the new flag and the richer output.
 5. **Add unit tests** (`tests/unit/test_doctor_extended.py`) that verify the new rows appear with the correct status for both a healthy and a broken configuration.
 6. **Ensure CI** runs the full test suite (`pytest -q`) and that the `doctor` command still exits with the appropriate status code (0 on full pass, non‑zero when `--strict` is supplied and any check fails).
@@ -61,7 +61,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 * **Import** the new helper: `from cloudmesh.ai.vm.diagnostics.config_validator import run_all_config_checks`.
 * **Add CLI flag**:
   ```python
-  @click.option("--full-config", is_flag=True, help="Run exhaustive configuration validation (replicates smoke test).")
+   @click.option("--config", is_flag=True, help="Run exhaustive configuration validation (replicates smoke test).")
   ```
 * **Logic flow** (inside `doctor` after provider info):
   1. If `full_config` is True, call `run_all_config_checks()`.
@@ -75,7 +75,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 * **Exit behavior** – keep existing `--strict` handling: if any failure (including those from the full config checks) and `strict` is set, exit with code 1.
 
 ### 3.3. Documentation Updates
-* **README.md** – Add a new subsection under *Environment Diagnostics* describing the `--full-config` flag and summarising the extra checks.
+ * **README.md** – Add a new subsection under *Environment Diagnostics* describing the `--config` flag and summarising the extra checks.
 * **docs/cli.md** – Document the new option with usage examples.
 * **docs/readme.md** – Mirror the README update for the GitHub‑Pages documentation.
 * Ensure no duplicate sections (use the same wording across files and reference a single source if possible).
@@ -87,7 +87,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 | `tests/unit/test_doctor_extended.py` (happy path) | Use temporary valid config files (via `tmp_path`) and ensure all rows report `PASS`. |
 | `tests/unit/test_doctor_extended.py` (strict mode) | Verify that the command exits with non‑zero when any check fails and `--strict` is supplied. |
 | `tests/smoke/test_config.py` | No changes – remain the source of truth for validation logic. |
-| `tests/unit/test_vm_doctor.py` | May need minor adjustments to accommodate the new optional flag (ensure existing tests still pass when `--full-config` is omitted). |
+ | `tests/unit/test_vm_doctor.py` | May need minor adjustments to accommodate the new optional flag (ensure existing tests still pass when `--config` is omitted). |
 
 **Implementation notes:**
 * Use `click.testing.CliRunner` (as existing doctest does) to invoke `cmx vm doctor` with the flag.
@@ -95,7 +95,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 
 ### 3.5. CI Integration
 * Update the GitHub Actions workflow (if any) to run `pytest -q` – it already does.
-* Add a step that runs `cmx vm doctor --full-config` in a non‑strict mode to ensure the command itself does not raise unexpected exceptions.
+* Add a step that runs `cmx vm doctor --config` in a non‑strict mode to ensure the command itself does not raise unexpected exceptions.
 
 ### 3.6. Timeline (approx.)
 | Day | Activity |
@@ -122,7 +122,7 @@ The goal of this plan is to **integrate** the extensive checks from `test_config
 
 ## 5. Deliverables
 - `src/cloudmesh/ai/vm/diagnostics/config_validator.py` – reusable validation library.
-- Updated `src/cloudmesh/ai/command/vm/doctor.py` with `--full-config` flag and integrated checks.
+ - Updated `src/cloudmesh/ai/command/vm/doctor.py` with `--config` flag and integrated checks.
 - Updated documentation (`README.md`, `docs/cli.md`, `docs/readme.md`).
 - New unit tests (`tests/unit/test_doctor_extended.py`).
 - CI verification that all tests pass and the new flag works.
