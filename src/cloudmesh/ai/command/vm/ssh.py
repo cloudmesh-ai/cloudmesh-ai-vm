@@ -77,11 +77,25 @@ def ssh(ctx: click.Context, name: str | None = None, **kwargs) -> None:
 
     try:
         # Use subprocess.run without capture_output to allow interactive session
-        subprocess.run(ssh_cmd)
+        result = subprocess.run(ssh_cmd)
+        if result.returncode != 0:
+            raise VMCommandError(
+                f"SSH connection failed with exit code {result.returncode}."
+            )
     except KeyboardInterrupt:
         pass
-    except Exception as e:
-        raise VMCommandError(f"SSH connection failed: {e}")
+    except VMCommandError:
+        raise
+    except subprocess.CalledProcessError as e:
+        raise VMCommandError(
+            f"SSH connection failed with exit code {e.returncode}."
+        ) from None
+    except subprocess.TimeoutExpired:
+        raise VMCommandError("SSH connection timed out.") from None
+    except Exception:
+        raise VMCommandError(
+            "SSH connection failed due to an unexpected error."
+        ) from None
 
 
 cmd = ssh

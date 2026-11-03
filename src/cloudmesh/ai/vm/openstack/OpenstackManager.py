@@ -366,6 +366,11 @@ class OpenstackManager(CloudBaseManager):
             if assign_ip:
                 try:
                     ip = self.assign_floating_ip(vm_name)
+                    if not ip:
+                        raise VMProviderError(
+                            f"Floating IP assignment failed for VM {vm_name}. "
+                            "The VM has been preserved for troubleshooting."
+                        )
                     logger.info(
                         f"Floating IP {ip} attached to VM {vm_name}. Verifying SSH..."
                     )
@@ -549,15 +554,27 @@ class OpenstackManager(CloudBaseManager):
             logger.error(f"VM {name} not found in {self.cloud_name}")
             return False
         try:
-            # Release floating IP before deleting the VM
-            self.release_floating_ip(name)
+            # Release the floating IP, if one is associated with the VM.
+            server = self._find_node(name)
+            if not server:
+                return False
+
+            floating_ip = self._get_floating_ip(name)
+            cleanup_failed = (
+                bool(floating_ip) and not self.release_floating_ip(name)
+            )
 
             conn = self._get_sdk_conn()
-            server = self._find_node(name)
-            if server:
-                conn.compute.delete_server(server)
-                return True
-            return False
+            conn.compute.delete_server(server)
+
+            if cleanup_failed:
+                raise VMProviderError(
+                    f"Floating IP cleanup failed for VM {name}; "
+                    "VM deletion was requested, but the IP may require manual cleanup."
+                )
+            return True
+        except VMProviderError:
+            raise
         except Exception as e:
             from cloudmesh.ai.vm.logger import logger
 
@@ -1174,7 +1191,9 @@ class OpenstackManager(CloudBaseManager):
             import time
             from cloudmesh.ai.vm.logger import logger
 
-            # 1. Establish the connection and find the server by name
+            # Resolve the configured external network before allocating an IP.
+            cloud_config = self.get_cloud_config(self.cloud_name) or {}
+            pool_name = cloud_config.get("floating_ip_pool", "public")
             conn = self._get_sdk_conn()
             node = conn.compute.find_server(name)
             if not node:
@@ -1218,11 +1237,15 @@ class OpenstackManager(CloudBaseManager):
             # Use a suffix to identify the IP as a floating IP allocated by Cloudmesh.
             description = f"{username} – floating IP"
 
+            fip = None
             try:
-                # Try to find the public network and create an IP with description.
+                # Never allocate an IP without a verified external network.
                 network = conn.network.find_network(pool_name)
+                if not network:
+                    logger.error(f"Floating-IP network {pool_name} not found.")
+                    return None
                 fip = conn.network.create_ip(
-                    floating_network_id=network.id if network else None,
+                    floating_network_id=network.id,
                     description=description,
                 )
             except Exception as e:
@@ -1247,20 +1270,27 @@ class OpenstackManager(CloudBaseManager):
                 logger.error("No floating IP could be reserved or found.")
                 return None
 
-            # 4. Associate the Floating IP with the Port
-            # We use update_ip (Neutron API) as it is the only reliable method on Jetstream
+            # Associate the floating IP with this VM.
             try:
-                conn.network.update_ip(fip.id, port_id=port.id)
-                logger.info(f"Successfully assigned FIP {fip.floating_ip_address} to {name} via Network API.")
+                conn.compute.add_floating_ip_to_server(
+                    node, fip.floating_ip_address
+                )
+                logger.info(f"Assigned floating IP to {name} via Compute API.")
                 return fip.floating_ip_address
-            except Exception as e:
-                # Final attempt: Try the Compute API if Network API fails
+            except Exception:
                 try:
-                    conn.compute.add_floating_ip_to_server(node, fip.floating_ip_address)
-                    logger.info(f"Successfully assigned FIP {fip.floating_ip_address} to {name} via Compute API.")
+                    ports = list(conn.network.ports(device_id=node.id))
+                    if not ports:
+                        logger.error(f"No network ports found for VM {name}.")
+                        return None
+                    conn.network.add_ip_to_port(ports[0], fip)
+                    logger.info(f"Assigned floating IP to {name} via Network API.")
                     return fip.floating_ip_address
-                except Exception as e2:
-                    logger.error(f"Both Network and Compute API failed to assign FIP: {e2}")
+                except Exception:
+                    logger.error(
+                        f"Floating-IP attachment failed for VM {name}; "
+                        "the allocated IP may require manual cleanup."
+                    )
                     return None
 
         except Exception as e:
@@ -1326,13 +1356,11 @@ class OpenstackManager(CloudBaseManager):
                 logger.error(f"VM {name} not found in {self.cloud_name}")
                 return False
 
-            # Find floating IPs
-            fips = getattr(node, "public_ips", [])
-            if not fips:
+            # Identify the floating IP using OpenStack address metadata.
+            fip_address = self._get_floating_ip(name)
+            if not fip_address:
                 return False
 
-            # We assume the first public IP is the floating IP to release
-            fip_address = fips[0]
             conn = self._get_sdk_conn()
             fip = conn.network.find_floating_ip(fip_address)
 
@@ -1345,8 +1373,15 @@ class OpenstackManager(CloudBaseManager):
                     from cloudmesh.ai.vm.logger import logger
                     logger.debug(f"Detach failed (expected on some clouds): {detach_e}")
 
-                # Delete the IP
-                conn.network.delete_floating_ip(fip)
+                # Delete the IP and verify the SDK result.
+                deleted = conn.network.delete_floating_ip(fip)
+                if deleted is False:
+                    from cloudmesh.ai.vm.logger import logger
+
+                    logger.error(
+                        f"Failed to delete floating IP for VM {name}."
+                    )
+                    return False
                 return True
 
             return False

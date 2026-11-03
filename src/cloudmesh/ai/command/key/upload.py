@@ -54,7 +54,14 @@ def upload_key(ctx: click.Context, key_path: str = None, name: str = None):
     if not name:
         name = config.get("key_name")
 
-    if provider.upload_key(key_path, name):
+    try:
+        uploaded = provider.upload_key(key_path, name)
+    except Exception:
+        raise VMCommandError(
+            "Failed to upload key due to a cloud provider error."
+        ) from None
+
+    if uploaded:
         console.print(f"Successfully uploaded key [bold green]{key_path}[/bold green].")
     else:
         raise VMCommandError(f"Failed to upload key {key_path}.")
