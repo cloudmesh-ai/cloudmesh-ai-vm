@@ -10,15 +10,56 @@ from tests.smoke.benchmark_helper import (
     get_results_username,
     save_benchmark,
 )
-from tests.smoke.cli_helper import cli_step
+from tests.smoke.cli_helper import cli_step, setup_cli_config
 
 
 @pytest.fixture
 def runner():
     return CliRunner()
 
+@pytest.fixture
+def config(tmp_path, runner):
+    """Create a temporary clouds.yaml for Chameleon that mirrors the user's config.
 
-def test_chameleon_cli_lifecycle(runner):
+    The fixture reads the real ``~/.config/cloudmesh/clouds.yaml`` if it exists and
+    extracts the ``chameleon`` provider configuration. If the file is missing or
+    corrupted, it falls back to a minimal set of required fields. In all cases we
+    ensure that a ``key_path`` entry is present because the CLI tests need to
+    upload a public SSH key.
+    """
+    import os
+    import yaml
+
+    # Load the existing user config if possible
+    config_path = os.path.expanduser("~/.config/cloudmesh/clouds.yaml")
+    try:
+        with open(config_path, "r") as f:
+            full_config = yaml.safe_load(f)
+            provider_config = full_config.get("clouds", {}).get("chameleon", {})
+            username = full_config.get("username", "smoke_user").replace("_", "-")
+    except Exception:
+        # Fallback defaults – these are sufficient for CLI commands that do not
+        # require a real cloud backend (the smoke test is primarily a sanity check).
+        provider_config = {
+            "image": "ubuntu-22.04",
+            "flavor": "m1.small",
+        }
+        username = "smoke_user"
+
+    # Ensure a key_path is defined; the default points to a typical RSA private key.
+    if "key_path" not in provider_config:
+        provider_config["key_path"] = "~/.ssh/id_rsa"
+
+    # Inject the temporary config into the Cloudmesh state manager.
+    setup_cli_config(tmp_path, "chameleon", provider_config)
+
+    # Make the username available to the test via the provider config.
+    provider_config["username"] = username
+
+    return provider_config
+
+
+def test_chameleon_cli_lifecycle(runner, config):
     """
     Smoke test for Chameleon CLI lifecycle.
     """
@@ -126,8 +167,12 @@ def test_chameleon_cli_lifecycle(runner):
     with cli_step(
         "Uploading SSH key to Chameleon...", timer_name="key_upload"
     ) as step:
+        # Resolve the public key path using the provider configuration's key_path.
+        # The ``config`` fixture guarantees that ``key_path`` points to the private key.
+        # Append ``.pub`` to reference the public key file.
+        pub_key_path = f"{config.get('key_path')}.pub"
         result = runner.invoke(
-            vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub", "--name", "smoke-key"]
+            vm.vm_group, ["key", "upload", pub_key_path, "--name", "smoke-key"]
         )
         step.debug("Chameleon key upload output:", result)
     if result.exit_code != 0:

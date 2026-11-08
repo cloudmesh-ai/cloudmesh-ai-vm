@@ -20,7 +20,9 @@ The following table compares the native Multipass CLI functionality with the cap
 | **SSH Key Mgmt** | Manual / Internal | `upload_key()` / `delete_key()` | Manages `authorized_keys` with named labels for easy removal. |
 | **Remote Execution**| `multipass exec` | `run_command()` | Simplified interface for executing shell commands in the VM. |
 | **Resource Mgmt** | Manual | `shelve()` / `unshelve()` | Implements shelving by stopping VMs to release compute resources. |
-| **Daemon Reset** | `launchctl` (macOS) | `reset()` | Integrated reset for the Multipass background service on macOS. |
+ | **Daemon Reset** | `launchctl` (macOS) | `reset()` | Integrated reset for the Multipass background service on macOS. |
+
+**Implementation Note:** The Multipass provider now uses the unified project logger (`cloudmesh.ai.vm.logger`) for all informational and error messages, replacing previous `self.print` calls.
 
 ## Configuration
 

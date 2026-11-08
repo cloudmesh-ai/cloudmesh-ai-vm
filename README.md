@@ -19,7 +19,7 @@
 - **SDK Native**: OpenStack providers (Chameleon, Jetstream) are implemented using the official OpenStack SDK for maximum stability and feature support.
 - **Interactive Shell**: Enter a dedicated VM management shell using `cmx vm -i`.
 - **SDK Native**: OpenStack providers (Chameleon, Jetstream) are implemented using the official OpenStack SDK for maximum stability and feature support.
- 20 |  - **Environment Diagnostics**: Use `cmx vm doctor` to validate provider requirements, configuration, and diagnostic information. Add the `--config` flag to run exhaustive configuration validation (replicates the smoke test).
+  20 |  - **Environment Diagnostics**: Use `cmx vm doctor` to validate provider requirements (including mandatory `chi` library for Chameleon and optional `openstack`), configuration, and diagnostic information. Add the `--config` flag to run exhaustive configuration validation (replicates the smoke test).
 
 The full documentation is available at: <https://cloudmesh-ai.github.io/cloudmesh-ai-vm/>
 

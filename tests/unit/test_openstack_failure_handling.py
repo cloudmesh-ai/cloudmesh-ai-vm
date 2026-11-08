@@ -177,17 +177,12 @@ def test_delete_reports_floating_ip_cleanup_failure():
 
 
 def test_assign_floating_ip_sdk_success():
-    """SDK assignment uses the configured external network and VM."""
+    """SDK assignment uses the configured network and Neutron attachment."""
     provider = OpenstackManager(
-        {
-            "clouds": {
-                "test-openstack": {
-                    "floating_ip_pool": "public",
-                }
-            }
-        },
+        {"clouds": {"test-openstack": {"floating_ip_pool": "public"}}},
         cloud_name="test-openstack",
     )
+    provider.driver = None
 
     server = SimpleNamespace(id="vm-123", name="test-vm")
     network = SimpleNamespace(id="public-net-123")
@@ -195,14 +190,13 @@ def test_assign_floating_ip_sdk_success():
         id="fip-123",
         floating_ip_address="192.0.2.10",
     )
+    port = SimpleNamespace(id="port-123", device_id="vm-123")
 
     conn = MagicMock()
     conn.compute.find_server.return_value = server
     conn.network.find_network.return_value = network
     conn.network.create_ip.return_value = fip
-
-    # Ensure the SDK path is used, not the legacy driver.
-    provider.driver = None
+    conn.network.ports.return_value = iter([port])
 
     with (
         patch.object(provider, "_get_sdk_conn", return_value=conn),
@@ -220,13 +214,15 @@ def test_assign_floating_ip_sdk_success():
         floating_network_id="public-net-123",
         description="test-user – floating IP",
     )
-    conn.compute.add_floating_ip_to_server.assert_called_once_with(
-        server, "192.0.2.10"
+    conn.network.ports.assert_called_once_with(device_id="vm-123")
+    conn.network.update_ip.assert_called_once_with(
+        "fip-123", port_id="port-123"
     )
+    conn.compute.add_floating_ip_to_server.assert_not_called()
 
 
-def test_assign_floating_ip_sdk_falls_back_to_network_api():
-    """Use the VM's network port when Compute API attachment fails."""
+def test_assign_floating_ip_sdk_falls_back_to_compute_api():
+    """Use the Compute API when Neutron floating-IP attachment fails."""
     provider = OpenstackManager(
         {"clouds": {"test-openstack": {"floating_ip_pool": "public"}}},
         cloud_name="test-openstack",
@@ -243,33 +239,36 @@ def test_assign_floating_ip_sdk_falls_back_to_network_api():
 
     conn = MagicMock()
     conn.compute.find_server.return_value = server
-    conn.compute.add_floating_ip_to_server.side_effect = RuntimeError(
-        "Compute API attachment unavailable"
-    )
     conn.network.find_network.return_value = network
     conn.network.create_ip.return_value = fip
     conn.network.ports.return_value = iter([port])
+    conn.network.update_ip.side_effect = RuntimeError(
+        "Neutron attachment unavailable"
+    )
 
     with (
         patch.object(provider, "_get_sdk_conn", return_value=conn),
         patch.object(provider, "wait_for_active", return_value=True),
-        patch.object(
-            provider,
-            "get_cloud_config",
-            return_value={
-                "floating_ip_pool": "public",
-                "username": "test-user",
-            },
-        ),
+        patch.object(provider, "get_cloud_config", return_value={
+            "floating_ip_pool": "public",
+            "username": "test-user",
+        }),
     ):
         result = provider.assign_floating_ip("test-vm")
 
     assert result == "192.0.2.10"
+    conn.network.find_network.assert_called_once_with("public")
+    conn.network.create_ip.assert_called_once_with(
+        floating_network_id="public-net-123",
+        description="test-user – floating IP",
+    )
+    conn.network.ports.assert_called_once_with(device_id="vm-123")
+    conn.network.update_ip.assert_called_once_with(
+        "fip-123", port_id="port-123"
+    )
     conn.compute.add_floating_ip_to_server.assert_called_once_with(
         server, "192.0.2.10"
     )
-    conn.network.ports.assert_called_once_with(device_id="vm-123")
-    conn.network.add_ip_to_port.assert_called_once_with(port, fip)
 
 
 def test_delete_vm_without_floating_ip():

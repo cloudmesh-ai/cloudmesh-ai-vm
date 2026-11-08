@@ -97,7 +97,26 @@ Manage SSH keys for VM access.
 - **`account`**: View account information, including usage quotas and limits for the current cloud.
   - *Example*: `cmx vm account`
 - **`horizon`**: Open the OpenStack Horizon dashboard in your default web browser for the active cloud provider.
-  - *Example*: `cmx vm horizon`
-- **`reset`**: Restart the cloud provider service or reset the local environment (e.g., restart Multipass daemon on macOS).
-  - *Example*: `cmx vm reset`
+101 | - **`reset`**: Restart the cloud provider service or reset the local environment (e.g., restart Multipass daemon on macOS).
+102 |   - *Example*: `cmx vm reset`
+103 |
+104 | - **`status [--cloud=CLOUD] [--json]`**: Shows a summary of the current state of the selected cloud (or all enabled clouds when `--cloud` is omitted). The output contains three sections:
+105 |   - **Running VMs** – name, status, IP, image, flavor, etc.
+106 |   - **Floating IPs** – address, attached VM, status.
+107 |   - **Reservations / Leases** – id, type, status, start, end.
+108 |   Use `--json` to emit the same information as a JSON document.
+109 |   **Examples**:
+110 |   ```bash
+111 |   cmx vm status
+112 |   cmx vm status --cloud openstack
+113 |   cmx vm status --json
+114 |   ```
+115 |
+116 | - **`purge [--cloud=CLOUD] [--yes | -y]`**: Deletes all VMs, releases all floating IPs, and removes all reservations for the target cloud (or for every enabled cloud when the option is omitted). A safety confirmation prompt is required unless the user supplies `--yes` / `-y` to skip the prompt for scripted usage.
+117 |   **Examples**:
+118 |   ```bash
+119 |   cmx vm purge                # interactive, all clouds
+120 |   cmx vm purge --cloud chameleon
+121 |   cmx vm purge -y             # non‑interactive, all clouds
+122 |   ```
 

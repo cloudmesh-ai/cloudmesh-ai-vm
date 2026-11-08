@@ -4,10 +4,11 @@
 (All core stability items implemented)
 
 ## Medium Priority (Feature Parity)
-- [ ] NOT NEEDED: **Key Rotation**: Add `rotate_key` to `BaseVMProvider` and implement it for providers that support SSH key updates.
+ - [ ] NOT NEEDED: **Key Rotation**: Add `rotate_key` to `BaseVMProvider` and implement it for providers that support SSH key updates.
+ - [ ] Pre‑flight floating IP reservation with back‑off, jitter and rollback (see TODO-openstack-fip-preflight.md)
 
 ## Low Priority (UX & Polish)
-- [ ] **Unified CLI Output**: Standardize the return format of `list()` and `info()` methods across all providers to ensure consistent table rendering in the CLI.
+11 | - [x] **Unified CLI Output**: Standardize the return format of `list()` and `info()` methods across all providers. Implemented structured JSON parsing for `MultipassManager.info` and ensured `list()` already returns a consistent dict list.
 - [ ] **Interactive VM Console**: Implement a `console` command to attach to a VM's serial console where supported (e.g., Multipass, OpenStack).
 - [ ] **Enhanced Cost Templates**: Replace the `.md` cost templates with a structured JSON/YAML format that can be parsed by the `get_cost` method for real-time estimation.
 - [ ] **Unified IP Abstraction**: Create a `NetworkInterface` class to handle the differences between Floating IPs, Public IPs, and Internal IPs across providers.

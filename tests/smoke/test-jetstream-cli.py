@@ -185,7 +185,11 @@ def test_jetstream_cli_lifecycle(runner, config):
 
         banner("11. keys upload")
         with StopWatch.timer("key_upload"):
-            result = runner.invoke(vm.vm_group, ["key", "upload", "~/.ssh/id_rsa.pub"], env=env)
+            # Resolve the public key path using the provider configuration's key_path.
+            # The config fixture guarantees that "key_path" points to the private key.
+            # Append ".pub" to get the public key file.
+            pub_key_path = f"{config.get('key_path')}.pub"
+            result = runner.invoke(vm.vm_group, ["key", "upload", pub_key_path], env=env)
         print(result.output)
         if result.exit_code != 0:
             pytest.skip("Jetstream key upload failed")

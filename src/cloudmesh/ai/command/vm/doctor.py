@@ -9,6 +9,8 @@ from cloudmesh.ai.command._shared.exceptions import handle_errors
 from cloudmesh.ai.command._shared.ui import render_table
 # Import the new configuration validation helper
 from cloudmesh.ai.vm.diagnostics.config_validator import run_all_config_checks
+# Import the specific exception used to signal optional features are not supported
+from cloudmesh.ai.vm.exceptions import ProviderFeatureNotSupported
 
 
 def _format_validation_result(result):
@@ -103,11 +105,11 @@ def doctor(
     rows = []
     failures = 0
     warnings = 0
-
+    # Default to True; will be updated by the requirements check if present.
+    requirements_ok = True
     # 1. Resolve provider
     provider = get_active_provider(ctx)
     cloud_name = getattr(provider, "cloud_name", "unknown")
-
     rows.append(
         [
             "Provider",
@@ -116,13 +118,10 @@ def doctor(
         ]
     )
 
-    # 2. Check local provider requirements
-    requirements_ok = None
-
+    # 2. Check provider requirements
     if hasattr(provider, "check_requirements"):
         try:
             requirements_ok = provider.check_requirements()
-
             if requirements_ok:
                 rows.append(
                     [
@@ -140,16 +139,28 @@ def doctor(
                         "One or more required provider tools are unavailable.",
                     ]
                 )
-        except Exception as exc:
+        except ProviderFeatureNotSupported as e:
+            warnings += 1
+            rows.append(
+                [
+                    "Requirements",
+                    _status_label("SKIP"),
+                    f"{e.message}",
+                ]
+            )
+            requirements_ok = None
+        except Exception as e:
             failures += 1
             rows.append(
                 [
                     "Requirements",
                     _status_label("FAIL"),
-                    f"{type(exc).__name__}: {exc}",
+                    f"{type(e).__name__}: {e}",
                 ]
             )
+            requirements_ok = False
     else:
+        # Provider does not implement a requirements check – treat as SKIP.
         warnings += 1
         rows.append(
             [
@@ -158,6 +169,7 @@ def doctor(
                 "Provider does not implement check_requirements().",
             ]
         )
+        requirements_ok = None
 
     # 3. Validate provider configuration
     if hasattr(provider, "validate_config"):
@@ -230,6 +242,15 @@ def doctor(
                     ]
                 )
 
+        except ProviderFeatureNotSupported as e:
+            # Optional feature not available – treat it as a skipped check.
+            rows.append(
+                [
+                    "Provider Info",
+                    _status_label("SKIP"),
+                    f"{e.message}",
+                ]
+            )
         except Exception as exc:
             failures += 1
             rows.append(
@@ -264,6 +285,10 @@ def doctor(
                     failures += 1
                 elif status == "WARN":
                     warnings += 1
+
+    # Reorder rows to match expected order: Provider, Requirements, Configuration, Provider Info
+    desired_order = {"Provider": 0, "Requirements": 1, "Configuration": 2, "Provider Info": 3}
+    rows.sort(key=lambda r: desired_order.get(r[0], 99))
 
     render_table(
         f"VM Doctor: {cloud_name}",

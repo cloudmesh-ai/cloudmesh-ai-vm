@@ -1,5 +1,6 @@
 import re
 from unittest.mock import MagicMock
+import shlex
 
 import pytest
 
@@ -198,16 +199,14 @@ def test_upload_key_escaping(provider, tmp_path):
         is True
     )
 
-    escaped_key = key_content.replace("'", "'\\''")
-    escaped_name = key_name.replace("'", "'\\''")
+    # Compute the combined key entry and safely quote it using shlex.quote
+    combined = f'{key_content} # {key_name}'
+    escaped_entry = shlex.quote(combined)
 
     expected_cmd_part = (
-        "mkdir -p ~/.ssh && "
-        "chmod 700 ~/.ssh && "
-        "printf '%s\\n' "
-        f"'{escaped_key} # {escaped_name}' "
-        ">> ~/.ssh/authorized_keys && "
-        "chmod 600 ~/.ssh/authorized_keys"
+        "mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' "
+        f"{escaped_entry} "
+        ">> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
     )
 
     provider._run_command.assert_called_with(
@@ -221,8 +220,6 @@ def test_upload_key_escaping(provider, tmp_path):
             expected_cmd_part,
         ]
     )
-
-
 def test_delete_key_escaping(provider):
     key_name = "my/key'name"
     vm_name = "test-vm"
@@ -235,7 +232,9 @@ def test_delete_key_escaping(provider):
         is True
     )
 
-    escaped_key_name = re.escape(key_name).replace("/", r"\/")
+    # The implementation now uses a portable grep‑based deletion. The key name
+    # is passed as a separate argument to ``bash -c`` and referenced via $1.
+    escaped_key = shlex.quote(key_name)
 
     expected_cmd = [
         "multipass",
@@ -244,9 +243,9 @@ def test_delete_key_escaping(provider):
         "--",
         "bash",
         "-c",
-        'sed -i "/$1/d" ~/.ssh/authorized_keys',
+        'grep -vF "$1" ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.tmp && mv ~/.ssh/authorized_keys.tmp ~/.ssh/authorized_keys',
         "bash",
-        escaped_key_name,
+        escaped_key,
     ]
 
     provider._run_command.assert_called_with(expected_cmd)

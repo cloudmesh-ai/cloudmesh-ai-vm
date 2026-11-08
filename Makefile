@@ -41,7 +41,8 @@ install:
 	$(PIP) install -e .
 
 requirements:
-	pip-compile --output-file=requirements.txt pyproject.toml
+	# Regenerate the pinned requirements file after updating pyproject.toml
+	ENVX/bin/pip-compile --output-file=requirements.txt pyproject.toml
 
 test:
 	$(PYTHON) -m pytest -v tests/
@@ -81,12 +82,27 @@ release: upload tag
 
 # --- DOCUMENTATION ---
 
-doc:
+# Documentation dependencies (used by the doc target and view target)
+# requirements-docs.txt contains mkdocs, mkdocs-material, mkdocstrings, etc.
+# The cloudmesh-ai-theme is the custom theme used by the site.
+DOC_DEPS = requirements-docs.txt ../cloudmesh-ai-theme
+
+# Install documentation dependencies before building or serving docs.
+docs-deps:
+	@echo "🔧 Installing documentation dependencies"
+	# Ensure that pip is available inside the .venv (some venv creations miss it)
+	$(PYTHON) -m ensurepip --upgrade || true
+	$(PIP) install --upgrade pip setuptools wheel
+	$(PIP) install -r $(word 1,$(DOC_DEPS))
+	$(PIP) install -e $(word 2,$(DOC_DEPS))
+
+doc: docs-deps
+	@echo "✅ Docs dependencies installed – building site"
 	mkdocs build
 
-view:
-	lsof -ti:8000 | xargs kill -9
-	$(PIP) install -e ../cloudmesh-ai-theme
+view: docs-deps
+	@echo "✅ Docs dependencies installed – starting live server"
+	lsof -ti:8000 | xargs kill -9 || true
 	mkdocs serve --livereload
 
 # --- CLEANUP & REINSTALL ---

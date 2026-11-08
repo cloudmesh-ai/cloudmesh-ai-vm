@@ -1,7 +1,11 @@
 import logging
 import os
 
-import openstack
+# NOTE: ``openstack`` (the SDK) imports a large number of dependencies and can be
+# slow to import. To keep unit tests fast and avoid unnecessary imports when the
+# function is patched (as in the test suite), we defer importing the SDK until
+# the function is actually executed.
+# ``openstack`` will be imported lazily inside ``authenticate_chi_from_cloud``.
 
 from cloudmesh.ai.vm.exceptions import ConfigError
 
@@ -14,6 +18,9 @@ def authenticate_chi_from_cloud(cloud_name: str):
     the keystoneauth1 loading mechanism.
     """
     try:
+        # Import the OpenStack SDK lazily to avoid heavy imports when the function
+        # is mocked in tests.
+        import openstack
         # 1. Load the cloud configuration using OpenStack SDK
         conn = openstack.connect(cloud=cloud_name)
         sdk_auth = conn.session.auth

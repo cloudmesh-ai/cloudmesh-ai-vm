@@ -243,7 +243,7 @@ Restarts the cloud provider service or resets the local environment. For Multipa
 Diagnoses the active VM provider without modifying any VM resources. It performs checks for:
 
 * Provider resolution
-* Local tool requirements
+ * Local tool requirements (e.g., mandatory `chi` library for Chameleon, optional `openstack` client)
 * Provider configuration validation
 * Provider information retrieval
 

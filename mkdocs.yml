@@ -25,7 +25,10 @@ nav:
   - Installation: installation.md
   - Configuration: configuration.md
   - Cheatsheet: cheatsheet.md
-  - Manual: manual.md
+  - Manual:
+    - Overview: manual.md
+    - VM Status: vm_status.md
+    - VM Purge: vm_purge.md
   - CLI Reference: cli.md
   - Changelog: CHANGELOG.md
   - API: api.md

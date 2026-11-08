@@ -54,4 +54,11 @@ The Multipass provider is designed to be portable across different Windows shell
 On macOS, you can reset the Multipass daemon if it becomes unresponsive using:
 `cmx vm reset`
 This performs a `kickstart` of the `com.canonical.multipassd` system service.
+48 |
+49 | ### Snapshot Management
+50 |
+51 | - **`cmx vm snapshot <NAME> <SNAPSHOT>`**: Creates a snapshot of the specified VM using ``multipass snapshot``.
+52 | - **`cmx vm list-snapshots <NAME>`**: Lists all snapshots for a VM. Internally this calls ``multipass snapshots`` or extracts the snapshot list from ``multipass info --format json``.
+53 | - **`cmx vm restore <NAME> <SNAPSHOT>`**: Restores a VM to the state captured in the named snapshot via ``multipass restore``.
+54 |
 `

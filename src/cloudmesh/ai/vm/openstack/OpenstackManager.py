@@ -1216,6 +1216,10 @@ class OpenstackManager(CloudBaseManager):
             #   5. Append a clear suffix (" – floating IP") to make the purpose of the
             #      description obvious when viewing the IP in OpenStack dashboards.
             # -----------------------------------------------------------------
+            # Retrieve the cloud‑specific configuration. ``cloud_config`` was previously
+            # used without being defined, leading to a ``NameError`` when assigning a
+            # floating IP. This line restores the original behaviour and fixes the bug.
+            cloud_config = self.get_cloud_config(self.cloud_name)
             username = cloud_config.get("username")
             if not username:
                 # Try provider‑specific StateManager first (dev2 style)
@@ -1270,26 +1274,33 @@ class OpenstackManager(CloudBaseManager):
                 logger.error("No floating IP could be reserved or found.")
                 return None
 
-            # Associate the floating IP with this VM.
+            # Prefer Neutron attachment for Jetstream compatibility.
             try:
-                conn.compute.add_floating_ip_to_server(
-                    node, fip.floating_ip_address
-                )
-                logger.info(f"Assigned floating IP to {name} via Compute API.")
+                ports = list(conn.network.ports(device_id=node.id))
+                if not ports:
+                    logger.error(f"No network ports found for VM {name}.")
+                    return None
+
+                conn.network.update_ip(fip.id, port_id=ports[0].id)
+                logger.info(f"Assigned floating IP to {name} via Network API.")
                 return fip.floating_ip_address
-            except Exception:
+            except Exception as network_error:
+                logger.debug(
+                    f"Network API attachment failed for {name}: {network_error}"
+                )
+
                 try:
-                    ports = list(conn.network.ports(device_id=node.id))
-                    if not ports:
-                        logger.error(f"No network ports found for VM {name}.")
-                        return None
-                    conn.network.add_ip_to_port(ports[0], fip)
-                    logger.info(f"Assigned floating IP to {name} via Network API.")
+                    conn.compute.add_floating_ip_to_server(
+                        node, fip.floating_ip_address
+                    )
+                    logger.info(f"Assigned floating IP to {name} via Compute API.")
                     return fip.floating_ip_address
-                except Exception:
+                except Exception as compute_error:
                     logger.error(
-                        f"Floating-IP attachment failed for VM {name}; "
-                        "the allocated IP may require manual cleanup."
+                        f"Floating-IP attachment failed for VM {name}: "
+                        f"Network API: {network_error}; "
+                        f"Compute API: {compute_error}. "
+                        "The allocated IP may require manual cleanup."
                     )
                     return None
 
