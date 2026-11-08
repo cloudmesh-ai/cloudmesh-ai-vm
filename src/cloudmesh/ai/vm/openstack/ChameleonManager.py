@@ -913,6 +913,12 @@ class Provider(CloudBaseManager):
     def ttl_humanize(self, end_date):
         ttl_str = "Unknown"
 
+        if isinstance(end_date, str):
+            try:
+                end_date = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            except ValueError:
+                return ttl_str
+
         try:
             if isinstance(end_date, datetime):
                 # Ensure we are comparing UTC to UTC
@@ -1072,30 +1078,7 @@ class Provider(CloudBaseManager):
 
                     if isinstance(clean_id, str) and clean_id in res_lookup:
                         flavor_name = res_lookup[clean_id]["name"]
-                        # Calculate TTL from lease end_date
-                        end_date_str = res_lookup[clean_id]["end_date"]
-                        if end_date_str:
-                            try:
-                                end_date = datetime.datetime.fromisoformat(end_date_str)
-                                now = (
-                                    datetime.datetime.now(datetime.timezone.utc)
-                                    if end_date.tzinfo
-                                    else datetime.datetime.now()
-                                )
-                                diff = end_date - now
-                                if diff.total_seconds() > 0:
-                                    days = diff.days
-                                    hours, rem = divmod(diff.seconds, 3600)
-                                    minutes, _ = divmod(rem, 60)
-                                    ttl = (
-                                        f"{days}d {hours}h {minutes}m"
-                                        if days > 0
-                                        else f"{hours}h {minutes}m"
-                                    )
-                                else:
-                                    ttl = "Expired"
-                            except:
-                                pass
+                        ttl = res_lookup[clean_id]["ttl"]
                     elif isinstance(clean_id, str):
                         flavor_name = flavor_map.get(clean_id, clean_id)
                     elif hasattr(clean_id, "name"):
@@ -1110,7 +1093,7 @@ class Provider(CloudBaseManager):
                         "image": getattr(s, "image_name", "Unknown"),
                         "flavor": flavor_name,
                         "networks": self._format_networks(addresses),
-                        "ttl": ttl_data[s.name],
+                        "ttl": ttl_data.get(s.name, ttl),
                     }
                 )
 

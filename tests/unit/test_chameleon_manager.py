@@ -110,3 +110,92 @@ def test_get_account_info_success(provider):
     assert info["project_id"] == "proj-123"
     assert info["user_id"] == "user-456"
     assert info["allocation"] == "1000 SU"
+
+
+def test_list_vm_with_different_lease_name(provider):
+    """A missing VM-name TTL mapping must not hide an existing VM."""
+    from types import SimpleNamespace
+
+    vm = SimpleNamespace(
+        name="kbass-comp488-chameleon-vm",
+        id="vm-123",
+        status="ACTIVE",
+        addresses={"sharednet1": [{"addr": "10.56.3.219"}]},
+        flavor="m1.small",
+        image_name="CC-Ubuntu24.04",
+    )
+    lease = SimpleNamespace(
+        name="kbass-comp488-chameleon-test",
+        end_date="2026-11-08T02:35:00",
+        flavor_reservations=[],
+        node_reservations=[],
+        fip_reservations=[],
+        network_reservations=[],
+        device_reservations=[],
+    )
+
+    with patch.object(provider, "_setup_chi_context"), \
+         patch("cloudmesh.ai.vm.openstack.ChameleonManager.chi") as mock_chi:
+        mock_chi.server.list_servers.return_value = [vm]
+        mock_chi.lease.list_leases.return_value = [lease]
+        mock_chi.server.list_flavors.return_value = []
+
+        results = provider.list()
+
+    assert len(results) == 1
+    assert results[0]["name"] == vm.name
+    assert results[0]["status"] == "ACTIVE"
+    assert results[0]["ip"] == "10.56.3.219"
+    assert results[0]["ttl"] == "N/A"
+
+
+def test_ttl_humanize_accepts_iso_date_string(provider):
+    """ISO-formatted lease expiration dates should produce a valid TTL."""
+    from datetime import datetime, timedelta, timezone
+
+    expiration = datetime.now(timezone.utc) + timedelta(hours=2)
+    result = provider.ttl_humanize(expiration.isoformat())
+
+    assert "hour" in result.lower()
+    assert result != "Unknown"
+
+
+def test_list_vm_uses_matching_reservation_ttl(provider):
+    """VM TTL should come from its reservation, not its name."""
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+
+    reservation_id = "826f0743-a7f5-4a9b-9f0e-ba0f189889e8"
+    expiration = datetime.now(timezone.utc) + timedelta(hours=2)
+
+    vm = SimpleNamespace(
+        name="test-vm",
+        id="vm-123",
+        status="ACTIVE",
+        addresses={},
+        flavor=f"reservation:{reservation_id}",
+        image_name="CC-Ubuntu24.04",
+    )
+    lease = SimpleNamespace(
+        name="different-lease-name",
+        end_date=expiration.isoformat(),
+        flavor_reservations=[
+            {"id": reservation_id, "resource_properties": {"name": "m1.small"}}
+        ],
+        node_reservations=[],
+        fip_reservations=[],
+        network_reservations=[],
+        device_reservations=[],
+    )
+
+    with patch.object(provider, "_setup_chi_context"), \
+         patch("cloudmesh.ai.vm.openstack.ChameleonManager.chi") as mock_chi:
+        mock_chi.server.list_servers.return_value = [vm]
+        mock_chi.lease.list_leases.return_value = [lease]
+        mock_chi.server.list_flavors.return_value = []
+
+        results = provider.list()
+
+    assert len(results) == 1
+    assert results[0]["flavor"] == "m1.small"
+    assert "hour" in results[0]["ttl"].lower()
