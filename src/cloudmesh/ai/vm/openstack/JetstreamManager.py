@@ -1,18 +1,39 @@
-from typing import Any, Optional
+from typing import Any, Dict
 from cloudmesh.ai.vm.openstack.OpenstackManager import OpenstackManager
+from cloudmesh.ai.vm.logger import logger
 
 
 class Provider(OpenstackManager):
     """
     Jetstream implementation of the OpenstackManager.
+
+    This manager provides Jetstream‑specific extensions to the generic
+    OpenstackManager, including cost estimation based on Jetstream Service Units (SUs).
     """
 
     def __init__(self, config, **kwargs):
         super().__init__(config, cloud_name="jetstream", **kwargs)
 
-    def get_cost(self, **kwargs) -> Optional[Any]:
-        """
-        Calculates and returns the cost (in SUs) for Jetstream based on usage patterns.
+    def get_cost(self, **kwargs: Any) -> Dict[str, Any]:
+        """Calculates and returns the cost (in SUs) for Jetstream based on usage patterns.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Optional overrides for the cost calculation. Supported keys are:
+            - ``flavor``: Instance type (e.g., ``"m3.tiny"``). Defaults to ``"m3.medium"``.
+            - ``num_instances``: Number of instances. Defaults to ``1``.
+            - ``hours_per_day``: Hours per day the instances run. Defaults to ``8``.
+            - ``days_per_week``: Days per week the instances run. Defaults to ``5``.
+            - ``weeks``: Number of weeks for the reservation. Defaults to ``52``.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary with keys:
+            - ``value``: Total Service Units (SU) for the requested configuration, or the string ``"Unknown"`` when the flavor is unsupported.
+            - ``unit``: The unit string ``"SU"``.
+            - ``details``: Human‑readable description of the inputs and calculation.
         """
         # Dictionary mapping instance flavors to their hourly SU cost
         # Source: https://docs.jetstream-cloud.org/general/instance-flavors/
@@ -53,6 +74,8 @@ class Provider(OpenstackManager):
         weeks = kwargs.get("weeks") or cloud_config.get("weeks", 52)
 
         if flavor not in su_costs:
+            # Log unknown flavor for observability
+            logger.warning(f"Unknown Jetstream flavor requested: {flavor}")
             return {
                 "value": "Unknown",
                 "unit": "SU",
