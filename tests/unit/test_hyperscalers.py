@@ -35,13 +35,16 @@ class TestHyperscalers:
     """
 
     # --- AWS Tests ---
-    @patch("cloudmesh.ai.vm.aws.AwsManager.AmazonEC2Driver")
-    def test_aws_init(self, mock_driver_class):
-        mock_driver_class.return_value = MagicMock()
+    @patch("cloudmesh.ai.vm.aws.AwsManager.get_driver")
+    def test_aws_init(self, mock_get_driver):
+        mock_driver_class = MagicMock()
+        mock_get_driver.return_value = mock_driver_class
         provider = AwsProvider(MOCK_CONFIG)
-
+        mock_get_driver.assert_called_once()
         mock_driver_class.assert_called_once_with(
-            access_key="test-access", secret_key="test-secret", region="us-east-1"
+            key="test-access",
+            secret="test-secret",
+            region="us-east-1",
         )
         assert provider.cloud_name == "aws"
 
