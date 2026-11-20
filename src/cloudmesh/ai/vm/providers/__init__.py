@@ -15,7 +15,7 @@ def get_provider_classes():
     providers = {
         "multipass": ("cloudmesh.ai.vm.local.MultipassManager", "Provider"),
         "openstack": ("cloudmesh.ai.vm.openstack.OpenstackManager", "OpenstackManager"),
-        "jetstream": ("cloudmesh.ai.vm.openstack.OpenstackManager", "OpenstackManager"),
+        "jetstream": ("cloudmesh.ai.vm.openstack.JetstreamManager", "Provider"),
         "chameleon": ("cloudmesh.ai.vm.openstack.ChameleonManager", "Provider"),
         "aws": ("cloudmesh.ai.vm.aws.AwsManager", "Provider"),
         "azure": ("cloudmesh.ai.vm.azure.AzureManager", "Provider"),
