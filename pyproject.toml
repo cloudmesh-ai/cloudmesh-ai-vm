@@ -37,7 +37,7 @@ dependencies = [
     "fabric",
     "chameleon-blazarclient @ git+https://github.com/ChameleonCloud/python-blazarclient.git",
     "chameleon-zunclient @ git+https://github.com/chameleoncloud/python-zunclient.git",
-    "ccauth @ git+https://github.com/ChameleonCloud/ccauth.git",
+    "chameleon-ccauth @ git+https://github.com/ChameleonCloud/ccauth.git",
     "pre-commit",
     # Pin known vulnerable transitive dependencies to fixed versions (exact versions so Dependabot can resolve correctly)
     "certifi==2026.10.23",
