@@ -11,8 +11,8 @@ class Provider(OpenstackManager):
     OpenstackManager, including cost estimation based on Jetstream Service Units (SUs).
     """
 
-    def __init__(self, config, **kwargs):
-        super().__init__(config, cloud_name="jetstream", **kwargs)
+    def __init__(self, config, cloud_name="jetstream", **kwargs):
+        super().__init__(config, cloud_name=cloud_name, **kwargs)
 
     def get_cost(self, **kwargs: Any) -> Dict[str, Any]:
         """Calculates and returns the cost (in SUs) for Jetstream based on usage patterns.
