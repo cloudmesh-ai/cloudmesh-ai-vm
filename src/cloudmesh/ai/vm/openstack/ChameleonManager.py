@@ -480,13 +480,15 @@ class Provider(CloudBaseManager):
             return ""
 
     def _vm_exists(self, name: str) -> bool:
-        """Checks if a VM with the given name already exists."""
+        """Check VM existence without treating API failures as absence."""
         self._setup_chi_context()
         try:
             server = chi.server.get_server(name)
             return server is not None
-        except Exception:
-            return False
+        except Exception as exc:
+            raise VMProviderError(
+                f"Unable to verify whether VM {name} already exists: {exc}"
+            ) from exc
 
     def start(
         self,
@@ -652,9 +654,23 @@ class Provider(CloudBaseManager):
         self.print(f"  Security Group: {security_group}")
         self.print(f"  Lease Length:   {lease_duration_td}")
 
+        lease = None
+        lease_id = None
+        vm_name = name or f"vm-{self.cloud_name}"
+
+        # Track resources belonging to this provisioning attempt.
+        lease_submitted = False
+        server = None
+        server_submitted = False
+        server_submission_completed = False
+        server_metadata_saved = False
+        floating_ip = None
+        floating_ip_ids_before = None
+        created_floating_ip_id = None
+        created_security_group_id = None
+
         try:
             # 1. Mandatory Reservation for Chameleon flavored images
-            vm_name = name or f"vm-{self.cloud_name}"
 
             # Ensure VM name is unique to avoid conflicts with existing VMs
             attempt = 1
@@ -706,6 +722,7 @@ class Provider(CloudBaseManager):
             # We must reserve the specific flavor being requested
             flavor_id = chi.server.get_flavor_id(flavor_name)
             lease.add_flavor_reservation(id=flavor_id, amount=1)
+            lease_submitted = True
             lease.submit(idempotent=False)
 
             # Mandated: Ensure the lease exists and is ACTIVE before launching the VM
@@ -740,32 +757,13 @@ class Provider(CloudBaseManager):
                 key_name=key_name,
             )
 
-            s.submit(idempotent=True, show="text")
+            server = s
+            server_submitted = True
+            s.submit(idempotent=False, show="text")
+            server_submission_completed = True
 
             # Wait until instance is active
             s.wait()
-
-            fip_addr = None
-            if assign_ip:
-                self.print("Associating a floating IP (polling for ready port)...")
-                for i in range(10):
-                    try:
-                        fip_addr = s.associate_floating_ip()
-                        self.print(f"✅ Floating IP associated: {fip_addr}")
-                        break
-                    except chi.exception.ResourceError as e:
-                        if "None of the ports can route" in str(e) and i < 9:
-                            self.print(
-                                f"  Port not ready yet, retrying in 3s... ({i + 1}/10)"
-                            )
-                            time.sleep(3)
-                        else:
-                            self.print(f"Error associating floating IP: {e}")
-                            break
-                if not fip_addr:
-                    self.print(
-                        "Timed out waiting for network ports to route Floating IP"
-                    )
 
             s.refresh()
 
@@ -781,6 +779,7 @@ class Provider(CloudBaseManager):
 
             try:
                 s.set_metadata_item("cloudmesh_lease_id", str(lease_id))
+                server_metadata_saved = True
             except Exception as metadata_err:
                 raise VMProviderError(
                     f"VM {vm_name} ({server_id}) was created, but lease metadata "
@@ -789,6 +788,61 @@ class Provider(CloudBaseManager):
                     f"Original error: {metadata_err}"
                 ) from metadata_err
 
+            fip_addr = None
+            if assign_ip:
+                # Select an existing free allocation or explicitly create one.
+                # Record ownership only for allocations created here.
+                neutron = chi.network.neutron()
+                existing_fips = neutron.list_floatingips()["floatingips"]
+                floating_ip_ids_before = {
+                    ip["id"] for ip in existing_fips
+                }
+
+                available_ip = next(
+                    (
+                        ip for ip in existing_fips
+                        if ip.get("port_id") is None
+                    ),
+                    None,
+                )
+
+                if available_ip is None:
+                    from chi.network import PUBLIC_NETWORK, get_network_id
+
+                    available_ip = neutron.create_floatingip(
+                        {
+                            "floatingip": {
+                                "floating_network_id": get_network_id(
+                                    PUBLIC_NETWORK
+                                )
+                            }
+                        }
+                    )["floatingip"]
+                    created_floating_ip_id = available_ip["id"]
+
+                selected_floating_ip = available_ip["floating_ip_address"]
+
+                self.print("Associating a floating IP (polling for ready port)...")
+                for i in range(10):
+                    try:
+                        fip_addr = s.associate_floating_ip(fip=selected_floating_ip)
+                        floating_ip = fip_addr
+                        self.print(f"✅ Floating IP associated: {fip_addr}")
+                        break
+                    except chi.exception.ResourceError as e:
+                        if "None of the ports can route" in str(e) and i < 9:
+                            self.print(
+                                f"  Port not ready yet, retrying in 3s... ({i + 1}/10)"
+                            )
+                            time.sleep(3)
+                        else:
+                            self.print(f"Error associating floating IP: {e}")
+                            break
+                if not fip_addr:
+                    raise VMProviderError(
+                        f"Failed to associate floating IP with VM {vm_name} "
+                        "after the configured retries."
+                    )
 
             # 3. OPEN PORT 22 (SSH) AND ICMP (PING) IN SECURITY GROUPS
             self.print("Configuring security groups for SSH and ICMP...")
@@ -811,6 +865,7 @@ class Provider(CloudBaseManager):
                 )
                 new_sg.submit()
                 sg_id = new_sg.id
+                created_security_group_id = sg_id
 
             # Ensure the required rules are present using the raw neutron client to avoid wrapper constraints
             # and handle existing rules gracefully (Neutron returns 409 Conflict if rule exists)
@@ -880,10 +935,308 @@ class Provider(CloudBaseManager):
             from cloudmesh.ai.vm.logger import logger
 
             tb = traceback.format_exc()
-            logger.error(f"CHI start failed for {self.cloud_name}: {e}\n{tb}")
-            raise VMProviderError(
-                f"CHI start failed for {self.cloud_name}: {e}\n{tb}"
-            ) from e
+            if lease_id is None and lease is not None:
+                candidate_id = getattr(lease, "id", None)
+                if isinstance(candidate_id, (str, int)) and not isinstance(
+                    candidate_id, bool
+                ):
+                    lease_id = str(candidate_id)
+
+            cleanup_details = []
+
+            # Roll back only a lease created by this attempt, and only
+            # before any VM submission has begun.
+            if lease_submitted and lease is not None and not server_submitted:
+                try:
+                    if not lease_id:
+                        raise VMProviderError("Lease ID is unavailable.")
+
+                    if str(getattr(lease, "id", "")) != str(lease_id):
+                        raise VMProviderError("Lease identity mismatch.")
+
+                    if getattr(lease, "name", None) != f"res-{vm_name}":
+                        raise VMProviderError("Lease ownership mismatch.")
+
+                    reservations = getattr(lease, "flavor_reservations", None)
+                    if (
+                        not isinstance(reservations, list)
+                        or len(reservations) != 1
+                        or not isinstance(reservations[0], dict)
+                        or reservations[0].get("amount") != 1
+                    ):
+                        raise VMProviderError(
+                            "Lease does not have an exclusive single-instance reservation."
+                        )
+
+                    if any(
+                        getattr(lease, attribute, None)
+                        for attribute in (
+                            "device_reservations",
+                            "node_reservations",
+                            "fip_reservations",
+                            "network_reservations",
+                        )
+                    ):
+                        raise VMProviderError(
+                            "Lease contains additional resource reservations."
+                        )
+
+                    servers = chi.server.list_servers()
+                    if servers is None:
+                        raise VMProviderError(
+                            "Cannot verify existing Chameleon servers."
+                        )
+
+                    for existing_server in servers:
+                        metadata = existing_server.get_metadata()
+                        if not isinstance(metadata, dict):
+                            raise VMProviderError(
+                                "Cannot verify server lease ownership."
+                            )
+                        if str(metadata.get("cloudmesh_lease_id")) == str(lease_id):
+                            raise VMProviderError(
+                                "Lease is referenced by an existing VM."
+                            )
+                        if getattr(existing_server, "name", None) == vm_name:
+                            raise VMProviderError(
+                                "A VM with the requested name still exists."
+                            )
+
+                    lease.delete()
+                    cleanup_details.append(f"Released lease {lease_id}.")
+                except Exception as cleanup_err:
+                    cleanup_details.append(
+                        f"Lease cleanup failed or was unsafe: {cleanup_err}"
+                    )
+
+            # Roll back a confirmed VM only when its identity and lease
+            # ownership can be verified from the cloud server listing.
+            if server_submitted and server_submission_completed:
+                try:
+                    if not server_metadata_saved:
+                        raise VMProviderError(
+                            "VM lease metadata was not confirmed."
+                        )
+
+                    server_id = getattr(server, "id", None)
+                    if not isinstance(server_id, str) or not server_id.strip():
+                        raise VMProviderError("VM ID is unavailable.")
+
+                    if not lease_id:
+                        raise VMProviderError("Lease ID is unavailable.")
+
+                    servers = chi.server.list_servers()
+                    if servers is None:
+                        raise VMProviderError(
+                            "Cannot verify existing Chameleon servers."
+                        )
+
+                    matches = [
+                        candidate
+                        for candidate in servers
+                        if str(getattr(candidate, "id", "")) == server_id
+                    ]
+                    if len(matches) != 1:
+                        raise VMProviderError(
+                            "VM identity is missing or ambiguous."
+                        )
+
+                    verified_server = matches[0]
+                    if getattr(verified_server, "name", None) != vm_name:
+                        raise VMProviderError("VM name mismatch.")
+
+                    metadata = verified_server.get_metadata()
+                    if (
+                        not isinstance(metadata, dict)
+                        or str(metadata.get("cloudmesh_lease_id")) != str(lease_id)
+                    ):
+                        raise VMProviderError(
+                            "VM lease ownership could not be verified."
+                        )
+
+                    # Validate the lease before modifying the VM.
+                    if lease is None or str(getattr(lease, "id", "")) != str(lease_id):
+                        raise VMProviderError("Lease identity mismatch.")
+
+                    if getattr(lease, "name", None) != f"res-{vm_name}":
+                        raise VMProviderError("Lease ownership mismatch.")
+
+                    reservations = getattr(lease, "flavor_reservations", None)
+                    if (
+                        not isinstance(reservations, list)
+                        or len(reservations) != 1
+                        or not isinstance(reservations[0], dict)
+                        or reservations[0].get("amount") != 1
+                    ):
+                        raise VMProviderError(
+                            "Lease is not an exclusive single-instance reservation."
+                        )
+
+                    if any(
+                        getattr(lease, attribute, None)
+                        for attribute in (
+                            "device_reservations",
+                            "node_reservations",
+                            "fip_reservations",
+                            "network_reservations",
+                        )
+                    ):
+                        raise VMProviderError(
+                            "Lease contains additional resource reservations."
+                        )
+
+                    for other_server in servers:
+                        if str(getattr(other_server, "id", "")) == server_id:
+                            continue
+                        other_metadata = other_server.get_metadata()
+                        if not isinstance(other_metadata, dict):
+                            raise VMProviderError(
+                                "Cannot verify another VM's lease metadata."
+                            )
+                        if str(other_metadata.get("cloudmesh_lease_id")) == str(lease_id):
+                            raise VMProviderError(
+                                "Lease is referenced by another VM."
+                            )
+
+                    chi.server.delete_server(server_id)
+                    if not self._wait_for_server_deletion(server_id):
+                        raise VMProviderError(
+                            "VM deletion could not be confirmed; lease preserved."
+                        )
+
+                    cleanup_details.append(f"Deleted VM {server_id}.")
+
+                    # Release only a floating IP explicitly allocated by
+                    # this provisioning attempt. Never release reused IPs.
+                    if created_floating_ip_id is not None:
+                        try:
+                            floating_ips = chi.network.neutron().list_floatingips()[
+                                "floatingips"
+                            ]
+                            matches = [
+                                ip for ip in floating_ips
+                                if ip.get("id") == created_floating_ip_id
+                            ]
+
+                            if len(matches) != 1:
+                                raise VMProviderError(
+                                    "Created floating IP identity cannot "
+                                    "be uniquely verified."
+                                )
+
+                            owned_ip = matches[0]
+                            if (
+                                owned_ip.get("floating_ip_address")
+                                != selected_floating_ip
+                            ):
+                                raise VMProviderError(
+                                    "Created floating IP address mismatch."
+                                )
+
+                            if owned_ip.get("port_id") is not None:
+                                raise VMProviderError(
+                                    "Created floating IP remains associated."
+                                )
+
+                            chi.network.neutron().delete_floatingip(
+                                created_floating_ip_id
+                            )
+                            cleanup_details.append(
+                                f"Released floating IP {created_floating_ip_id}."
+                            )
+                        except Exception as ip_cleanup_err:
+                            cleanup_details.append(
+                                "Floating IP cleanup failed or was unsafe: "
+                                f"{ip_cleanup_err}"
+                            )
+
+                    # Delete only a security group created by this attempt,
+                    # after confirming that the VM has been removed.
+                    if created_security_group_id is not None:
+                        try:
+                            neutron = chi.network.neutron()
+                            groups = neutron.list_security_groups()[
+                                "security_groups"
+                            ]
+                            matches = [
+                                group for group in groups
+                                if group.get("id") == created_security_group_id
+                            ]
+
+                            if len(matches) != 1:
+                                raise VMProviderError(
+                                    "Created security group identity cannot "
+                                    "be uniquely verified."
+                                )
+
+                            if matches[0].get("name") != sg_name:
+                                raise VMProviderError(
+                                    "Created security group name mismatch."
+                                )
+
+                            ports = neutron.list_ports()["ports"]
+                            if any(
+                                created_security_group_id
+                                in port.get("security_groups", [])
+                                for port in ports
+                            ):
+                                raise VMProviderError(
+                                    "Created security group is still "
+                                    "referenced by a network port."
+                                )
+
+                            neutron.delete_security_group(
+                                created_security_group_id
+                            )
+                            cleanup_details.append(
+                                "Deleted security group "
+                                f"{created_security_group_id}."
+                            )
+                        except Exception as sg_cleanup_err:
+                            cleanup_details.append(
+                                "Security group cleanup failed or was unsafe: "
+                                f"{sg_cleanup_err}"
+                            )
+
+                    # Recheck remaining VMs before releasing the reservation.
+                    remaining_servers = chi.server.list_servers()
+                    if remaining_servers is None:
+                        raise VMProviderError(
+                            "Cannot verify remaining VMs; lease preserved."
+                        )
+
+                    for other_server in remaining_servers:
+                        other_metadata = other_server.get_metadata()
+                        if not isinstance(other_metadata, dict):
+                            raise VMProviderError(
+                                "Cannot verify remaining VM metadata."
+                            )
+                        if str(other_metadata.get("cloudmesh_lease_id")) == str(lease_id):
+                            raise VMProviderError(
+                                "Lease is still referenced by another VM."
+                            )
+
+                    lease.delete()
+                    cleanup_details.append(f"Released lease {lease_id}.")
+
+                except Exception as cleanup_err:
+                    cleanup_details.append(
+                        f"VM/lease cleanup failed or was unsafe: {cleanup_err}"
+                    )
+
+            resource_details = f"VM name: {vm_name}"
+            if lease_id is not None:
+                resource_details += f", lease ID: {lease_id}"
+
+            message = (
+                f"CHI start failed for {self.cloud_name}: {e}. "
+                f"{resource_details}. Provisioning may have left resources "
+                "allocated; inspect them before attempting cleanup."
+            )
+            if cleanup_details:
+                message += " Cleanup: " + " ".join(cleanup_details)
+            logger.error(f"{message}\n{tb}")
+            raise VMProviderError(message) from e
 
     def stop(self, name: str | None = None) -> bool:
         """Stops a Chameleon VM."""

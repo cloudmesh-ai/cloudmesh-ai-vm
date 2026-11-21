@@ -1008,3 +1008,733 @@ def test_delete_preserves_lease_with_malformed_flavor_reservation(provider):
 
     cm.chi.server.delete_server.assert_called_once_with("server-123")
     lease.delete.assert_not_called()
+
+
+def test_start_lease_activation_failure_preserves_resources(
+    provider, lease_start_setup
+):
+    """An uncertain lease activation must preserve resources for inspection."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.wait.side_effect = TimeoutError("Lease activation timed out")
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Lease activation timed out" in str(excinfo.value)
+    assert "VM name: test-vm" in str(excinfo.value)
+    assert "lease ID: lease-123" in str(excinfo.value)
+    assert "inspect them before attempting cleanup" in str(excinfo.value)
+    cm.chi.server.Server.assert_not_called()
+    cm.chi.server.delete_server.assert_not_called()
+    lease.delete.assert_not_called()
+
+
+def test_start_vm_launch_failure_preserves_lease(provider, lease_start_setup):
+    """A failed VM launch must not automatically destroy its reservation."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.flavor_reservations = [{"id": "reservation-123"}]
+    lease.get_reserved_flavors.return_value = [MagicMock(name="reserved-flavor")]
+
+    server = cm.chi.server.Server.return_value
+    server.submit.side_effect = RuntimeError("Nova server creation failed")
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Nova server creation failed" in str(excinfo.value)
+    assert "VM name: test-vm" in str(excinfo.value)
+    assert "lease ID: lease-123" in str(excinfo.value)
+    assert "inspect them before attempting cleanup" in str(excinfo.value)
+    lease.delete.assert_not_called()
+    cm.chi.server.delete_server.assert_not_called()
+
+
+def test_start_pre_vm_failure_rolls_back_owned_lease(
+    provider, lease_start_setup
+):
+    """Release a newly created lease when VM submission never began."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    lease.get_reserved_flavors.side_effect = RuntimeError(
+        "Reserved flavor unavailable"
+    )
+
+    cm.chi.server.list_servers.return_value = []
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Reserved flavor unavailable" in str(excinfo.value)
+    cm.chi.server.Server.assert_not_called()
+    cm.chi.server.delete_server.assert_not_called()
+    lease.delete.assert_called_once_with()
+
+
+def test_start_pre_vm_failure_preserves_referenced_lease(
+    provider, lease_start_setup
+):
+    """Never roll back a lease referenced by an existing VM."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    lease.get_reserved_flavors.side_effect = RuntimeError(
+        "Reserved flavor unavailable"
+    )
+
+    existing_server = MagicMock()
+    existing_server.id = "other-server-456"
+    existing_server.name = "other-vm"
+    existing_server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+    cm.chi.server.list_servers.return_value = [existing_server]
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    message = str(excinfo.value)
+    assert "Reserved flavor unavailable" in message
+    assert "Lease is referenced by an existing VM" in message
+    lease.delete.assert_not_called()
+    cm.chi.server.delete_server.assert_not_called()
+
+
+def test_start_security_group_failure_rolls_back_vm_and_lease(
+    provider, lease_start_setup, monkeypatch
+):
+    """A failed SG attachment rolls back the owned VM before its lease."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    # The server must be absent before provisioning and present afterward.
+    cm.chi.server.list_servers.side_effect = [[server], []]
+    cm.chi.server.get_server.return_value = None
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = [
+        MagicMock(name="existing-sg", id="sg-123")
+    ]
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    provider._wait_for_server_deletion.assert_called_once_with("server-123")
+    lease.delete.assert_called_once_with()
+
+
+def test_start_vm_deletion_timeout_preserves_lease(
+    provider, lease_start_setup, monkeypatch
+):
+    """Never release the lease when VM deletion cannot be confirmed."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.return_value = [server]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=False),
+    )
+
+    cm.chi.network.list_security_groups.return_value = [
+        MagicMock(name="existing-sg", id="sg-123")
+    ]
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    message = str(excinfo.value)
+
+    assert "Security group attachment failed" in message
+    assert "VM deletion could not be confirmed" in message
+
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    provider._wait_for_server_deletion.assert_called_once_with("server-123")
+    lease.delete.assert_not_called()
+
+
+def test_start_vm_ownership_mismatch_preserves_resources(
+    provider, lease_start_setup
+):
+    """Never delete a VM whose lease metadata does not match."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "different-lease"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.return_value = [server]
+
+    cm.chi.network.list_security_groups.return_value = [
+        MagicMock(name="existing-sg", id="sg-123")
+    ]
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    message = str(excinfo.value)
+
+    assert "Security group attachment failed" in message
+    assert "VM lease ownership could not be verified" in message
+
+    cm.chi.server.delete_server.assert_not_called()
+    lease.delete.assert_not_called()
+
+
+def test_start_rollback_preserves_preexisting_floating_ip(
+    provider, lease_start_setup, monkeypatch
+):
+    """Rollback must not delete an IP allocated before provisioning."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+    server.associate_floating_ip.return_value = "129.114.10.20"
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    cm.chi.network.neutron.return_value.list_floatingips.return_value = {
+        "floatingips": [
+            {
+                "id": "preexisting-ip-123",
+                "floating_ip_address": "129.114.10.20",
+                "port_id": None,
+            }
+        ]
+    }
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = [
+        MagicMock(name="existing-sg", id="sg-123")
+    ]
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=True)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    server.detach_floating_ip.assert_not_called()
+    cm.chi.network.neutron.return_value.delete_floatingip.assert_not_called()
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    lease.delete.assert_called_once_with()
+
+
+def test_start_rollback_releases_new_floating_ip(
+    provider, lease_start_setup, monkeypatch
+):
+    """Release a newly allocated IP after a verified provisioning failure."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [
+        {"id": "reservation-123", "amount": 1}
+    ]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+    server.associate_floating_ip.return_value = "129.114.10.20"
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        "chi.network.get_network_id",
+        lambda network_name: "public-network-123",
+    )
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.create_floatingip.return_value = {
+        "floatingip": {
+            "id": "new-ip-123",
+            "floating_ip_address": "129.114.10.20",
+            "port_id": None,
+        }
+    }
+    neutron.list_floatingips.side_effect = [
+        {"floatingips": []},
+        {
+            "floatingips": [
+                {
+                    "id": "new-ip-123",
+                    "floating_ip_address": "129.114.10.20",
+                    "port_id": None,  # VM has already been deleted
+                }
+            ]
+        },
+    ]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = [
+        MagicMock(name="existing-sg", id="sg-123")
+    ]
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=True)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    neutron.delete_floatingip.assert_called_once_with("new-ip-123")
+    assert server.associate_floating_ip.call_count == 1
+    assert neutron.list_floatingips.call_count >= 2
+    lease.delete.assert_called_once_with()
+
+
+def test_start_rollback_deletes_new_security_group(
+    provider, lease_start_setup, monkeypatch
+):
+    """Rollback deletes an owned security group after VM deletion."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [{"id": "reservation-123", "amount": 1}]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = []
+    security_group = cm.chi.network.SecurityGroup.return_value
+    security_group.id = "new-sg-123"
+    security_group.name = "test-user-allow-ssh"
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.list_security_groups.return_value = {
+        "security_groups": [
+            {
+                "id": "new-sg-123",
+                "name": "test-user-allow-ssh",
+            }
+        ]
+    }
+    neutron.list_ports.return_value = {"ports": []}
+
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    neutron.delete_security_group.assert_called_once_with("new-sg-123")
+    lease.delete.assert_called_once_with()
+
+def test_start_rollback_preserves_referenced_security_group(
+    provider, lease_start_setup, monkeypatch
+):
+    """Rollback preserves a security group referenced by another port."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [{"id": "reservation-123", "amount": 1}]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = []
+    security_group = cm.chi.network.SecurityGroup.return_value
+    security_group.id = "new-sg-123"
+    security_group.name = "test-user-allow-ssh"
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.list_security_groups.return_value = {
+        "security_groups": [
+            {
+                "id": "new-sg-123",
+                "name": "test-user-allow-ssh",
+            }
+        ]
+    }
+    neutron.list_ports.return_value = {
+        "ports": [
+            {
+                "id": "other-port-123",
+                "security_groups": ["new-sg-123"],
+            }
+        ]
+    }
+
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    neutron.delete_security_group.assert_not_called()
+    assert "still referenced by a network port" in str(excinfo.value)
+    lease.delete.assert_called_once_with()
+
+def test_start_rollback_reports_security_group_cleanup_failure(
+    provider, lease_start_setup, monkeypatch
+):
+    """Report security group deletion failures without hiding the cause."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [{"id": "reservation-123", "amount": 1}]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = []
+    security_group = cm.chi.network.SecurityGroup.return_value
+    security_group.id = "new-sg-123"
+    security_group.name = "test-user-allow-ssh"
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.list_security_groups.return_value = {
+        "security_groups": [
+            {
+                "id": "new-sg-123",
+                "name": "test-user-allow-ssh",
+            }
+        ]
+    }
+    neutron.list_ports.return_value = {"ports": []}
+    neutron.delete_security_group.side_effect = RuntimeError(
+        "Security group deletion API unavailable"
+    )
+
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    assert "Security group attachment failed" in str(excinfo.value)
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    neutron.delete_security_group.assert_called_once_with("new-sg-123")
+    assert "Security group deletion API unavailable" in str(excinfo.value)
+    assert "Security group attachment failed" in str(excinfo.value)
+    lease.delete.assert_called_once_with()
+
+
+def test_start_floating_ip_allocation_failure_preserves_uncertain_resources(
+    provider, lease_start_setup, monkeypatch
+):
+    """Do not delete an IP when allocation outcome is uncertain."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [{"id": "reservation-123", "amount": 1}]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        "chi.network.get_network_id",
+        lambda network_name: "public-network-123",
+    )
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.list_floatingips.return_value = {"floatingips": []}
+    neutron.create_floatingip.side_effect = TimeoutError(
+        "Floating IP allocation request timed out"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=True)
+
+    message = str(excinfo.value)
+    assert "Floating IP allocation request timed out" in message
+    assert "inspect them before attempting cleanup" in message
+
+    neutron.delete_floatingip.assert_not_called()
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    provider._wait_for_server_deletion.assert_called_once_with("server-123")
+    lease.delete.assert_called_once_with()
+
+def test_start_security_group_creation_timeout_preserves_unknown_group(
+    provider, lease_start_setup, monkeypatch
+):
+    """Preserve an unidentified group after a creation timeout."""
+    cm = lease_start_setup
+    cm.chi.lease.list_leases.return_value = []
+
+    lease = cm.chi.lease.Lease.return_value
+    lease.id = "lease-123"
+    lease.name = "res-test-vm"
+    lease.flavor_reservations = [{"id": "reservation-123", "amount": 1}]
+    lease.device_reservations = []
+    lease.node_reservations = []
+    lease.fip_reservations = []
+    lease.network_reservations = []
+
+    server = cm.chi.server.Server.return_value
+    server.id = "server-123"
+    server.name = "test-vm"
+    server.get_metadata.return_value = {
+        "cloudmesh_lease_id": "lease-123"
+    }
+
+    cm.chi.server.get_server.return_value = None
+    cm.chi.server.list_servers.side_effect = [[server], []]
+
+    monkeypatch.setattr(
+        provider,
+        "_wait_for_server_deletion",
+        MagicMock(return_value=True),
+    )
+
+    cm.chi.network.list_security_groups.return_value = []
+    security_group = cm.chi.network.SecurityGroup.return_value
+    security_group.id = "new-sg-123"
+    security_group.name = "test-user-allow-ssh"
+    security_group.submit.side_effect = TimeoutError(
+        "Security group creation request timed out"
+    )
+
+    neutron = cm.chi.network.neutron.return_value
+    neutron.list_security_groups.return_value = {
+        "security_groups": [
+            {
+                "id": "new-sg-123",
+                "name": "test-user-allow-ssh",
+            }
+        ]
+    }
+    neutron.list_ports.return_value = {"ports": []}
+
+    server.add_security_group.side_effect = RuntimeError(
+        "Security group attachment failed"
+    )
+
+    with pytest.raises(VMProviderError) as excinfo:
+        provider.start(name="test-vm", assign_ip=False)
+
+    message = str(excinfo.value)
+    assert "Security group creation request timed out" in message
+    assert "VM name: test-vm" in message
+
+    security_group.submit.assert_called_once_with()
+    server.add_security_group.assert_not_called()
+    neutron.delete_security_group.assert_not_called()
+    cm.chi.server.delete_server.assert_called_once_with("server-123")
+    lease.delete.assert_called_once_with()
