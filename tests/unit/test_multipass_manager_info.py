@@ -111,3 +111,16 @@ def test_info_fallback_to_text_parsing(provider):
     assert info["ipv4"] == ["10.1.2.3", "10.2.3.4"]
     assert info["ip"] == "10.1.2.3"
     assert info["release"] == "22.04 LTS"
+
+
+@pytest.mark.parametrize("state", ["Stopped", None])
+def test_info_text_fallback_without_ipv4(provider, state):
+    state_line = f"State: {state}\n" if state is not None else ""
+    output = f"Name: test-vm\n{state_line}"
+    provider._run_command = MagicMock(return_value=MagicMock(stdout=output))
+
+    info = provider.info(name="test-vm")
+
+    assert info["status"] == state
+    assert info["ipv4"] == []
+    assert info["ip"] == ""

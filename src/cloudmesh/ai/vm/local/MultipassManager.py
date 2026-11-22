@@ -524,7 +524,7 @@ class Provider(LocalBaseManager):
             # Fallback: parse the plain‑text output (pre‑JSON Multipass versions).
             # -----------------------------------------------------------------
             raw = result.stdout
-            info: dict[str, Any] = {"name": name}
+            info: dict[str, Any] = {"name": name, "ipv4": [], "ip": ""}
             for line in raw.splitlines():
                 if ":" not in line:
                     continue
@@ -538,6 +538,7 @@ class Provider(LocalBaseManager):
                     info["ip"] = ips[0] if ips else ""
                 else:
                     info[key] = val
+            info["status"] = info.get("state")
             # Preserve backward‑compatible capitalised key if present.
             if "state" in info:
                 info["State"] = info["state"]
