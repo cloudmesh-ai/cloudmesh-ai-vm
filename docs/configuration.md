@@ -16,32 +16,38 @@ last_vm: gregor-0
 clouds:
   # --- Local Providers ---
   multipass:
+    enabled: true
     image: 22.04
     cpus: 2
     memory: 4GiB
     disk: 20GiB
 
   wsl2:
+    enabled: true
     distro: Ubuntu-22.04
     ssh_link: true  # Symbolically link host .ssh directory
 
   vbox:
+    enabled: true
     image: ubuntu-server-22.04.iso
     memory: 2048
     cpus: 1
 
   docker:
+    enabled: true
     image: ubuntu:latest  # Default image for 'cmx container run'
     network: bridge       # Default network to attach containers to
 
   # --- OpenStack Providers ---
   jetstream:
+    enabled: true
     flavour: m1.small
     image: ubuntu-22.04
     auth: /home/user/.config/jetstream/auth.yaml
     security_group: default
 
   chameleon:
+    enabled: true
     flavour: c1.small
     image: rocky-linux-8
     auth: /home/user/.config/chameleon/auth.yaml
@@ -50,6 +56,7 @@ clouds:
 
   # --- Hyperscalers (libcloud) ---
   aws:
+    enabled: false
     access_key: AKIA...
     secret_key: wJal...
     region: us-east-1
@@ -57,6 +64,7 @@ clouds:
     size: t2.micro
 
   azure:
+    enabled: false
     tenant_id: xxxx-xxxx-xxxx
     subscription_id: xxxx-xxxx-xxxx
     client_id: xxxx-xxxx-xxxx
@@ -65,6 +73,7 @@ clouds:
     size: Standard_DS1_v2
 
   google:
+    enabled: false
     project_id: my-gcp-project
     private_key: /home/user/.config/google/service-account.json
     image: ubuntu-2204-lts
@@ -88,4 +97,5 @@ clouds:
 
 - `auth`: Path to a YAML file containing credentials (used by OpenStack).
 - `image`: The OS image identifier for the specific provider.
-- `size` / `flavour`: The hardware profile (CPU/RAM) for the VM.
+ - `size` / `flavour`: The hardware profile (CPU/RAM) for the VM.
+ - `enabled`: Boolean flag (default `true`). When set to `false` the provider is ignored by Cloudmesh commands. This lets you keep a provider configuration in the file without it being active.
